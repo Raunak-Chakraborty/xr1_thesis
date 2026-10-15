@@ -197,6 +197,71 @@ class DoosanDatasetContractTest(unittest.TestCase):
             expected_tail,
         )
 
+    def test_precomputed_semantic_action_is_not_differenced_again(self):
+        """XR-1 must consume converter-produced deltas exactly once."""
+
+        dataset = self.dataset_stub()
+
+        traj = self.trajectory()
+
+        semantic = np.asarray(
+            [
+                [0.001, 0.002, -0.003, 0.010, 0.020, -0.030, 0.0],
+                [0.004, -0.001, 0.002, -0.020, 0.010, 0.005, 0.0],
+                [-0.002, 0.005, 0.001, 0.030, -0.010, 0.020, 1.0],
+                [0.006, -0.004, 0.003, -0.015, 0.025, -0.005, 1.0],
+                [0.000, 0.003, -0.006, 0.005, -0.030, 0.040, 1.0],
+            ],
+            dtype=np.float32,
+        )
+
+        traj["actions"]["semantic"] = (
+            semantic.tolist()
+        )
+
+        action = dataset._doosan_action(
+            traj,
+            frame=0,
+            steps=5,
+        )
+
+        # The first five XR-1 semantic rows must equal the
+        # converter-produced labels byte-for-value after
+        # float32 conversion. No second TCP/action difference
+        # is permitted here.
+        np.testing.assert_array_equal(
+            action[:5, :7],
+            semantic,
+        )
+
+        # This explicitly catches an accidental second
+        # finite difference: the varying translation labels
+        # must survive unchanged.
+        self.assertAlmostEqual(
+            float(action[1, 0]),
+            0.004,
+            places=7,
+        )
+
+        self.assertAlmostEqual(
+            float(action[2, 0]),
+            -0.002,
+            places=7,
+        )
+
+        # Padding is allowed, but only after the valid
+        # precomputed semantic labels have been consumed.
+        expected_tail = np.repeat(
+            semantic[-1:],
+            25,
+            axis=0,
+        )
+
+        np.testing.assert_array_equal(
+            action[5:, :7],
+            expected_tail,
+        )
+
     def test_missing_wrench_rejected_when_enabled(self):
         dataset = self.dataset_stub(
             use_wrench=True

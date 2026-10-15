@@ -111,6 +111,25 @@ Gripper:
 This action definition intentionally matches the existing ForceVLA
 Doosan semantic action contract.
 
+### Exactly-once action-label rule
+
+`doosan-forcevla-data-tools` is the sole owner of measured Cartesian
+action-label derivation from consecutive synchronized TCP poses.
+
+For processed row `t`:
+
+`delta_p[t] = p[t+1] - p[t]`
+
+and the relative rotation is computed once from `R[t]` and `R[t+1]`.
+
+Therefore `actions.semantic` already contains a measured 7D action
+delta. The XR-1 dataset/runtime path must never subtract neighboring
+TCP poses or neighboring action rows again. A second difference would
+change the target into an acceleration-like quantity and is forbidden.
+
+The absolute gripper target is likewise consumed directly and must not
+be converted to a gripper delta.
+
 ## 7. XR-1 action packing
 
 XR-1 model-facing action remains 60D:
@@ -126,8 +145,12 @@ The output adapter slices dimensions 0..6 from XR-1 predictions.
 
 XR-1 retains its native 30-step action horizon.
 
-The converter must construct future 30-step chunks from synchronized
-physical demonstrations.
+The converter emits one already-differenced 7D semantic action for
+each valid consecutive synchronized transition. The XR-1 dataset
+adapter selects future semantic-action rows and performs only
+30-step windowing and repeat-last padding.
+
+Horizon construction must not recompute any TCP delta.
 
 ## 9. Normalization
 
@@ -162,6 +185,7 @@ The XR-1 repository owns:
 
 - 19D/25D semantic-to-60D state packing
 - 7D-to-60D action packing
+- 30-step windowing/padding of already-computed semantic actions
 - action masking
 - two-camera prompt/model adapter
 - inference output slicing
@@ -174,8 +198,8 @@ The XR-1 repository owns:
 - physical-unit extraction
 - video materialization
 - episode/frame indexing
-- XR-1 export generation
-- 30-step future-action construction
+- XR-1 exchange-data export generation
+- exactly-once 7D measured-action derivation from consecutive TCP poses
 - training statistics generation
 - conversion provenance
 

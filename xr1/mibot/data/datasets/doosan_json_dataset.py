@@ -17,6 +17,12 @@ actions.semantic        -> 7
      delta_tcp_rotvec_3,
      absolute_gripper_target_1]
 
+`actions.semantic` is already the measured per-transition action
+computed exactly once by doosan-forcevla-data-tools from consecutive
+synchronized TCP poses. This dataset only windows, pads, normalizes,
+masks, and packs those labels. It must never finite-difference them
+again.
+
 The resulting tensors preserve XR-1's native:
 - state:  (1,60)
 - action: (30,60)

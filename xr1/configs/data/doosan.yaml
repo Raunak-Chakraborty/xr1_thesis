@@ -1,0 +1,44 @@
+# @package _global_
+
+# Doosan M1013 XR-1 thesis data profile.
+#
+# The converter will eventually provide:
+#   paths
+#   mean
+#   std
+#   q01
+#   q99
+#
+# These are intentionally mandatory here so training cannot
+# silently start with fake statistics.
+
+data:
+  type: DoosanDataModule
+
+  params:
+    type: doosan_json
+
+    max_steps: ${trainer.max_steps}
+
+    train_datasets:
+      batch_size: 1
+      action_length: 30
+
+      num_workers: 8
+      prefetch_factor: 4
+      persistent_workers: true
+      pin_memory: true
+      sampler_seed: 42
+
+      # Force-free thesis baseline.
+      # Set true only for the separately defined
+      # force-aware XR-1 experiment.
+      use_wrench: false
+
+      semantic_action_key: actions.semantic
+
+      paths: ???
+      mean: ???
+      std: ???
+      q01: ???
+      q99: ???

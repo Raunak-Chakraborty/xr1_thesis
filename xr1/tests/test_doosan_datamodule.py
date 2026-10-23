@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
+from unittest.mock import patch
 
 from mmengine import Config, DATASETS
 
@@ -52,9 +53,14 @@ class DoosanDataModuleRegistrationTest(
             }
         )
 
-        module = DoosanDataModule(
-            params
-        )
+        # This test validates DataModule parameters, not
+        # the Hugging Face processor. Avoid network access.
+        with patch(
+            "mibot.data.datamodule.base_datamodule.CustomCollate"
+        ):
+            module = DoosanDataModule(
+                params
+            )
 
         self.assertEqual(
             module.batch_size,

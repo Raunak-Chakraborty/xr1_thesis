@@ -129,3 +129,17 @@ real-robot evaluation to appropriately equipped systems.
 
 Never initiate physical robot motion from this project
 without explicit authorization.
+
+## Browser and authentication protocol
+
+Never automatically launch a web browser from a terminal.
+
+When authentication or authorization requires a website,
+display the URL so the user can copy it manually into
+an existing browser window.
+
+Do not invoke commands that automatically open browser
+windows without explicit user approval.
+
+Never print or record authentication tokens, passwords,
+one-time codes, or credentials in project logs.

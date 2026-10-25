@@ -70,8 +70,8 @@ The ForceVLA repository is reference-only.
 
 Audit sessions use a read-only sandbox.
 
-Development permissions will be configured separately,
-after experimental Git worktrees are established.
+Development permissions are configured through the
+experiment-specific launcher described below.
 
 ## Session recovery hierarchy
 
@@ -86,3 +86,70 @@ if prior validated findings already exist.
 ## Current restriction
 
 Do not start architecture implementation yet.
+
+## Experiment-specific sessions
+
+Use:
+
+scripts/launch_codex_experiment.sh
+
+Supported experiments:
+
+- baseline
+- state
+- encoder
+- moe
+
+Supported permission modes:
+
+- audit
+- develop
+
+Supported session modes:
+
+- new
+- resume
+
+Examples:
+
+scripts/launch_codex_experiment.sh encoder audit new
+
+scripts/launch_codex_experiment.sh encoder develop new
+
+scripts/launch_codex_experiment.sh encoder develop resume
+
+Experiment session logs are stored under:
+
+logs/codex/<experiment>/session_<timestamp>_<mode>_<id>/
+
+Each session records terminal output and Git-state snapshots.
+
+Logging has been configured but requires an interactive test.
+
+## Shared documentation synchronization
+
+Use:
+
+scripts/sync_project_context.sh status
+
+to check differences.
+
+Use:
+
+scripts/sync_project_context.sh prepare
+
+to copy approved documentation into the context worktree.
+
+Neither command automatically commits or pushes changes.
+
+The context branch is:
+
+thesis/xr1-force/context
+
+Do not overwrite remote context changes.
+Resolve divergence before publishing.
+
+## Browser preference
+
+Never automatically open a browser from the terminal.
+Display URLs for manual opening instead.

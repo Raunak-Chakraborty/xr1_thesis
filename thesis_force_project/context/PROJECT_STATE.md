@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 0: Finalizing Codex development infrastructure.
+Phase 0: Validating Codex logging, synchronization, and recovery.
 
 Git repository and experimental worktree setup are complete.
 
@@ -57,15 +57,24 @@ thesis/xr1-force/context
 Purpose: Version-controlled project instructions,
 decisions, handoffs, and reproducibility records.
 
-The context branch has not yet been published.
+The context branch was published to GitHub at commit d5eb18afe646f65deb288cb817eee7a02b6f6734.
+
+## Completed infrastructure since initial publication
+
+- Context branch committed and published to GitHub.
+- Shared AGENTS.md and context links installed in all four experiments.
+- Experiment-specific Codex launcher created.
+- Timestamped terminal and Git-state logging configured.
+- Context synchronization utility created and status-tested.
+- No architecture implementation has started.
 
 ## Remaining infrastructure tasks
 
-1. Commit and publish project context.
-2. Establish safe synchronization of shared context.
-3. Configure Codex development launchers.
-4. Verify logging and fresh-session recovery.
-5. Verify instruction scope in experimental worktrees.
+1. Publish updated Codex tooling and documentation.
+2. Test the experiment launcher with a read-only Codex session.
+3. Verify session logs and instruction loading.
+4. Verify a fresh session can recover project state.
+5. Confirm the development workflow before changing model code.
 
 ## Research status
 
@@ -75,6 +84,9 @@ No force architecture has been trained or evaluated.
 
 ## Next approved task
 
-Finish version-controlling the project context.
+Review and publish updated project-context documentation and
+Codex tooling. Then perform a read-only session-recovery test.
+
+Do not begin architecture implementation yet.
 
 Do not begin architecture implementation yet.

@@ -14,8 +14,8 @@ architectures for Doosan M1013 contact-rich assembly.
 Repository setup and experimental branch publication
 are complete.
 
-Persistent Codex development infrastructure is
-still being finalized.
+Codex launchers and context synchronization are configured.
+Interactive session logging and recovery remain untested.
 
 No architecture implementation has started.
 
@@ -56,6 +56,9 @@ thesis/xr1-force/context
 
 This branch is reserved for shared project documentation.
 
+Published GitHub commit:
+d5eb18afe646f65deb288cb817eee7a02b6f6734
+
 ## Protected repositories and branches
 
 Never modify:
@@ -66,12 +69,28 @@ Never modify:
 
 ## Next tasks
 
-1. Prepare the project documentation package.
-2. Review the context-branch changes.
-3. Commit and publish the context branch.
-4. Configure experiment-specific Codex launchers.
-5. Establish reproducible session logs and handoffs.
-6. Verify Codex instruction scope and recovery.
+1. Review and publish updated shared documentation and tooling.
+2. Run the first read-only experiment Codex session.
+3. Verify terminal logging and Git-state snapshots.
+4. Verify project instructions load in the experimental worktree.
+5. Test new-session recovery using the shared handoff.
+6. Approve the first XR-1/ForceVLA architecture audit.
+
+## Current Codex tooling
+
+Read-only audit launcher:
+scripts/launch_codex_audit.sh
+
+Experimental launcher:
+scripts/launch_codex_experiment.sh
+
+Context synchronization:
+scripts/sync_project_context.sh
+
+Session logs:
+logs/codex/
+
+No development session has been executed yet.
 
 ## Session recovery
 

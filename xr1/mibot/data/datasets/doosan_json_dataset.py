@@ -330,8 +330,19 @@ class DoosanJsonDataset(JsonDataset):
     @staticmethod
     def _images(traj, keys, frame):
         import os
-        if os.environ.get("XR1_DOOSAN_OFFLINE_FRAME_ROOT"):
+        zip_root = os.environ.get("XR1_DOOSAN_ZIP_CACHE_ROOT")
+        png_root = os.environ.get("XR1_DOOSAN_OFFLINE_FRAME_ROOT")
+
+        if zip_root and png_root:
+            raise RuntimeError(
+                "Set only one Doosan offline cache root"
+            )
+
+        if zip_root:
+            from mibot.data.datasets.doosan_zip_images import decode_images
+        elif png_root:
             from mibot.data.datasets.doosan_cached_images import decode_images
         else:
             from mibot.data.datasets.doosan_video_decoder import decode_images
+
         return decode_images(traj, keys, frame)

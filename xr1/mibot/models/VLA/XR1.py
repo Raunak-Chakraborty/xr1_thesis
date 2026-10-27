@@ -361,7 +361,10 @@ class xr1(nn.Module):
                 vlm_outputs.hidden_states[batch["input_ids"] == SCORE_ID]
             )
         else:
-            vlm_outputs = self.vlm(**batch, use_cache=True, skip_logits=True)
+            state_embeds = self.state_projector_choice(state.flatten(0, 1))
+            vlm_outputs = self.vlm(
+                **batch, state_embeds=state_embeds, use_cache=True, skip_logits=True
+            )
 
         past_key_values, position_ids, cache_mask = self._unpad(
             list(vlm_outputs.past_key_values),

@@ -1,0 +1,76 @@
+# XR1 Doosan language policy v2 — concise, one-sentence assembly instructions.
+# Edit this version only to draft future wording; freeze checksum for each experiment.
+# Keep v1 unchanged for reproducibility.
+# This file does NOT modify canonical converted episodes or inject prompts automatically.
+# Builder resolves task_aliases before looking up assembly family, orientation, and task.
+# Cranfield round_peg and round_square_peg intentionally have identical prompts.
+# Both vertical_insertion and angled_insertion have orientation-specific prompts.
+schema_version: 1
+policy_id: doosan_assembly_language_v2
+source_dataset_root: /home/ktt_rc/robotics_thesis/dataset/dataset_converted_2
+task_aliases:
+  cranfield_converted:
+    clock_hand_quest: clock_hand
+    small_plate_quest: small_plate
+  siemens_converted: {}
+prompts:
+  cranfield_converted:
+    vertical_insertion:
+      square_peg: >-
+        Insert the square peg into the nearest matching upright square hole until fully seated, then
+        release it.
+      round_peg: >-
+        Insert the cylindrical end of the peg into the nearest matching upright circular hole until
+        fully seated, then release it.
+      round_square_peg: >-
+        Insert the cylindrical end of the peg into the nearest matching upright circular hole until
+        fully seated, then release it.
+      clock_hand: >-
+        Fit the pendulum's square mounting hole onto the enlarged square section at the base of the
+        upright peg, then release it.
+      small_plate: >-
+        Fit the plate's two square mounting holes onto the enlarged square sections of the two upright
+        pegs until fully seated, then release it.
+      big_plate: >-
+        Fit the plate's three circular and two square mounting holes onto their corresponding upright
+        pegs until fully seated, then release it.
+    angled_insertion:
+      square_peg: >-
+        Insert the square peg into the nearest matching inclined square hole until fully seated,
+        then release it.
+      round_peg: >-
+        Insert the cylindrical end of the peg into the nearest matching inclined circular hole until
+        fully seated, then release it.
+      round_square_peg: >-
+        Insert the cylindrical end of the peg into the nearest matching inclined circular hole until
+        fully seated, then release it.
+      clock_hand: >-
+        Fit the pendulum's square mounting hole onto the enlarged square section at the base of the
+        inclined peg, then release it.
+      small_plate: >-
+        Fit the plate's two square mounting holes onto the enlarged square sections of the two inclined
+        pegs until fully seated, then release it.
+      big_plate: >-
+        Fit the plate's three circular and two square mounting holes onto their corresponding inclined
+        pegs until fully seated, then release it.
+  siemens_converted:
+    vertical_insertion:
+      square_gear_large_quest: >-
+        Mount the large gear with a square mounting hole onto the upright square peg, mesh it with
+        the adjacent gear, then release it.
+      square_gear_small_quest: >-
+        Mount the small gear with a square mounting hole onto the upright square peg, mesh it with
+        the adjacent gear, then release it.
+      circular_gear_quest: >-
+        Mount the gear with a circular mounting hole onto the upright cylindrical peg, mesh it with
+        the adjacent gear, then release it.
+    angled_insertion:
+      square_gear_large_quest: >-
+        Mount the large gear with a square mounting hole onto the inclined square peg, mesh it with
+        the adjacent gear, then release it.
+      square_gear_small_quest: >-
+        Mount the small gear with a square mounting hole onto the inclined square peg, mesh it with
+        the adjacent gear, then release it.
+      circular_gear_quest: >-
+        Mount the gear with a circular mounting hole onto the inclined cylindrical peg, mesh it with
+        the adjacent gear, then release it.

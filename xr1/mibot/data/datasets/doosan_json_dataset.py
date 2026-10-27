@@ -51,6 +51,8 @@ class DoosanJsonDataset(JsonDataset):
     """XR-1 post-training dataset for the Doosan M1013."""
 
     def __init__(self, params):
+        # Base JsonDataset.__init__ calls self._samples(), so set seed first.
+        self.sampler_seed = int(params["train_datasets"].get("sampler_seed", 42))
         super().__init__(params)
 
         data = params["train_datasets"]
@@ -167,6 +169,47 @@ class DoosanJsonDataset(JsonDataset):
             "vlm_action_actual_length": steps,
         }
 
+    def _samples(self):
+        """Uniformly sample frames from all training files, reproducibly.
+
+        Select without replacement until the full split has been used;
+        reshuffle for further cycles when max_samples exceeds its length.
+        This prevents the sorted-prefix selection in Xiaomi JsonDataset.
+        """
+        import random
+
+        population = []
+        for path in self.files:
+            num_frames = int(self._read_json(path)["num_frames"])
+            if num_frames <= 0:
+                continue
+            population.extend(
+                {"file": path, "frame_index": index}
+                for index in range(num_frames)
+            )
+
+        if not population:
+            raise ValueError("Doosan training paths contain no frames")
+
+        rng = random.Random(self.sampler_seed)
+        selected = []
+        remaining = self.max_samples
+        while remaining > 0:
+            indices = list(range(len(population)))
+            rng.shuffle(indices)
+            take = min(remaining, len(population))
+            selected.extend(population[i] for i in indices[:take])
+            remaining -= take
+
+        unique_files = len({sample["file"] for sample in selected})
+        print(
+            f"XR1_DOOSAN_SAMPLER=PASS seed={self.sampler_seed} "
+            f"raw_frames={len(population)} samples={len(selected)} "
+            f"unique_episodes={unique_files}",
+            flush=True,
+        )
+        return selected
+
     @staticmethod
     def _required_frame(
         traj,
@@ -282,3 +325,13 @@ class DoosanJsonDataset(JsonDataset):
             delta_tcp_rotvec=semantic[:, 3:6],
             gripper_target=semantic[:, 6],
         )
+
+    # XR1_DOOSAN_OFFLINE_OPTIN_V1: fail-closed PNG cache.
+    @staticmethod
+    def _images(traj, keys, frame):
+        import os
+        if os.environ.get("XR1_DOOSAN_OFFLINE_FRAME_ROOT"):
+            from mibot.data.datasets.doosan_cached_images import decode_images
+        else:
+            from mibot.data.datasets.doosan_video_decoder import decode_images
+        return decode_images(traj, keys, frame)

@@ -11,7 +11,6 @@ from functools import lru_cache
 
 import numpy as np
 import torch
-from decord import VideoReader
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms.functional import adjust_brightness, adjust_contrast, adjust_hue, adjust_saturation
@@ -135,6 +134,8 @@ class JsonDataset(Dataset):
 
     @staticmethod
     def _images(traj, keys, frame):
+        # XR1_DOOSAN_LAZY_DECORD_IMPORT_V1: online path only.
+        from decord import VideoReader
         images = []
         frame = [max(frame, 0)]
         for key in keys:

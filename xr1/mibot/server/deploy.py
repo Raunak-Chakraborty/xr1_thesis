@@ -11,6 +11,8 @@ from mmengine import Config
 from mibot.models import MIMODEL
 from mibot.server.runtime.server import Server
 from mibot.utils.io import build_action_mask, validate_quantiles, validate_stats
+from mibot.utils.doosan import build_doosan_action_mask
+from mibot.utils.doosan_profile import is_doosan_config, resolve_doosan_data
 
 
 def strip_prefix(state_dict, prefix):
@@ -32,15 +34,19 @@ def load_model(model_dir, device):
 
 def load_stats(cfg, device):
     data = cfg.data.params.train_datasets
+    doosan = is_doosan_config(cfg.data)
+    if doosan:
+        data = resolve_doosan_data(data)
     action_length = int(data.get("action_length", cfg.data.params.get("action_length", 30)))
-    mean, std = validate_stats(data.mean, data.std, action_length)
-    q01, q99 = validate_quantiles(data.q01, data.q99)
+    mean, std = validate_stats(data["mean"], data["std"], action_length)
+    q01, q99 = validate_quantiles(data["q01"], data["q99"])
+    mask_builder = build_doosan_action_mask if doosan else build_action_mask
     return (
         torch.tensor(mean, device=device),
         torch.tensor(std, device=device),
         torch.tensor(q01, device=device),
         torch.tensor(q99, device=device),
-        torch.from_numpy(build_action_mask(action_length)).to(device),
+        torch.from_numpy(mask_builder(action_length)).to(device),
     )
 
 
@@ -59,7 +65,14 @@ if __name__ == "__main__":
     mean, std, q01, q99, action_mask = load_stats(cfg, device)
 
     try:
-        server = Server(args.host, args.port, model, mean, std, q01, q99, action_mask, device)
+        doosan_use_wrench = (
+            cfg.data.params.train_datasets.get("use_wrench", False)
+            if is_doosan_config(cfg.data) else None
+        )
+        server = Server(
+            args.host, args.port, model, mean, std, q01, q99, action_mask, device,
+            doosan_use_wrench=doosan_use_wrench,
+        )
         print(f"Starting server on {args.host}:{args.port}")
         server.run()
     except OSError as error:

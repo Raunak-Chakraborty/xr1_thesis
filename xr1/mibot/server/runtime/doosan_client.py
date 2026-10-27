@@ -27,6 +27,7 @@ from mibot.utils.doosan import (
     extract_doosan_action,
 )
 from mibot.utils.io import resize_image
+from mibot.utils.doosan_profile import validate_use_wrench
 
 
 QWEN_PROCESSOR = "Qwen/Qwen3-VL-4B-Instruct"
@@ -43,7 +44,9 @@ class DoosanClient:
         self,
         host: str = "localhost",
         port: int = 10086,
+        use_wrench: bool = False,
     ) -> None:
+        self.use_wrench = validate_use_wrench(use_wrench)
         self.socket = socket.create_connection((host, port))
 
         self.processor = AutoProcessor.from_pretrained(
@@ -161,7 +164,11 @@ class DoosanClient:
         ]
 
     @staticmethod
-    def pack_state(robot_state) -> np.ndarray:
+    def pack_state(robot_state, use_wrench=None) -> np.ndarray:
+        if use_wrench is not None:
+            validate_use_wrench(use_wrench)
+        if use_wrench is True and robot_state.get("wrench") is None:
+            raise ValueError("force-state inference requires robot_state.wrench")
         required = (
             "joint_pos",
             "gripper",
@@ -187,7 +194,7 @@ class DoosanClient:
             tcp_pos=robot_state["tcp_pos"],
             tcp_rotvec=robot_state["tcp_rotvec"],
             joint_vel=robot_state["joint_vel"],
-            wrench=robot_state.get("wrench"),
+            wrench=robot_state.get("wrench") if use_wrench is not False else None,
         )
 
     @staticmethod
@@ -351,8 +358,9 @@ class DoosanClient:
         )
 
         state = self.pack_state(
-            robot_state
+            robot_state, use_wrench=self.use_wrench,
         )
+        payload["use_wrench"] = self.use_wrench
 
         payload["state"] = torch.from_numpy(
             state

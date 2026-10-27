@@ -8,11 +8,15 @@ from mmengine import Config
 from omegaconf import DictConfig, OmegaConf
 from transformers.utils import logging
 
+from mibot.utils.doosan_profile import is_doosan_config, resolve_doosan_data
+
 logger = logging.get_logger(__name__)
 
 
 def helper(cfg: DictConfig) -> Config:
     cfg = Config(OmegaConf.to_container(cfg, resolve=True))
+    if is_doosan_config(cfg.data):
+        cfg.data.params.train_datasets = resolve_doosan_data(cfg.data.params.train_datasets)
     process_save_cfg(cfg)
     seed_everything(cfg.trainer.pop("seed", 42) + int(os.environ.get("RANK", 0)), workers=True)
     strategy_helper(cfg)

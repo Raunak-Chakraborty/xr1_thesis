@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - doosan
+  - _self_
+
+data:
+  params:
+    train_datasets:
+      use_wrench: true
+      normalization_path: ???
+      mean: null
+      std: null
+      q01: null
+      q99: null

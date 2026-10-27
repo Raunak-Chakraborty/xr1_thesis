@@ -11,10 +11,14 @@ import torch
 from tqdm import tqdm
 
 from mibot.utils.io import ACTION_EPS, denormalize_action
+from mibot.utils.doosan_profile import validate_use_wrench
 
 
 class Server:
-    def __init__(self, host: str, port: int, model, mean, std, q01, q99, action_mask, device: str) -> None:
+    def __init__(
+        self, host: str, port: int, model, mean, std, q01, q99, action_mask, device: str,
+        doosan_use_wrench=None,
+    ) -> None:
         self.host = host
         self.port = port
         self.model = model
@@ -24,6 +28,29 @@ class Server:
         self.q01 = q01.to(device)
         self.q99 = q99.to(device)
         self.action_mask = action_mask.to(device)
+        self.doosan_use_wrench = (
+            None if doosan_use_wrench is None else validate_use_wrench(doosan_use_wrench)
+        )
+
+    def preprocess_state(self, state, use_wrench=None):
+        if self.doosan_use_wrench is not None:
+            mode = False if use_wrench is None else validate_use_wrench(use_wrench)
+            if mode != self.doosan_use_wrench:
+                raise ValueError("client/server use_wrench mismatch; use the checkpoint's Doosan profile")
+            if state.ndim != 3 or state.shape[1:] != (1, 60):
+                raise ValueError("Doosan state must have shape (B,1,60)")
+            if not torch.isfinite(state).all():
+                raise ValueError("Doosan state contains non-finite values")
+        valid = self.q99 > self.q01
+        normalized = torch.zeros_like(state)
+        normalized[..., valid[0]] = (
+            2.0 * (state[..., valid[0]] - self.q01[..., valid[0]])
+            / (self.q99[..., valid[0]] - self.q01[..., valid[0]] + ACTION_EPS) - 1.0
+        )
+        if self.doosan_use_wrench is not None:
+            normalized[..., 6] = 0.0
+            normalized[..., 26 if self.doosan_use_wrench else 20:] = 0.0
+        return normalized.clamp(-1.0, 1.0)
 
     @staticmethod
     def _recv_all(conn, length):
@@ -91,16 +118,8 @@ class Server:
                                 )
 
                             batch["action_mask"] = mask
-                            state = batch["state"]
-                            valid = self.q99 > self.q01
-                            normalized_state = torch.zeros_like(state)
-                            normalized_state[..., valid[0]] = (
-                                2.0
-                                * (state[..., valid[0]] - self.q01[..., valid[0]])
-                                / (self.q99[..., valid[0]] - self.q01[..., valid[0]] + ACTION_EPS)
-                                - 1.0
-                            )
-                            batch["state"] = normalized_state.clamp(-1.0, 1.0)
+                            use_wrench = batch.pop("use_wrench", None)
+                            batch["state"] = self.preprocess_state(batch["state"], use_wrench)
 
                             action = self.model.generate(batch)
                             action = denormalize_action(action * mask, self.mean, self.std) * mask

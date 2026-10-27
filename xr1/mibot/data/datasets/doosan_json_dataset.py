@@ -45,19 +45,20 @@ from mibot.utils.io import (
     normalize_action,
     normalize_quantile,
 )
+from mibot.utils.doosan_profile import resolve_doosan_data
 
 
 class DoosanJsonDataset(JsonDataset):
     """XR-1 post-training dataset for the Doosan M1013."""
 
     def __init__(self, params):
+        params = dict(params)
+        params["train_datasets"] = resolve_doosan_data(params["train_datasets"])
         super().__init__(params)
 
         data = params["train_datasets"]
 
-        self.use_wrench = bool(
-            data.get("use_wrench", False)
-        )
+        self.use_wrench = data["use_wrench"]
 
         self.semantic_action_key = str(
             data.get(
@@ -120,6 +121,7 @@ class DoosanJsonDataset(JsonDataset):
             self.action_length,
             temporal_mask,
         )
+        action = action * action_mask
 
         prompt["conversations"] += [
             {

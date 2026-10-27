@@ -8,8 +8,8 @@ from os.path import join as osp
 import torch
 from mmengine import Config
 
-from mibot.models import MIMODEL
 from mibot.server.runtime.server import Server
+from mibot.utils.doosan import build_doosan_action_mask
 from mibot.utils.io import build_action_mask, validate_quantiles, validate_stats
 
 
@@ -18,6 +18,8 @@ def strip_prefix(state_dict, prefix):
 
 
 def load_model(model_dir, device):
+    from mibot.models import MIMODEL
+
     cfg = Config.fromfile(osp(model_dir, "config.py"))
     model = MIMODEL.build(cfg.model.params.model).to(torch.bfloat16)
     ckpt = torch.load(
@@ -31,6 +33,17 @@ def load_model(model_dir, device):
 
 
 def load_stats(cfg, device):
+    module_type = cfg.data.get("type")
+    dataset_type = cfg.data.params.get("type")
+    if module_type == "DoosanDataModule":
+        if dataset_type not in (None, "doosan_json"):
+            raise ValueError("DoosanDataModule requires params.type='doosan_json' when specified")
+        mask_builder = build_doosan_action_mask
+    else:
+        if dataset_type == "doosan_json":
+            raise ValueError("params.type='doosan_json' requires data.type='DoosanDataModule'")
+        mask_builder = build_action_mask
+
     data = cfg.data.params.train_datasets
     action_length = int(data.get("action_length", cfg.data.params.get("action_length", 30)))
     mean, std = validate_stats(data.mean, data.std, action_length)
@@ -40,7 +53,7 @@ def load_stats(cfg, device):
         torch.tensor(std, device=device),
         torch.tensor(q01, device=device),
         torch.tensor(q99, device=device),
-        torch.from_numpy(build_action_mask(action_length)).to(device),
+        torch.from_numpy(mask_builder(action_length)).to(device),
     )
 
 

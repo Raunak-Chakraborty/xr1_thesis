@@ -25,6 +25,35 @@ class Server:
         self.q99 = q99.to(device)
         self.action_mask = action_mask.to(device)
 
+    def prepare_batch(self, request):
+        batch = {
+            key: (value.to(self.device) if isinstance(value, torch.Tensor) else value)
+            for key, value in request.items()
+        }
+        mask = self.action_mask.unsqueeze(0).expand(batch["input_ids"].shape[0], -1, -1)
+
+        if "action" in batch:
+            batch["action"] = ((batch["action"] - self.mean) / (self.std + ACTION_EPS)) * mask
+        else:
+            batch["action"] = torch.zeros(
+                (batch["input_ids"].shape[0], *self.mean.shape),
+                device=self.device,
+                dtype=torch.bfloat16,
+            )
+
+        batch["action_mask"] = mask
+        state = batch["state"]
+        valid = (self.q99 > self.q01)[0]
+        normalized_state = torch.zeros_like(state)
+        adjusted_q99 = self.q99[..., valid] + ACTION_EPS
+        normalized_state[..., valid] = (
+            (state[..., valid] - self.q01[..., valid])
+            / (adjusted_q99 - self.q01[..., valid])
+        )
+        normalized_state[..., valid] = 2.0 * normalized_state[..., valid] - 1.0
+        batch["state"] = normalized_state.clamp(-1.0, 1.0)
+        return batch
+
     @staticmethod
     def _recv_all(conn, length):
         data = b""
@@ -75,32 +104,8 @@ class Server:
                                 break
 
                             tic = time.time()
-                            batch = {
-                                key: (value.to(self.device) if isinstance(value, torch.Tensor) else value)
-                                for key, value in request.items()
-                            }
-                            mask = self.action_mask.unsqueeze(0).expand(batch["input_ids"].shape[0], -1, -1)
-
-                            if "action" in batch:
-                                batch["action"] = ((batch["action"] - self.mean) / (self.std + ACTION_EPS)) * mask
-                            else:
-                                batch["action"] = torch.zeros(
-                                    (batch["input_ids"].shape[0], *self.mean.shape),
-                                    device=self.device,
-                                    dtype=torch.bfloat16,
-                                )
-
-                            batch["action_mask"] = mask
-                            state = batch["state"]
-                            valid = self.q99 > self.q01
-                            normalized_state = torch.zeros_like(state)
-                            normalized_state[..., valid[0]] = (
-                                2.0
-                                * (state[..., valid[0]] - self.q01[..., valid[0]])
-                                / (self.q99[..., valid[0]] - self.q01[..., valid[0]] + ACTION_EPS)
-                                - 1.0
-                            )
-                            batch["state"] = normalized_state.clamp(-1.0, 1.0)
+                            batch = self.prepare_batch(request)
+                            mask = batch["action_mask"]
 
                             action = self.model.generate(batch)
                             action = denormalize_action(action * mask, self.mean, self.std) * mask

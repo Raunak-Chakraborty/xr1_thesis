@@ -11,6 +11,9 @@ from mmengine import Config
 from mibot.models import MIMODEL
 from mibot.server.runtime.server import Server
 from mibot.utils.io import build_action_mask, validate_quantiles, validate_stats
+from mibot.utils.doosan import build_doosan_action_mask
+from mibot.utils.force_contract import validate_force_experiment
+from mibot.utils.force_checkpoint import load_force_checkpoint, model_weights
 
 
 def strip_prefix(state_dict, prefix):
@@ -19,6 +22,7 @@ def strip_prefix(state_dict, prefix):
 
 def load_model(model_dir, device):
     cfg = Config.fromfile(osp(model_dir, "config.py"))
+    validate_force_experiment(cfg.model.params.model, cfg.data)
     model = MIMODEL.build(cfg.model.params.model).to(torch.bfloat16)
     ckpt = torch.load(
         osp(model_dir, "last.ckpt/checkpoint", "mp_rank_00_model_states.pt"),
@@ -26,7 +30,7 @@ def load_model(model_dir, device):
         mmap=True,
         weights_only=False,
     )["module"]
-    print(model.load_state_dict(strip_prefix(ckpt, "model."), strict=True))
+    print(load_force_checkpoint(model, model_weights(ckpt)))
     return cfg, model.eval().to(device)
 
 
@@ -35,12 +39,14 @@ def load_stats(cfg, device):
     action_length = int(data.get("action_length", cfg.data.params.get("action_length", 30)))
     mean, std = validate_stats(data.mean, data.std, action_length)
     q01, q99 = validate_quantiles(data.q01, data.q99)
+    validate_force_experiment(cfg.model.params.model, cfg.data)
+    mask_builder = build_doosan_action_mask if cfg.data.type == "DoosanDataModule" else build_action_mask
     return (
         torch.tensor(mean, device=device),
         torch.tensor(std, device=device),
         torch.tensor(q01, device=device),
         torch.tensor(q99, device=device),
-        torch.from_numpy(build_action_mask(action_length)).to(device),
+        torch.from_numpy(mask_builder(action_length)).to(device),
     )
 
 

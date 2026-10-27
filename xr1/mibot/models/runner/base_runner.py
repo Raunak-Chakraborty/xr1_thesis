@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import _LRScheduler as LRScheduler
 from transformers.utils import logging
 
 from mibot.models import MIMODEL
+from mibot.utils.force_checkpoint import load_force_checkpoint
 
 logger = logging.get_logger(__name__)
 
@@ -22,8 +23,11 @@ class BaseRunner(LightningModule):
         self._model: Dict[str, Any] = params.get("model")
         self._optimizer: Dict[str, Any] = params.get("optimizer")
         self._scheduler: Optional[Dict[str, Any]] = params.get("scheduler")
+        self._allow_base_checkpoint = bool(params.get("allow_base_checkpoint", False))
 
     def configure_model(self) -> None:
+        if hasattr(self, "model"):
+            return  # Lightning can call this hook again during restoration.
         self.model = MIMODEL.build(self._model)
 
         if self._pretrained:
@@ -33,9 +37,9 @@ class BaseRunner(LightningModule):
                 mmap=True,
                 weights_only=False,
             )
-            info = self.load_state_dict(ckpt["module"], strict=False)
-            if info.missing_keys or info.unexpected_keys:
-                raise RuntimeError(f"Checkpoint does not match the configured model: {info}")
+            info = load_force_checkpoint(
+                self, ckpt["module"], allow_base_checkpoint=self._allow_base_checkpoint
+            )
             logger.info(f"Loaded pretrained model from {self._pretrained}: {info}")
 
     def configure_optimizers(self) -> Dict[str, Any]:

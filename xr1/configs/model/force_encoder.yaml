@@ -1,0 +1,26 @@
+# @package _global_
+model:
+  type: BaseRunner
+  params:
+    pretrained: ???
+    # Initial import only. Lightning/DeepSpeed resume remains strict.
+    allow_base_checkpoint: true
+    model:
+      type: xr1
+      freq_coefficient: 1.0
+      freq_excluded_dims: [6]  # binary Doosan gripper; match control experiments
+      ffn_gradient_checkpointing: true
+      async_train: true
+      force_encoder:
+        enabled: true
+        hidden_dims: [64, 64]
+        output_dim: 64
+        fusion_type: adaln_residual
+        fusion_init: small_normal
+        fusion_init_std: 0.001
+        init_seed: 42
+        dual_path: false
+        input_normalization: state_quantile_once
+        pretrained_policy: frozen
+        train_encoder: true
+        train_fusion: true

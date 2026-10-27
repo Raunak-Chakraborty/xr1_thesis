@@ -1,0 +1,302 @@
+XR-1 STAGE 5 — INDEPENDENT FORCE ENCODER HANDOFF
+Date: 2026-10-27 UTC
+
+Scope: source implementation in
+/home/horus/robotics_thesis/xr1_force_exp/worktrees/xr1_force_encoder
+plus the expressly required reports/codex_encoder_exports handoff.
+Expected branch (user-provided, UNVERIFIED): thesis/xr1-force/encoder
+Starting commit (user-provided, UNVERIFIED): afe739d1c9aac9218036a13fee9f9eb182747159
+Current HEAD: cannot inspect; git status reports inaccessible administrative metadata.
+No commit, push, merge, rebase, reset, branch mutation, or isolation bypass.
+No shared context files, other worktrees, original XR-1/ForceVLA/data-conversion
+repositories, workstation processes/configuration, or host environments accessed.
+The user explicitly prohibited shared-context updates; this handoff replaces them.
+
+1. ARCHITECTURE IMPLEMENTATION SUMMARY
+
+IMPLEMENTED, NUMERICALLY UNVERIFIED HERE: a dedicated 6->64->64->64 SiLU MLP and
+bias-free 64->6144 fusion linear. The resulting (B,6,1024) residual is added to
+XR-1's existing DiT timestep/AdaLN conditioning before each unchanged DiT layer.
+The original source actually uses that six-part tensor for attention and MLP
+shift/scale/gate modulation, so this needs no extra transformer, expert, VLM
+modification, new tokens, or original parameter resizing/renaming.
+
+Default arithmetic parameter count: 8,768 encoder + 393,216 fusion = 401,984.
+Actual model count is reported by the unexecuted workstation script.
+Both existing state projectors receive zero wrench channels by default. Other
+state channels are preserved. Dual force-in-state conditioning is explicit/off.
+Disabled construction has no added parameters and bypasses all force processing.
+The source _build_model and original model submodule definitions are unchanged.
+This implements experiment B, not MoE. No improved assembly/contact performance
+is claimed; the representation hypothesis remains untested.
+
+2. EXACT SOURCE/ARTIFACT FILES MODIFIED OR CREATED
+
+Paths below are relative to the authorized worktree.
+MODIFIED (8):
+  xr1/mibot/models/VLA/XR1.py
+  xr1/mibot/models/runner/base_runner.py
+  xr1/mibot/data/datasets/doosan_json_dataset.py
+  xr1/mibot/server/deploy.py
+  xr1/mibot/server/runtime/server.py
+  xr1/mibot/server/runtime/doosan_client.py
+  xr1/tools/train.py
+  xr1/tests/test_training_logic.py
+The last change corrects a pre-existing lowercase xr1 import to actual XR1.py.
+
+CREATED (16):
+  xr1/mibot/models/force_encoder.py
+  xr1/mibot/utils/force_contract.py
+  xr1/mibot/utils/force_normalization.py
+  xr1/mibot/utils/force_checkpoint.py
+  xr1/configs/force_encoder.yaml
+  xr1/configs/model/force_encoder.yaml
+  xr1/tools/verify_force_encoder.py
+  xr1/tests/test_force_encoder_contract.py
+  xr1/tests/test_force_encoder_torch.py
+  xr1/tests/test_force_encoder_data.py
+  xr1/tests/test_force_encoder_config.py
+  xr1/tests/encoder_support/harness.py
+  xr1/docs/INDEPENDENT_FORCE_ENCODER.md
+  xr1/docs/encoder_source_baseline.json
+  xr1/docs/encoder_commands.txt
+  xr1/docs/encoder_handoff.txt
+
+REQUIRED EXPORTED COPY:
+/home/horus/robotics_thesis/xr1_force_exp/reports/codex_encoder_exports/CODEX_ENCODER_HANDOFF_LATEST.txt
+An existing LATEST file, if present, is preserved in a numbered PREVIOUS archive
+before replacement, with its path printed. No experiment results are overwritten.
+
+Pre-edit SHA256 hashes for the eight existing files are in
+xr1/docs/encoder_source_baseline.json. Git diff/status cannot be produced here.
+
+3. NEW CONFIGURATION PARAMETERS AND DEFAULTS
+
+Under model.params.model.force_encoder:
+  enabled: false (true in dedicated experiment)
+  hidden_dims: [64,64]
+  output_dim: 64
+  fusion_type: adaln_residual (only supported type)
+  fusion_init: small_normal (alternative zero)
+  fusion_init_std: 0.001 (finite, positive)
+  init_seed: 42 (isolated CPU RNG)
+  dual_path: false
+  input_normalization: state_quantile_once (only supported contract)
+  pretrained_policy: original (frozen in dedicated experiment)
+  train_encoder: true
+  train_fusion: true
+
+Pretrained policies: original retains original trainability; frozen freezes all
+original parameters; dit trains DiT/state+action projectors/output/timestep/sink;
+last_vlm_block trains only the last language-transformer block among originals.
+New encoder/fusion trainability is independently controlled. Disabled mode leaves
+original freeze policy untouched.
+
+model.params.allow_base_checkpoint: false normally; true in experiment B for
+initial pretrained import. Full encoder checkpoints/resume require all new keys.
+data.params.train_datasets.force_encoder_input: false normally, true in B.
+Experiment B also requires use_wrench=true, action_length=30, DoosanDataModule,
+real paths/mean/std/q01/q99, pretrained checkpoint, and a fresh output directory.
+No production statistics are included. Dedicated config excludes action channel
+6 from frequency loss, preserving binary gripper semantics. Match that setting,
+freeze policy, losses, seed, prefix policy, data, and budget in control runs.
+DoosanClient require_wrench defaults false; use true with the encoder server.
+
+4. FULL TRAINING AND INFERENCE DATA FLOW
+
+Training:
+  Current sample.frame_index -> exact Doosan state packing (1,60).
+  Wrench from proprios.wrench at that frame -> indices 20:26, Fx,Fy,Fz,Tx,Ty,Tz.
+  Existing normalize_quantile exactly once -> float32 normalized state.
+  Dataset validates stats and emits int64 force_normalization=1.
+  Existing collate stacks state and marker, packs image/language examples.
+  Existing auto_cast converts float32 model tensors to bfloat16.
+  Shared prepare_force_conditioning extracts normalized wrench and zeros both
+  original state-projector inputs on channels 20:26 (unless explicit dual_path).
+  Encoder -> feature -> fusion residual (B,6,1024).
+  Training repeat_interleave repeats residual with the exact state/action order.
+  dit_forward adds residual to t_projector(t_embedder(t)); original DiT/action
+  output then predicts velocity for the existing flow-matching loss.
+  Async prefix generation also receives the same residual.
+  Auxiliary VLM choice/score loss remains force-free; force gradients originate
+  from DiT action loss. Existing requires_grad-filtering optimizer includes all
+  enabled trainable new parameters without a replacement trainer.
+
+actions.semantic remains the converter's measured 7D semantic label, windowed
+and temporally padded to (30,60); only real timesteps/channels 0:7 are loss-active.
+No deltas are recomputed and no wrench enters labels. Existing loss code is
+unchanged; incomplete horizons are excluded from its frequency loss.
+
+Inference:
+  DoosanClient packs raw current state and wrench_present=true.
+  Encoder server requires wrench presence and valid stats, rejects an incoming
+  normalization marker (raw-state API), performs matching float32 normalization
+  once, emits the int64 marker, and calls model.generate.
+  Generate uses the same forward/force preparation and same residual at every
+  ODE step. Deployment loads complete encoder checkpoints strictly.
+  Deployment selects Doosan's (30,60) mask with channels 0:7, then uses existing
+  action denormalization. Generic embodiments keep the original generic mask.
+  Direct model callers must provide normalized state and marker themselves.
+
+The thesis runtime under xr1/mibot/server is integrated; the separate upstream
+Hugging Face deploy/server.py is unchanged and does not support this extension.
+No server or robot was started in this session.
+
+5. FORCE NORMALIZATION SEMANTICS
+
+Encoder input is ALREADY normalized, not raw N/Nm:
+  clip(2 * ((raw-q01) / ((q99+1e-6)-q01)) - 1, -1, 1)
+The torch server path matches the numpy dataset's float32 operation ordering.
+No second normalization happens inside the encoder. Large finite observations
+saturate at +/-1; raw zero is not necessarily normalized zero. The API marker
+is explicit provenance, not a way to detect a caller falsely marking data.
+
+Stats must use native XR-1 (1,60) layout, never copied converter 25D ordering.
+Finite statistics are required, with q99>q01 at ALL six wrench slots. Missing,
+zero-padded force stats, degenerate spans, malformed state/wrench, nonfinite
+wrench, and values outside the normalized range produce errors.
+Only test fixtures/verification use synthetic statistics. Use real training-split
+stats consistently for train/validation/test/inference; none were read/invented.
+
+The data contract remains BASE-frame [N,N,N,Nm,Nm,Nm] observations from
+Doosan RobotStateRt.external_tcp_force, already controller-reset-compensated.
+No offline tare, reset, gravity compensation, frame transform, contact gate, or
+force-magnitude-derived contact label is introduced.
+
+6. CHECKPOINT COMPATIBILITY AND INITIALIZATION POLICY
+
+Original tensors retain their established names/shapes. New keys are limited to
+force_conditioner.encoder.* and force_conditioner.fusion.weight; BaseRunner adds
+the existing model. prefix. The loader prechecks missing/unexpected keys and all
+shapes. With explicit allow_base_checkpoint=true only the ENTIRE absent new
+parameter set is permitted. Any missing original key, wrong shape, unexpected
+key, or partial missing extension fails before load. Initialized new values fill
+that exact set; actual load_state_dict is strict=True. No global strict=False.
+
+New modules are initialized after original model construction using isolated
+CPU RNG seed 42 and explicit CPU float32 allocation, then original device/dtype.
+Encoder: Xavier uniform, zero biases. Fusion: small nonzero normal by default,
+without bias or zero gate, intended to allow first-step encoder gradients.
+Optional zero fusion initially preserves exact zero residual, first learns fusion
+then encoder; frozen zero fusion with trainable encoder is rejected.
+
+New registered parameters participate in the existing optimizer and checkpoints.
+Use trainer.ckpt_path for Lightning/DeepSpeed optimizer resume with matching
+architecture/freeze/optimizer config; initial pretrained import is not resume.
+Actual pretrained XR1 compatibility, distributed initialization, ZeRO checkpoint
+format/restoration, and optimizer restoration remain UNVERIFIED here.
+
+7. EXACT COMMANDS EXECUTED
+
+The full shell inspection/check command record is xr1/docs/encoder_commands.txt.
+Source edits used apply_patch; full patch/tool history is in the conversation.
+Key validation commands executed from the worktree root:
+
+  PYTHONPATH=xr1 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' python3 -B -m unittest discover -s xr1/tests -p 'test_force_encoder_*.py' -v
+  python3 -B xr1/tools/verify_force_encoder.py --help
+  PYTHONPATH=xr1 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' python3 -B -m unittest discover -s xr1/tests -p 'test_doosan_*.py' -v
+  PYTHONPATH=xr1 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' python3 -B -m pytest xr1/tests/test_training_logic.py -q
+
+The exact Python AST/compile script and rg source-consistency/initialization/
+optimizer/checkpoint inspection command are recorded in encoder_commands.txt.
+No GPU verification/training command from the workstation instructions was run.
+
+8. TEST RESULTS — ACTUAL, NOT INFERRED
+
+Final focused suite: 33 discovered, 11 PASSED, 22 SKIPPED, 0 assertion failures
+or errors. Skips: 17 torch tests, 4 torch/numpy data tests, 1 Hydra composition.
+The 11 executed tests are dependency-free config/stat validation, checkpoint
+control-flow tests using fake shaped weights, and source parsing. They do NOT
+verify tensor numerics, PyTorch serialization, gradients, or checkpoint loading.
+Earlier intermediate suite: 27 discovered, 11 passed, 16 skipped.
+
+All 49 Python files under xr1 parsed and compiled successfully using ast.parse
+and compile(), without imports, downloads, or bytecode writes.
+Verification CLI --help: PASSED, exit 0.
+
+Existing Doosan suite: command FAILED with 4 IMPORT ERRORS, blocked by missing
+numpy (client/contract/dataset modules) and mmengine (datamodule). No test bodies
+executed; do not report that suite passing.
+Existing training-logic pytest command: BLOCKED, exit 1, pytest unavailable.
+Initial python command: alias missing; subsequent commands used /usr/bin/python3.
+Git status: inaccessible metadata, no branch/HEAD verification.
+No neural numerical tests, actual checkpoints, GPU workloads, or physical robot
+execution occurred. No dependencies were installed.
+
+9. KNOWN PROBLEMS AND UNVERIFIED BEHAVIOR
+
+Source integration is implemented, but this sandbox lacks torch, numpy,
+transformers, Lightning, Hydra and training/test dependencies. Numerical tests
+are written using actual PyTorch but unexecuted here. They cover extraction,
+order, shapes, dtype/device, no double normalization, malformed/nonfinite inputs,
+zero/large force, all-six sensitivity, gradients, initialization, zero fusion,
+freeze/optimizer inclusion, strict checkpoints and save/reload, current timestep,
+action masks, conditioning repetition/train/inference consistency and disabled
+generic behavior. The isolated model harness executes actual XR-1 methods and
+one actual DiT layer with a VLM test double; it cannot establish 5B compatibility.
+
+Real checkpoint keys, Qwen cached assets, bfloat16 gradients/sensitivity,
+Hydra composition, newer dataset/image/language behavior, memory/performance,
+real data statistics, Lightning/DeepSpeed save/resume and distributed setup
+remain unverified. Strict loader shape checks assume complete state dicts; ZeRO
+partitions need the existing framework's consolidation/export path.
+The GPU script validates the default encoder shape with a frozen backbone on one
+GPU, not distributed resume or real dataset performance. A successful synthetic
+run would still not establish contact/insertion improvement.
+
+10. WORKSTATION TESTING INSTRUCTIONS (NOT EXECUTED)
+
+After merging the localized changes into the newer source, use the existing
+workstation environment and cached assets. Run the CPU suite and existing suites
+using the commands above. Do not install a new environment for this handoff.
+
+Standalone full-model check (replace placeholders, choose a NEW output path):
+
+  PYTHONPATH=xr1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 WANDB_MODE=disabled python3 xr1/tools/verify_force_encoder.py --checkpoint /PATH/TO/EXISTING/CONSOLIDATED_XR1_CHECKPOINT.pt --output-dir /PATH/INSIDE/PROJECT/NEW_ENCODER_VERIFICATION_RUN --device cuda:0 --training-repeat 1
+
+It loads existing XR1 weights with the explicit new-module exception, uses
+synthetic two-camera inputs and synthetic stats, runs full forward/backward,
+checks every encoder/fusion gradient, steps AdamW, perturbs each force channel,
+compares disabled force-free/enabled generation with matched noise, reports
+parameters/GPU memory, and verifies full model + optimizer save/reload.
+Outputs: verification.json and synthetic_roundtrip.pt (full checkpoint size).
+It refuses an existing output directory and forces offline asset loading.
+It starts no inference server, browser, robot, or separate training job.
+
+Next, create a local config inheriting force_encoder with real training-split
+paths/stats and fresh output directory. Retain workstation's approved final
+language/cache settings. Inspect composed config using --cfg job --resolve.
+Run original tools/train.py for one step using the existing launcher; save and
+resume using trainer.ckpt_path to verify Lightning/DeepSpeed optimizer state and
+new weights. Match world size/config and preserve artifacts. The long-form
+documentation provides details and comparison/freeze-policy caveats.
+
+11. NEWER WORKSTATION SOURCE INTEGRATION REQUIREMENTS
+
+User-reported newer source: 27eb389e44ec381e3554b753dfabf8879f62419f.
+It contains final Language V2 and offline PNG frame-cache behavior, and already
+completed a 2,000-step force-free last-transformer-block pilot on two RTX A5000s.
+These facts were not independently checked; no workstation was accessed.
+
+Port the new modules and small XR1/runner/data/server hooks, NOT entire older
+files. Preserve newer image/cache/prompt/language code and launcher/freeze policy.
+The base JsonDataset, CustomCollate, VLM and generic configs were untouched here.
+Reinspect actual newer DiT dimensions, parameter keys/checkpoint prefixes,
+normalization, collation/repeat ordering and resume APIs before reconciliation.
+Merge flags/normalization markers into the newer Doosan dataset, retaining its
+Language V2 and PNG handling. Match loss/freeze settings across all experiments;
+the default encoder-only frozen-backbone run is not automatically comparable to
+the earlier last-block pilot. Do not replace its working offline decoding path.
+
+12. RECOMMENDED NEXT IMPLEMENTATION STEP
+
+Reconcile this modular extension into the newer workstation source, run the CPU
+regressions, execute the real-checkpoint synthetic GPU verifier, then validate
+one-step Lightning/DeepSpeed save/resume using real training-only statistics.
+Resolve failures before scheduling matched baseline/state/encoder pilots.
+No MoE, robot evaluation, checkpoint download, or full training was implemented
+or initiated in this session.
+
+The complete Codex transcript has NOT been generated by this handoff. The user
+must separately run, after the assistant response completes:
+/export CODEX_ENCODER_FULL_TRANSCRIPT.txt

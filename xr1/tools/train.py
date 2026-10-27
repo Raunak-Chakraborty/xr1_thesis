@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 from mibot.models import MIMODEL
 
 from mibot.utils.cfg_utils import helper
+from mibot.utils.force_contract import validate_force_experiment
 
 import mibot.data
 
@@ -21,6 +22,7 @@ warnings.filterwarnings("ignore")
 
 def prepare(cfg: Dict[str, Any]) -> Tuple[Config, LightningDataModule, LightningModule, List[Any]]:
     cfg: Config = helper(cfg)
+    validate_force_experiment(cfg.model.params.model, cfg.data)
     datamodule: LightningDataModule = DATASETS.build(cfg.data)
     model: LightningModule = MIMODEL.build(cfg.model)
     cfg.trainer["callbacks"] = [

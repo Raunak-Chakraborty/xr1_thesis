@@ -43,7 +43,9 @@ class DoosanClient:
         self,
         host: str = "localhost",
         port: int = 10086,
+        require_wrench: bool = False,
     ) -> None:
+        self.require_wrench = require_wrench
         self.socket = socket.create_connection((host, port))
 
         self.processor = AutoProcessor.from_pretrained(
@@ -161,7 +163,7 @@ class DoosanClient:
         ]
 
     @staticmethod
-    def pack_state(robot_state) -> np.ndarray:
+    def pack_state(robot_state, require_wrench=False) -> np.ndarray:
         required = (
             "joint_pos",
             "gripper",
@@ -180,6 +182,11 @@ class DoosanClient:
             raise KeyError(
                 f"robot_state missing required keys: {missing}"
             )
+
+        if require_wrench and robot_state.get("wrench") is None:
+            raise ValueError("independent force encoder requires a current six-axis wrench")
+        if robot_state.get("wrench") is not None and np.asarray(robot_state["wrench"]).shape != (6,):
+            raise ValueError("wrench must have shape (6,) in Fx,Fy,Fz,Tx,Ty,Tz order")
 
         return compose_doosan_state(
             joint_pos=robot_state["joint_pos"],
@@ -351,8 +358,9 @@ class DoosanClient:
         )
 
         state = self.pack_state(
-            robot_state
+            robot_state, require_wrench=self.require_wrench
         )
+        payload["wrench_present"] = robot_state.get("wrench") is not None
 
         payload["state"] = torch.from_numpy(
             state

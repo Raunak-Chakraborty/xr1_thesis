@@ -1,0 +1,24 @@
+# @package _global_
+# Experiment B: dedicated wrench encoder, never implicit force-in-state.
+defaults:
+  - config
+  - override data: doosan
+  - override model: force_encoder
+  - _self_
+
+data:
+  params:
+    train_datasets:
+      use_wrench: true
+      force_encoder_input: true
+      # q01/q99/mean/std/paths remain mandatory in data/doosan.yaml.
+
+# A missing value does not overwrite an inherited concrete value in OmegaConf.
+# Use a new mandatory field, then interpolate it into the inherited trainer.
+encoder_run_dir: ???
+
+trainer:
+  project: doosan_force
+  exp_name: independent_encoder
+  # Supply a unique run directory; never overwrite previous experiments.
+  default_root_dir: ${encoder_run_dir}

@@ -11,6 +11,8 @@ import torch
 from tqdm import tqdm
 
 from mibot.utils.io import ACTION_EPS, denormalize_action
+from mibot.utils.force_contract import FORCE_NORMALIZATION_ID, validate_force_quantiles
+from mibot.utils.force_normalization import normalize_force_state
 
 
 class Server:
@@ -24,6 +26,38 @@ class Server:
         self.q01 = q01.to(device)
         self.q99 = q99.to(device)
         self.action_mask = action_mask.to(device)
+        self.force_enabled = bool(getattr(getattr(model, "force_encoder_config", None), "enabled", False))
+        if self.force_enabled:
+            validate_force_quantiles(self.q01, self.q99)
+            expected = torch.zeros((30, 60), device=device, dtype=self.action_mask.dtype)
+            expected[:, :7] = 1
+            if self.action_mask.shape != expected.shape or not torch.equal(self.action_mask, expected):
+                raise ValueError("force encoder inference requires the Doosan (30,60) seven-channel action mask")
+
+    def normalize_observation(self, batch):
+        """Normalize the raw current state once, before model.generate()."""
+        present = batch.pop("wrench_present", None)
+        if self.force_enabled:
+            # A zero-filled missing wrench is indistinguishable from a measured
+            # zero, so the Doosan client must explicitly attest its presence.
+            if present is not True:
+                raise ValueError("encoder inference requires wrench_present=true from a current observation")
+            if "force_normalization" in batch:
+                raise ValueError("server accepts raw state only; refusing already-normalized input")
+            batch["state"] = normalize_force_state(batch["state"], self.q01, self.q99)
+            batch["force_normalization"] = torch.full(
+                (batch["state"].shape[0],), FORCE_NORMALIZATION_ID, dtype=torch.int64, device=self.device
+            )
+        else:
+            state = batch["state"]
+            valid = self.q99 > self.q01
+            normalized_state = torch.zeros_like(state)
+            normalized_state[..., valid[0]] = (
+                2.0 * (state[..., valid[0]] - self.q01[..., valid[0]])
+                / (self.q99[..., valid[0]] - self.q01[..., valid[0]] + ACTION_EPS) - 1.0
+            )
+            batch["state"] = normalized_state.clamp(-1.0, 1.0)
+        return batch
 
     @staticmethod
     def _recv_all(conn, length):
@@ -91,16 +125,7 @@ class Server:
                                 )
 
                             batch["action_mask"] = mask
-                            state = batch["state"]
-                            valid = self.q99 > self.q01
-                            normalized_state = torch.zeros_like(state)
-                            normalized_state[..., valid[0]] = (
-                                2.0
-                                * (state[..., valid[0]] - self.q01[..., valid[0]])
-                                / (self.q99[..., valid[0]] - self.q01[..., valid[0]] + ACTION_EPS)
-                                - 1.0
-                            )
-                            batch["state"] = normalized_state.clamp(-1.0, 1.0)
+                            self.normalize_observation(batch)
 
                             action = self.model.generate(batch)
                             action = denormalize_action(action * mask, self.mean, self.std) * mask

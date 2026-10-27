@@ -13,6 +13,8 @@ from transformers.models.qwen2.modeling_qwen2 import Qwen2RMSNorm, rotate_half
 from transformers.models.qwen3_vl.modeling_qwen3_vl import Qwen3VLTextRotaryEmbedding
 
 from mibot.models import MIMODEL
+from mibot.models.force_encoder import ForceConditioner, apply_force_train_policy, split_force_state
+from mibot.utils.force_contract import ForceEncoderConfig
 from mibot.models.VLM.qwen3vl import (
     ACTION_END_ID,
     ACTION_START_ID,
@@ -201,6 +203,7 @@ class xr1(nn.Module):
         freq_excluded_dims=None,
         ffn_gradient_checkpointing=True,
         async_train=True,
+        force_encoder=None,
     ):
         super().__init__()
         self.state_shape = (1, 60)
@@ -214,7 +217,23 @@ class xr1(nn.Module):
         self.prefix_mask_prob = 0.5
         self.n_choices = 5
         self.beta = Beta(1.5, 1.0)
+        self.force_encoder_config = ForceEncoderConfig.from_mapping(force_encoder)
         self._build_model()
+        # Construct after the original model: no renamed/resized pretrained
+        # tensors and no changes to its initialization RNG stream.
+        if self.force_encoder_config.enabled:
+            self.force_conditioner = ForceConditioner(self.force_encoder_config).to(
+                device=self.sink.weight.device, dtype=self.sink.weight.dtype
+            )
+            apply_force_train_policy(self, self.force_encoder_config)
+
+    def prepare_force_conditioning(self, state, normalization=None):
+        if not self.force_encoder_config.enabled:
+            return state, None
+        state, wrench = split_force_state(
+            state, normalization, dual_path=self.force_encoder_config.dual_path
+        )
+        return state, self.force_conditioner(wrench)
 
     def _build_model(self):
         config = Qwen3VLConfig.from_pretrained("Qwen/Qwen3-VL-4B-Instruct")
@@ -305,8 +324,13 @@ class xr1(nn.Module):
         past_key_values,
         attn_mask,
         prefix_length,
+        force_condition=None,
     ):
         timestep = self.t_projector(self.t_embedder(timestep[:, 0, 0] * 1000)).view(-1, 6, 1024)
+        if force_condition is not None:
+            if force_condition.shape != timestep.shape:
+                raise ValueError("force conditioning must match the repeated DiT batch and AdaLN shape")
+            timestep = timestep + force_condition.to(dtype=timestep.dtype)
         noisy_action = self.action_projector(noisy_action * action_mask)
         sink = self.sink.weight[None].repeat(state_embed.shape[0], 1, 1)
         hidden_states = torch.cat([sink, state_embed, noisy_action], dim=1).contiguous()
@@ -338,6 +362,9 @@ class xr1(nn.Module):
         action = batch.pop("action")
         action_mask = batch.pop("action_mask")
         state = batch.pop("state")
+        state, force_condition = self.prepare_force_conditioning(
+            state, batch.pop("force_normalization", None)
+        )
         if self.training:
             prefix_length = random.randint(1, 6) if self.async_train and random.random() < 0.5 else 0
         else:
@@ -393,6 +420,8 @@ class xr1(nn.Module):
         action_mask = self._repeat(action_mask)
         prefix = self._repeat(prefix)
         state_embed = self._repeat(state_embed)
+        if force_condition is not None:
+            force_condition = self._repeat(force_condition)
         attn_mask = self._repeat(attn_mask)
         position_embeds = self.rotary_emb(action, dit_position_ids)
 
@@ -404,6 +433,7 @@ class xr1(nn.Module):
             past_key_values=past_key_values,
             attn_mask=attn_mask,
             prefix_length=prefix_length,
+            force_condition=force_condition,
         )
         if self.training:
             timestep = ((1 - self.beta.sample((action.shape[0],)).to(action.device)) * 0.999).to(action.dtype)

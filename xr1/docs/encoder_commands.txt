@@ -1,0 +1,114 @@
+Stage 5 command record (worktree root unless noted)
+Source edits were made with apply_patch, not Git. No installation, download,
+GPU workload, browser, robot, or remote/workstation command was executed.
+All validation commands below were executed exactly as shown. Shell inspection
+commands are also recorded; patch payloads remain in the Codex conversation.
+
+Initial inventory:
+pwd && rg --files -g 'AGENTS.md' -g '*.py' -g '*.yaml' -g '*.toml' -g '*.json' -g '*README*' -g '*requirements*' -g '*test*' -g '!*.ipynb'
+
+Initial status/environment attempt (Git inaccessible; python alias absent):
+git status --short --branch; python -c "import importlib.util; print({n: importlib.util.find_spec(n) is not None for n in ['torch','numpy','pytest','yaml','transformers','lightning']})"; rg --files -g 'AGENTS.md' -g '*dit*' -g '*DiT*' -g '!\.git' -g '.*'
+
+Source reads/searches:
+sed -n '1,260p' xr1/mibot/models/VLA/XR1.py
+cat xr1/mibot/models/runner/base_runner.py xr1/configs/model/posttrain.yaml xr1/configs/config.yaml xr1/tools/train.py
+cat xr1/mibot/data/datasets/doosan_json_dataset.py
+cat xr1/mibot/utils/doosan.py xr1/mibot/server/runtime/doosan_client.py
+sed -n '260,620p' xr1/mibot/models/VLA/XR1.py
+cat xr1/mibot/server/deploy.py xr1/mibot/server/runtime/server.py deploy/server.py xr1/mibot/utils/model_utils.py
+cat xr1/mibot/data/datasets/json_dataset.py
+cat xr1/mibot/utils/io.py xr1/mibot/data/datasets/doosan_json_dataset.py
+cat xr1/tests/test_training_logic.py xr1/tests/test_doosan_dataset.py xr1/tests/test_doosan_contract.py
+cat xr1/mibot/data/datamodule/doosan_datamodule.py xr1/mibot/data/collate/custom_collate.py xr1/mibot/utils/cfg_utils.py xr1/configs/trainer/deepspeed.yaml xr1/configs/data/doosan.yaml xr1/mibot/utils/model_utils.py xr1/mibot/models/__init__.py; sed -n '1,110p' xr1/mibot/data/datasets/json_dataset.py; command -v python3; python3 -c "import importlib.util; print({n: importlib.util.find_spec(n) is not None for n in ['torch','numpy','pytest','yaml','transformers','lightning']})"
+cat xr1/mibot/__init__.py xr1/mibot/utils/__init__.py xr1/scripts/test_doosan_offline.sh xr1/setup.py; rg -n 'skip_logits|position_ids|state_embeds|past_key_values|attention_mask' xr1/mibot/models/VLM/qwen3vl.py
+
+Baseline hash capture before editing the existing files:
+mkdir -p xr1/docs xr1/tests/encoder_support; python3 - <<'PY'
+from pathlib import Path
+import hashlib, json
+paths = [
+'xr1/mibot/models/VLA/XR1.py', 'xr1/mibot/models/runner/base_runner.py',
+'xr1/mibot/data/datasets/doosan_json_dataset.py', 'xr1/mibot/server/deploy.py',
+'xr1/mibot/server/runtime/server.py', 'xr1/mibot/server/runtime/doosan_client.py',
+'xr1/tools/train.py', 'xr1/tests/test_training_logic.py',
+]
+p = Path('xr1/docs/encoder_source_baseline.json')
+with p.open('x') as f:
+    json.dump({s: hashlib.sha256(Path(s).read_bytes()).hexdigest() for s in paths}, f, indent=2)
+PY
+
+Intermediate syntax check (passed):
+python3 - <<'PY'
+import ast
+from pathlib import Path
+for path in Path('xr1').rglob('*.py'):
+    ast.parse(path.read_text(), filename=str(path))
+print('AST parse: all xr1 Python files passed')
+PY
+
+Focused suite, executed after first tests and again after added data/freeze/Hydra tests:
+PYTHONPATH=xr1 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' python3 -B -m unittest discover -s xr1/tests -p 'test_force_encoder_*.py' -v
+First result: 27 discovered; 11 passed, 16 skipped, 0 failures/errors.
+Final result: 33 discovered; 11 passed, 22 skipped, 0 failures/errors.
+
+Standalone entry-point help (passed; imports no torch on --help):
+python3 -B xr1/tools/verify_force_encoder.py --help
+
+Post-edit source review:
+sed -n '195,290p' xr1/mibot/models/VLA/XR1.py; sed -n '335,485p' xr1/mibot/models/VLA/XR1.py; cat xr1/mibot/utils/force_checkpoint.py xr1/mibot/models/force_encoder.py
+cat xr1/mibot/server/deploy.py; sed -n '1,145p' xr1/mibot/server/runtime/server.py; sed -n '40,90p' xr1/mibot/data/datasets/doosan_json_dataset.py; cat xr1/mibot/utils/cfg_utils.py
+
+Existing Doosan suite (blocked at import, command exited 1 with 4 errors):
+PYTHONPATH=xr1 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' python3 -B -m unittest discover -s xr1/tests -p 'test_doosan_*.py' -v
+test_doosan_client, test_doosan_contract, test_doosan_dataset: numpy missing.
+test_doosan_datamodule: mmengine missing. No test bodies executed.
+
+Existing loss regression suite (blocked; pytest missing, command exited 1):
+PYTHONPATH=xr1 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' python3 -B -m pytest xr1/tests/test_training_logic.py -q
+
+Final syntax/compile check and initialization/conditioning/strict-loading review:
+python3 -B - <<'PY'
+import ast
+from pathlib import Path
+paths = sorted(Path('xr1').rglob('*.py'))
+for path in paths:
+    source = path.read_text()
+    ast.parse(source, filename=str(path))
+    compile(source, str(path), 'exec')
+print(f'Python AST and compile(): PASS ({len(paths)} files; no imports or bytecode writes)')
+encoder = 6*64+64 + 2*(64*64+64)
+fusion = 64*6*1024
+print(f'Default parameter count by arithmetic: encoder={encoder}, fusion={fusion}, total={encoder+fusion}')
+PY
+rg -n 'force_condition|force_encoder|force_normalization|strict=False|load_state_dict|requires_grad_' xr1/mibot/models/VLA/XR1.py xr1/mibot/models/runner/base_runner.py xr1/mibot/models/force_encoder.py xr1/mibot/utils/force_checkpoint.py xr1/mibot/data/datasets/doosan_json_dataset.py xr1/mibot/server/runtime/server.py
+Result: all 49 Python files parsed/compiled; arithmetic parameter count 401984.
+
+Handoff creation and artifact verification:
+Final client compatibility and module-scope read:
+sed -n '1,230p' xr1/tests/test_doosan_client.py; sed -n '305,342p' xr1/mibot/models/VLA/XR1.py; rg -n '^(class |def )|^    def ' xr1/mibot/models/force_encoder.py xr1/mibot/utils/force_contract.py xr1/mibot/utils/force_normalization.py xr1/mibot/utils/force_checkpoint.py xr1/tools/verify_force_encoder.py
+
+python3 -B - <<'PY'
+from pathlib import Path
+import hashlib
+source = Path('xr1/docs/encoder_handoff.txt')
+target = Path('/home/horus/robotics_thesis/xr1_force_exp/reports/codex_encoder_exports/CODEX_ENCODER_HANDOFF_LATEST.txt')
+paths = [line.strip() for line in source.read_text().splitlines() if line.startswith('  xr1/')]
+for name in paths:
+    assert Path(name).is_file(), name
+print(f'Changed/created worktree inventory: {len(paths)} files verified')
+target.parent.mkdir(parents=True, exist_ok=True)
+if target.exists():
+    index = 1
+    archive = target.with_name(f'CODEX_ENCODER_HANDOFF_PREVIOUS_{index:03d}.txt')
+    while archive.exists():
+        index += 1
+        archive = target.with_name(f'CODEX_ENCODER_HANDOFF_PREVIOUS_{index:03d}.txt')
+    with archive.open('xb') as output:
+        output.write(target.read_bytes())
+    print(f'Preserved prior handoff: {archive}')
+target.write_bytes(source.read_bytes())
+assert target.read_bytes() == source.read_bytes()
+print(f'Handoff written and verified: {target}')
+print(f'Handoff SHA256: {hashlib.sha256(target.read_bytes()).hexdigest()}')
+PY

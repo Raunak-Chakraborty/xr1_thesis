@@ -1,0 +1,10 @@
+{
+  "xr1/mibot/models/VLA/XR1.py": "eeb4316e7125a0c414875e178da677c0c254af7c6a0536f8da0aace13a3928c0",
+  "xr1/mibot/models/runner/base_runner.py": "7124cfecddac867551f8a91d602daa17f26ac5c7916d05472e08d2f6586976f5",
+  "xr1/mibot/data/datasets/doosan_json_dataset.py": "dce5876bb0cae9fc313d5931aac73d444e34ff73e7abec8a6674f187479dadfa",
+  "xr1/mibot/server/deploy.py": "04c10076a0c5b351df4d2a2cd3daf6a65c39b1ff23daa4441f611ccf96ffcc8f",
+  "xr1/mibot/server/runtime/server.py": "d017f218621841b421782b93146e9fe10b777ab2615f088d4e12e8ed1959fac4",
+  "xr1/mibot/server/runtime/doosan_client.py": "9adc5ef553ad31bb8255f3f3e24fd7e5ac68e834838bcc84582020728e5d2f75",
+  "xr1/tools/train.py": "54fe28d7cdccf7235192af95f656f32144ddbace1c8a32e092c86cb6c70432cd",
+  "xr1/tests/test_training_logic.py": "b5c3a19c638bf9d50f66261a62898429e57f61f37473b78e18419bb4621d1137"
+}

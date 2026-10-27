@@ -45,12 +45,16 @@ from mibot.utils.io import (
     normalize_action,
     normalize_quantile,
 )
+from mibot.utils.force_contract import FORCE_NORMALIZATION_ID, validate_force_quantiles
 
 
 class DoosanJsonDataset(JsonDataset):
     """XR-1 post-training dataset for the Doosan M1013."""
 
     def __init__(self, params):
+        data = params["train_datasets"]
+        if data.get("force_encoder_input", False):
+            validate_force_quantiles(data.get("q01"), data.get("q99"))
         super().__init__(params)
 
         data = params["train_datasets"]
@@ -58,6 +62,11 @@ class DoosanJsonDataset(JsonDataset):
         self.use_wrench = bool(
             data.get("use_wrench", False)
         )
+        self.force_encoder_input = bool(data.get("force_encoder_input", False))
+        if self.force_encoder_input:
+            if not self.use_wrench or self.action_length != 30:
+                raise ValueError("force_encoder_input requires use_wrench=true and action_length=30")
+            validate_force_quantiles(self.q01, self.q99)
 
         self.semantic_action_key = str(
             data.get(
@@ -138,7 +147,7 @@ class DoosanJsonDataset(JsonDataset):
             },
         ]
 
-        return {
+        result = {
             "messages": self._messages(
                 prompt["conversations"],
                 self._augment(
@@ -166,6 +175,9 @@ class DoosanJsonDataset(JsonDataset):
             ),
             "vlm_action_actual_length": steps,
         }
+        if self.force_encoder_input:
+            result["force_normalization"] = torch.tensor(FORCE_NORMALIZATION_ID, dtype=torch.int64)
+        return result
 
     @staticmethod
     def _required_frame(
@@ -207,6 +219,8 @@ class DoosanJsonDataset(JsonDataset):
                 "proprios.wrench",
                 frame,
             )
+            if wrench.shape != (6,):
+                raise ValueError(f"proprios.wrench expected shape (6,), got {wrench.shape}")
 
         return compose_doosan_state(
             joint_pos=self._required_frame(

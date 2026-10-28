@@ -30,8 +30,13 @@ The resulting tensors preserve XR-1's native:
 
 from __future__ import annotations
 
+import hashlib
+import os
+import random
+
 import numpy as np
 import torch
+from mibot.utils.doosan_replay import stable_sample_seed
 
 from mibot.data.datasets.json_dataset import JsonDataset
 from mibot.utils.doosan import (
@@ -53,6 +58,8 @@ class DoosanJsonDataset(JsonDataset):
     def __init__(self, params):
         # Base JsonDataset.__init__ calls self._samples(), so set seed first.
         self.sampler_seed = int(params["train_datasets"].get("sampler_seed", 42))
+        self.deterministic_replay = bool(params["train_datasets"].get("deterministic_replay", False))
+        self._replay_root = str(params["train_datasets"]["paths"][0])
         super().__init__(params)
 
         data = params["train_datasets"]
@@ -69,6 +76,19 @@ class DoosanJsonDataset(JsonDataset):
         )
 
     def __getitem__(self, index):
+        if not self.deterministic_replay:
+            return self._getitem_unseeded(index)
+        sample = self.samples[index]
+        seed = stable_sample_seed(sample["file"], sample["frame_index"],
+                                  self._replay_root, self.sampler_seed)
+        saved = random.getstate()
+        try:
+            random.seed(seed)
+            return self._getitem_unseeded(index)
+        finally:
+            random.setstate(saved)
+
+    def _getitem_unseeded(self, index):
         sample = self.samples[index]
 
         traj = self._read_json(

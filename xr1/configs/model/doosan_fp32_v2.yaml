@@ -1,0 +1,15 @@
+# @package _global_
+
+model:
+  type: BaseRunner
+  params:
+    pretrained: /home/ktt_rc/robotics_thesis/xr1_lab/checkpoints/Xiaomi-Robotics-1-5B/model_states.pt
+    model:
+      type: xr1
+      freq_coefficient: 1.0
+      freq_excluded_dims:
+      - 17
+      - 18
+      - 19
+      ffn_gradient_checkpointing: true
+      async_train: false

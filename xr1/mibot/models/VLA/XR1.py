@@ -200,6 +200,8 @@ class xr1(nn.Module):
         freq_coefficient=1.0,
         freq_excluded_dims=None,
         ffn_gradient_checkpointing=True,
+        vision_gradient_checkpointing=True,
+        attn_implementation="flash_attention_2",
         async_train=True,
     ):
         super().__init__()
@@ -208,6 +210,10 @@ class xr1(nn.Module):
         self.freq_coefficient = float(freq_coefficient)
         self.freq_excluded_dims = list([17, 18, 19] if freq_excluded_dims is None else freq_excluded_dims)
         self.ffn_gradient_checkpointing = bool(ffn_gradient_checkpointing)
+        self.vision_gradient_checkpointing = bool(vision_gradient_checkpointing)
+        if attn_implementation not in ("sdpa", "flash_attention_2"):
+            raise ValueError("Unsupported XR1 attention backend")
+        self.attn_implementation = attn_implementation
         self.async_train = bool(async_train)
         self.training_repeat = 4
         self.num_steps = 5
@@ -220,11 +226,12 @@ class xr1(nn.Module):
         config = Qwen3VLConfig.from_pretrained("Qwen/Qwen3-VL-4B-Instruct")
         self.vlm = Qwen3VLForConditionalGeneration._from_config(
             config,
-            attn_implementation="flash_attention_2",
+            attn_implementation=self.attn_implementation,
             dtype=torch.bfloat16,
         ).train()
         self.vlm.model.get_input_embeddings().requires_grad_(False)
-        self.vlm.model.visual.gradient_checkpointing_enable()
+        if self.vision_gradient_checkpointing:
+            self.vlm.model.visual.gradient_checkpointing_enable()
         if self.ffn_gradient_checkpointing:
             for layer in self.vlm.model.language_model.layers:
                 mlp = layer.mlp

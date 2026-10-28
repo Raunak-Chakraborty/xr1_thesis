@@ -1,0 +1,56 @@
+# @package _global_
+# EXPLICIT OPT-IN; launch with tools/train_doosan_compact.py.
+# Paths must be overridden for CLAIX after staging.
+defaults:
+  - data: doosan_fp32_v2
+  - model: doosan_fp32_v2
+  - trainer: doosan_fp32_v2
+  - _self_
+
+model:
+  type: DoosanCompactRunner
+  params:
+    last_n: 1
+    pretrained_sha256: 94d55a79122050a654b379664b644e874ff90d64ccd30a6a633f816555bcecf7
+    language_policy_path: /home/ktt_rc/robotics_thesis/xr1_lab/configs/doosan_assembly_language_v2.yaml
+    language_sha256: 21d8ffbdbfec2f9833339faaf0c5818c85cd5a135dcf474fe2d3f76cda1cf34d
+    source_commit: 2f5a48484a0b7164557a8e5a865bbce48e07b80a
+    model:
+      type: xr1
+      ffn_gradient_checkpointing: false
+      vision_gradient_checkpointing: false
+      attn_implementation: sdpa
+      async_train: false
+      freq_coefficient: 1.0
+      freq_excluded_dims: [17, 18, 19]
+
+# Retain the demonstrated fixed 2000-step dataset schedule even for short runs.
+data:
+  params:
+    max_steps: 2000
+    train_datasets:
+      batch_size: 1
+      num_workers: 0
+      persistent_workers: false
+      pin_memory: false
+      sampler_seed: 42
+      deterministic_replay: true
+
+trainer:
+  accelerator: gpu
+  devices: 2
+  num_nodes: 1
+  strategy:
+    type: ddp
+    params:
+      find_unused_parameters: true
+  precision: bf16-mixed
+  max_steps: 2000
+  accumulate_grad_batches: 1
+  use_distributed_sampler: false
+  save_interval: 250
+  enable_progress_bar: false
+  project: xr1_doosan
+  exp_name: fp32_compact_last1
+  default_root_dir: /mnt/robotics_ssd/ktt_rc_robotics_thesis/xr1_fp32_compact_production
+  ckpt_path: null

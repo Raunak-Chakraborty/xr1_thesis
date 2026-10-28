@@ -26,6 +26,7 @@ from mibot.data.datamodule.base_datamodule import (
 from mibot.data.datasets.doosan_json_dataset import (
     DoosanJsonDataset,
 )
+from mibot.utils.doosan_replay import RankOffsetSampler
 
 
 @DATASETS.register_module()
@@ -68,6 +69,12 @@ class DoosanDataModule(BaseDataModule):
             )
         )
 
+        self.deterministic_replay = bool(data.get("deterministic_replay", False))
+        self.resume_step = int(data.get("resume_step", 0))
+        if self.resume_step < 0:
+            raise ValueError("Negative resume step")
+        if self.deterministic_replay and self.num_workers != 0:
+            raise ValueError("Fixed-horizon deterministic resume requires zero workers")
         self.sampler_seed = int(
             data.get(
                 "sampler_seed",
@@ -124,6 +131,19 @@ class DoosanDataModule(BaseDataModule):
             )
             shuffle = False
 
+        if self.deterministic_replay:
+            if not (dist.is_available() and dist.is_initialized()):
+                raise RuntimeError("Deterministic DDP sampler requires initialized distributed process group")
+            if not isinstance(sampler, DistributedSampler):
+                raise RuntimeError("Expected DistributedSampler before offset wrapper")
+            horizon = int(self.params.max_steps)
+            if len(self.train_set) != horizon * self.batch_size * dist.get_world_size():
+                raise RuntimeError("Dataset sample length does not match frozen replay horizon")
+            offset = self.resume_step * self.batch_size
+            sampler = RankOffsetSampler(sampler, offset)
+            shuffle = False
+            print("XR1_PRODUCTION_SAMPLER=PASS rank=" + str(dist.get_rank()) +
+                  " offset=" + str(offset) + " horizon=" + str(horizon), flush=True)
         kwargs = {
             "dataset": self.train_set,
             "batch_size": self.batch_size,

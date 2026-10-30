@@ -14,6 +14,8 @@ from __future__ import annotations
 from copy import deepcopy
 
 import torch.distributed as dist
+import inspect
+import torch
 from mmengine import Config, DATASETS
 from torch.utils.data import (
     DataLoader,
@@ -26,7 +28,20 @@ from mibot.data.datamodule.base_datamodule import (
 from mibot.data.datasets.doosan_json_dataset import (
     DoosanJsonDataset,
 )
-from mibot.utils.doosan_replay import RankOffsetSampler
+from mibot.utils.doosan_replay import RankOffsetSampler, seed_worker
+
+
+class ReplayDataLoader(DataLoader):
+    """Report the original epoch budget to Lightning's restored batch counters.
+
+    Iteration yields only the remaining suffix. Lightning 2.5 restores absolute
+    epoch progress; reporting suffix length would terminate the epoch too early
+    on a late resume. Sampler length still exposes the remaining sample count.
+    """
+    def __len__(self):
+        if isinstance(self.sampler, RankOffsetSampler):
+            return len(self.sampler.base) // self.batch_size
+        return super().__len__()
 
 
 @DATASETS.register_module()
@@ -73,8 +88,13 @@ class DoosanDataModule(BaseDataModule):
         self.resume_step = int(data.get("resume_step", 0))
         if self.resume_step < 0:
             raise ValueError("Negative resume step")
-        if self.deterministic_replay and self.num_workers != 0:
-            raise ValueError("Fixed-horizon deterministic resume requires zero workers")
+        if self.deterministic_replay and self.num_workers not in (0, 4, 8):
+            raise ValueError("Deterministic replay supports workers=0,4,8")
+        if self.deterministic_replay and data.get("in_order", True) is not True:
+            raise ValueError("Deterministic replay requires in_order=True")
+        if self.deterministic_replay:
+            self.collate_fn.strict_samples = True
+            self.collate_fn.expected_views = 2
         self.sampler_seed = int(
             data.get(
                 "sampler_seed",
@@ -126,6 +146,8 @@ class DoosanDataModule(BaseDataModule):
         ):
             sampler = DistributedSampler(
                 self.train_set,
+                num_replicas=dist.get_world_size(),
+                rank=dist.get_rank(),
                 shuffle=True,
                 seed=self.sampler_seed,
             )
@@ -140,7 +162,7 @@ class DoosanDataModule(BaseDataModule):
             if len(self.train_set) != horizon * self.batch_size * dist.get_world_size():
                 raise RuntimeError("Dataset sample length does not match frozen replay horizon")
             offset = self.resume_step * self.batch_size
-            sampler = RankOffsetSampler(sampler, offset)
+            sampler = RankOffsetSampler(sampler, offset, batch_size=self.batch_size)
             shuffle = False
             print("XR1_PRODUCTION_SAMPLER=PASS rank=" + str(dist.get_rank()) +
                   " offset=" + str(offset) + " horizon=" + str(horizon), flush=True)
@@ -152,7 +174,16 @@ class DoosanDataModule(BaseDataModule):
             "num_workers": self.num_workers,
             "collate_fn": self.collate_fn,
             "pin_memory": self.pin_memory,
+            "drop_last": False,
+            "worker_init_fn": seed_worker,
+            # Iterator construction must not consume the model's RNG stream.
+            "generator": torch.Generator().manual_seed(self.sampler_seed),
         }
+
+        if "in_order" in inspect.signature(DataLoader).parameters:
+            kwargs["in_order"] = True
+        elif self.deterministic_replay and self.num_workers:
+            raise RuntimeError("Worker replay requires DataLoader with explicit in_order support")
 
         if self.num_workers > 0:
             kwargs[
@@ -162,7 +193,8 @@ class DoosanDataModule(BaseDataModule):
             kwargs[
                 "persistent_workers"
             ] = self.persistent_workers
+            kwargs["timeout"] = int(self.params.train_datasets.get("worker_timeout", 180))
 
-        return DataLoader(
+        return ReplayDataLoader(
             **kwargs
         )

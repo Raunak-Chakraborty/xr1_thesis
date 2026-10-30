@@ -1,0 +1,59 @@
+Local checks, 2026-10-30. No GPU training or Slurm commands executed.
+
+CPU test command actually executed (exit 0):
+CUDA_VISIBLE_DEVICES='' USE_TF=0 PYTHONPATH=xr1 /tmp/claix-b24-test-env/bin/python -B xr1/tests/run_claix_cpu_tests.py > docs/claix_b24/evidence/local_cpu_tests.txt 2>&1
+
+Last lines of actual output:
+
+----------------------------------------------------------------------
+Ran 57 tests in 3.565s
+
+OK
+
+$ python3 -m compileall -q xr1 scripts
+
+EXIT_CODE=0
+
+$ bash -n scripts/claix_b24_production.sbatch
+
+EXIT_CODE=0
+
+$ git diff --check
+
+EXIT_CODE=0
+
+$ sha256sum -c /tmp/claix_reference_before.sha256
+.claix_b24_reference/benchmark/benchmark_summary.json: OK
+.claix_b24_reference/benchmark/hardware.json: OK
+.claix_b24_reference/benchmark/script_sha256.txt: OK
+.claix_b24_reference/configs/hydra_overrides.json: OK
+.claix_b24_reference/configs/production_b24_v1/production_b24_overrides.json: OK
+.claix_b24_reference/configs/production_b24_v1/production_b24_plan.json: OK
+.claix_b24_reference/long_run_candidates/manifest.json: OK
+.claix_b24_reference/long_run_candidates/results_g1_b4_onepass_draft.overrides.json: OK
+.claix_b24_reference/long_run_candidates/results_g1_b6_onepass_draft.overrides.json: OK
+.claix_b24_reference/long_run_candidates/results_g1_b8_onepass_draft.overrides.json: OK
+.claix_b24_reference/long_run_candidates/results_g2_b4_onepass_draft.overrides.json: OK
+.claix_b24_reference/long_run_candidates/results_g2_b6_onepass_draft.overrides.json: OK
+.claix_b24_reference/long_run_candidates/results_g2_b8_onepass_draft.overrides.json: OK
+.claix_b24_reference/SOURCE_STATE.txt: OK
+.claix_b24_reference/worker_tests/b24_worker_probe_fg_v2.py: OK
+.claix_b24_reference/worker_tests/b24_worker_probe_fg_v2.sh: OK
+.claix_b24_reference/worker_tests/b24_worker_probe.py: OK
+.claix_b24_reference/worker_tests/b24_worker_probe.sbatch: OK
+
+EXIT_CODE=0
+
+$ git rev-parse HEAD
+52676ccfa3b52f05de51d3d7407f33855159ac95
+
+EXIT_CODE=0
+
+$ git branch --show-current
+thesis/claix-b24-production-v1
+
+EXIT_CODE=0
+
+$ python3 scripts/claix_b24_launch.py --mode qualification --run-root /tmp/claix-plan-only
+Full output: qualification_dry_run.txt
+EXIT_CODE=0

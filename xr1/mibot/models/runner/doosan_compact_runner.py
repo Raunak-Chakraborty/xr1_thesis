@@ -72,7 +72,17 @@ class DoosanCompactRunner(BaseRunner):
             torch.cuda.manual_seed_all(seed)
         random.seed(seed)
         np.random.seed(seed % (2 ** 32))
-        return super().training_step(batch, batch_idx)
+        output = super().training_step(batch, batch_idx)
+        if any(not torch.isfinite(value).all() for value in output.values()):
+            raise RuntimeError('Nonfinite training loss; optimizer step aborted')
+        return output
+
+    def on_before_optimizer_step(self, optimizer):
+        selected = [p for p in self.parameters() if p.requires_grad]
+        if any(p.grad is None for p in selected):
+            raise RuntimeError('Missing gradient for approved trainable parameter')
+        if any(not torch.isfinite(p.grad).all() for p in selected):
+            raise RuntimeError('Nonfinite gradient; optimizer step aborted')
 
     def on_save_checkpoint(self, checkpoint):
         # install_compact_fp32 wraps and invokes this method, adding masters and
@@ -82,6 +92,16 @@ class DoosanCompactRunner(BaseRunner):
         if step <= 0:
             raise RuntimeError('Cannot save optimizer-resumable checkpoint before step 1')
         checkpoint['xr1_replay'] = checkpoint_cursor(self._replay_contract, step)
+        if 'config_sha256' in self._compact_cfg:
+            states = getattr(self, '_checkpoint_rng', None)
+            if states is None:
+                raise RuntimeError('Checkpoint must be requested at a coordinated step boundary')
+            checkpoint['xr1_replay_contract'] = dict(self._replay_contract)
+            checkpoint['xr1_production'] = {
+                'schema': 'claix-b24-runtime-v1',
+                'config_sha256': self._compact_cfg['config_sha256'],
+                'rng_by_rank': states,
+            }
         if int(checkpoint.get('global_step', step)) != step:
             raise RuntimeError('Lightning checkpoint step inconsistent with sampler cursor')
         if not checkpoint.get('lr_schedulers') or not checkpoint.get('optimizer_states'):
@@ -98,4 +118,9 @@ class DoosanCompactRunner(BaseRunner):
         step = int(checkpoint['global_step'])
         if step != self._resume_step:
             raise RuntimeError('Dataloader resume offset was not preconfigured from checkpoint')
+        if 'config_sha256' in self._compact_cfg:
+            from mibot.utils.claix_checkpoint import validate_production_checkpoint
+            validate_production_checkpoint(checkpoint, self._replay_contract,
+                                           expected_config=self._compact_cfg['config_sha256'])
+            self._pending_rng = checkpoint['xr1_production']['rng_by_rank']
         print('XR1_COMPACT_REPLAY_RESTORED=PASS global_step=' + str(step), flush=True)

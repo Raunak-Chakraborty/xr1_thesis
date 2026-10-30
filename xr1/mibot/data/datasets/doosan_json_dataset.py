@@ -33,6 +33,9 @@ from __future__ import annotations
 import hashlib
 import os
 import random
+from array import array
+from bisect import bisect_right
+from functools import lru_cache
 
 import numpy as np
 import torch
@@ -52,8 +55,43 @@ from mibot.utils.io import (
 )
 
 
+class FrameSampleTable:
+    """Compact immutable frame IDs; avoids a million shared Python dictionaries.
+
+    Reconstructs exactly the original file/frame mapping, including repeat cycles.
+    Small numeric storage also limits fork copy-on-write amplification in workers.
+    """
+    def __init__(self, files, counts, indices):
+        self.files = tuple(files)
+        self.ends = []
+        end = 0
+        for count in counts:
+            end += count
+            self.ends.append(end)
+        self.indices = array('Q', indices)
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return [self[i] for i in range(*index.indices(len(self))) ]
+        frame_id = self.indices[index]
+        file_id = bisect_right(self.ends, frame_id)
+        start = self.ends[file_id - 1] if file_id else 0
+        return {'file': self.files[file_id], 'frame_index': frame_id - start}
+
+
 class DoosanJsonDataset(JsonDataset):
     """XR-1 post-training dataset for the Doosan M1013."""
+
+    # JSON trajectories can be large. Each worker owns a bounded, independent cache.
+    @staticmethod
+    @lru_cache(maxsize=2)
+    def _read_json(path):
+        import json
+        with open(path) as stream:
+            return json.load(stream)
 
     def __init__(self, params):
         # Base JsonDataset.__init__ calls self._samples(), so set seed first.
@@ -198,33 +236,30 @@ class DoosanJsonDataset(JsonDataset):
         """
         import random
 
-        population = []
+        counts = []
         for path in self.files:
             num_frames = int(self._read_json(path)["num_frames"])
-            if num_frames <= 0:
-                continue
-            population.extend(
-                {"file": path, "frame_index": index}
-                for index in range(num_frames)
-            )
+            counts.append(max(0, num_frames))
+        population_size = sum(counts)
 
-        if not population:
+        if not population_size:
             raise ValueError("Doosan training paths contain no frames")
 
         rng = random.Random(self.sampler_seed)
         selected = []
         remaining = self.max_samples
         while remaining > 0:
-            indices = list(range(len(population)))
+            indices = list(range(population_size))
             rng.shuffle(indices)
-            take = min(remaining, len(population))
-            selected.extend(population[i] for i in indices[:take])
+            take = min(remaining, population_size)
+            selected.extend(indices[:take])
             remaining -= take
 
+        selected = FrameSampleTable(self.files, counts, selected)
         unique_files = len({sample["file"] for sample in selected})
         print(
             f"XR1_DOOSAN_SAMPLER=PASS seed={self.sampler_seed} "
-            f"raw_frames={len(population)} samples={len(selected)} "
+            f"raw_frames={population_size} samples={len(selected)} "
             f"unique_episodes={unique_files}",
             flush=True,
         )
@@ -366,3 +401,18 @@ class DoosanJsonDataset(JsonDataset):
             from mibot.data.datasets.doosan_video_decoder import decode_images
 
         return decode_images(traj, keys, frame)
+
+
+class DoosanValidationDataset(DoosanJsonDataset):
+    """Canonical held-out frames, no random image jitter, train-only statistics.
+
+    This separate evaluation adapter does not change training augmentation,
+    frame selection, action horizon, normalization, or language policy.
+    """
+    def _samples(self):
+        counts = [int(self._read_json(path)['num_frames']) for path in self.files]
+        return FrameSampleTable(self.files, counts, range(sum(counts)))
+
+    def _augment(self, images):
+        from mibot.utils.io import resize_image
+        return [resize_image(image, factor=32, max_pixels=160000) for image in images]

@@ -1,0 +1,39 @@
+# @package _global_
+# Provisional results configuration. All CLAIX qualification gates remain required.
+defaults:
+  - doosan_compact_fp32
+  - _self_
+
+production:
+  max_length: 12288
+  stop_margin_seconds: 1800
+  stop_after_step: null
+
+model:
+  params:
+    source_commit: 52676ccfa3b52f05de51d3d7407f33855159ac95
+
+data:
+  params:
+    max_steps: 48284
+    train_datasets:
+      batch_size: 24
+      num_workers: 4
+      prefetch_factor: 2
+      persistent_workers: true
+      in_order: true
+      worker_timeout: 180
+      deterministic_replay: true
+
+trainer:
+  devices: 1
+  max_steps: 48284
+  scheduler:
+    params:
+      num_training_steps: 48284
+      num_warmup_steps: 500
+  save_interval: 250
+  exp_name: xr1_doosan_b24_results_v1
+  default_root_dir: /hpcwork/zk443626/robotics_thesis/runs/xr1_results_finetune
+  num_sanity_val_steps: 0
+  enable_checkpointing: false

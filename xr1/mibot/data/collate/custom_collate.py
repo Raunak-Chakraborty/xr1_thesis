@@ -14,8 +14,10 @@ IMAGE_ID = 151655
 
 
 class CustomCollate:
-    def __init__(self) -> None:
+    def __init__(self, *, strict_samples: bool = False, expected_views: int | None = None) -> None:
         self.max_length = int(os.environ.get("MAX_LENGTH", 4096))
+        self.strict_samples = strict_samples
+        self.expected_views = expected_views
         special_tokens = {"score": "<score>", "state": "<state>"}
         special_tokens.update({f"a_{index}": f"<a_{index}>" for index in range(60)})
         self.processor = AutoProcessor.from_pretrained(
@@ -67,7 +69,16 @@ class CustomCollate:
             )
             length = inputs["input_ids"].shape[1]
             if total_length + length > self.max_length:
+                if self.strict_samples:
+                    raise ValueError(f"Packing would drop sample {len(selected)} of {len(batch)}: "
+                                     f"{total_length}+{length} > MAX_LENGTH={self.max_length}")
                 continue
+            if self.strict_samples and length > 413:
+                raise ValueError(f"Sample exceeds certified 413-token bound: {length}")
+            if self.expected_views is not None:
+                grids = inputs.get("image_grid_thw")
+                if grids is None or grids.shape[0] != self.expected_views:
+                    raise ValueError("Unexpected camera view count in training sample")
 
             state = (inputs["input_ids"][0] == STATE_ID).nonzero(as_tuple=False)
             im_starts = (inputs["input_ids"][0] == IM_START_ID).nonzero(as_tuple=False).flatten()
@@ -81,6 +92,8 @@ class CustomCollate:
 
         if not selected:
             raise ValueError(f"no training sample fits within MAX_LENGTH={self.max_length}")
+        if self.strict_samples and len(selected) != len(batch):
+            raise RuntimeError("Training batch lost samples")
 
         lengths = [inputs["input_ids"].shape[1] for inputs, _, _ in selected]
         offsets = [0] + list(itertools.accumulate(lengths))

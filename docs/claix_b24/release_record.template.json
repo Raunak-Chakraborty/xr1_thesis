@@ -1,0 +1,15 @@
+{
+  "source_tree_sha256": "COPY_FROM_PRODUCTION_DRY_RUN",
+  "plan": null,
+  "gates": {
+    "frozen_splits": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "tokens_24_examples_48_views": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "workers_0_4_8": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "h100_b24_memory": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "end_to_end_throughput": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "real_compact_resume": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "safe_stop_and_storage": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "held_out_validation": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
+    "lr_and_horizon_approval": {"status": "UNVERIFIED", "evidence": "", "sha256": ""}
+  }
+}

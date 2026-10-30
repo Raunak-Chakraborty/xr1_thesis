@@ -1,0 +1,21 @@
+{
+  "mode": "qualification",
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/tmp/claix-plan-only",
+    "overrides": [
+      "data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]",
+      "model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt",
+      "model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml",
+      "trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact"
+    ]
+  },
+  "source_tree_sha256": "5347fa5e7d376de44ecf4671c617e5c4142763d65d8a4cce30ee3ee7bfe6fe33"
+}
+COMMAND=/usr/bin/python3 -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/b24_production/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]' model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact trainer.default_root_dir=/tmp/claix-plan-only data.params.train_datasets.num_workers=4 trainer.max_steps=6 trainer.exp_name=qualification_b24_w4

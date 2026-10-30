@@ -1,0 +1,61 @@
+{
+  "environment_prefix": "CUDA_VISIBLE_DEVICES='' USE_TF=0 PYTHONPATH=xr1 (tests/versions only)",
+  "commands": [
+    {
+      "command": "/tmp/claix-b24-test-env/bin/python -B xr1/tests/run_claix_cpu_tests.py",
+      "exit_code": 0,
+      "output_file": "review_cpu_tests.txt"
+    },
+    {
+      "command": "/tmp/claix-b24-test-env/bin/python -B -c 'import sys, torch, lightning; print(sys.version); print(\"torch=\"+torch.__version__); print(\"lightning=\"+lightning.__version__)'",
+      "exit_code": 0,
+      "output_file": null,
+      "output": "3.11.15 (main, Mar 11 2026, 17:20:07) [GCC 14.3.0]\ntorch=2.7.1+cu128\nlightning=2.5.1.post0\n"
+    },
+    {
+      "command": "python3 -m compileall -q xr1 scripts",
+      "exit_code": 0,
+      "output_file": null,
+      "output": ""
+    },
+    {
+      "command": "bash -n scripts/claix_b24_cpu_qualification.sbatch",
+      "exit_code": 0,
+      "output_file": null,
+      "output": ""
+    },
+    {
+      "command": "bash -n scripts/claix_b24_h100_qualification.sbatch",
+      "exit_code": 0,
+      "output_file": null,
+      "output": ""
+    },
+    {
+      "command": "bash -n scripts/claix_b24_production.sbatch",
+      "exit_code": 0,
+      "output_file": null,
+      "output": ""
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "output_file": null,
+      "output": ""
+    },
+    {
+      "command": "python3 scripts/claix_b24_launch.py --mode cpu-qualification --run-root /tmp/claix-review-dry-cpu-qualification",
+      "exit_code": 0,
+      "output_file": "review_dry_runs.txt"
+    },
+    {
+      "command": "python3 scripts/claix_b24_launch.py --mode h100-qualification --run-root /tmp/claix-review-dry-h100-qualification",
+      "exit_code": 0,
+      "output_file": "review_dry_runs.txt"
+    },
+    {
+      "command": "python3 scripts/claix_b24_launch.py --mode production --run-root /tmp/claix-review-dry-production",
+      "exit_code": 0,
+      "output_file": "review_dry_runs.txt"
+    }
+  ]
+}

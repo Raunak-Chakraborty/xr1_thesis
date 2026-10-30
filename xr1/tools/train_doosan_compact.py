@@ -40,6 +40,8 @@ def main(cfg: DictConfig):
     production = conf.pop('production', None)
     fingerprint = None
     if production:
+        if torch.cuda.device_count() != 1 or 'H100' not in torch.cuda.get_device_name(0):
+            raise RuntimeError('CLAIX batch-24 GPU path requires exactly one visible H100')
         max_length = int(production['max_length'])
         if max_length != 12288 or os.environ.get('MAX_LENGTH', '12288') != '12288':
             raise RuntimeError('Production MAX_LENGTH must be 12288 before collator creation')
@@ -168,7 +170,14 @@ def main(cfg: DictConfig):
     print(f'XR1_COMPACT_DDP_START rank={os.environ.get("RANK")} resume_step={step} '
           f'world_size={world} max_steps={conf.trainer.max_steps} horizon={horizon}', flush=True)
     trainer = Trainer(**conf.trainer, logger=logger)
-    trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
+    try:
+        trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
+    finally:
+        # Reap prefetched persistent workers on normal completion and failures.
+        from mibot.data.datamodule.doosan_datamodule import shutdown_loader
+        loader = trainer.train_dataloader
+        if loader is not None:
+            shutdown_loader(loader, getattr(loader, '_iterator', None))
 
 
 if __name__ == '__main__':

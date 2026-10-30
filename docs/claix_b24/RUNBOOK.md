@@ -15,7 +15,10 @@ numpy, Pillow, transformers, Lightning, Hydra/OmegaConf:
 ```bash
 CUDA_VISIBLE_DEVICES='' USE_TF=0 PYTHONPATH=xr1 \
   /tmp/claix-b24-test-env/bin/python -B xr1/tests/run_claix_cpu_tests.py
-python3 scripts/claix_b24_launch.py --mode qualification --run-root /tmp/claix-plan-only
+python3 scripts/claix_b24_launch.py --mode cpu-qualification --run-root /tmp/claix-cpu-plan-only
+python3 scripts/claix_b24_launch.py --mode h100-qualification --run-root /tmp/claix-h100-plan-only
+bash -n scripts/claix_b24_cpu_qualification.sbatch
+bash -n scripts/claix_b24_h100_qualification.sbatch
 bash -n scripts/claix_b24_production.sbatch
 git diff --check
 ```
@@ -23,7 +26,10 @@ git diff --check
 The `/tmp` environment was built from an existing Python 3.11 environment and
 cached pure-Python Lightning/Hydra wheels. It is temporary, not a portable CLAIX
 environment. Full stdout/stderr, versions and command results are in
-`evidence/local_cpu_tests.txt` and `evidence/commands.txt`. The explicit offline
+`evidence/review_cpu_tests.txt` and `evidence/review_commands.txt` for this focused
+review (**68 tests, 7.470 s, exit 0**), plus `evidence/review_dry_runs.txt` for all
+three modes. Previous session evidence remains in `evidence/local_cpu_tests.txt`
+and `evidence/commands.txt`. The explicit offline
 harness mocks missing mmengine Config/Registry and heavyweight Qwen3-VL imports;
 it executes real torch/Lightning/data loader/runner/checkpoint/scheduler logic.
 Existing XR1 loss functions are extracted via AST to avoid loading the backbone.
@@ -57,7 +63,17 @@ indices and a partially processed next batch never advance it. Resume discards
 in-flight work and reconstructs the exact remaining sampler suffix. There is one
 fixed epoch and no epoch wrapping. ReplayDataLoader reports the **original** epoch
 budget to Lightning's restored absolute batch counters, while iteration yields
-only the suffix. CPU tests explicitly cover a resume beyond half the horizon.
+only the suffix. CPU tests cover resumes at 1/3/6/7 of an eight-step horizon
+for each worker count,
+including the final remaining batch, and compare exact consumed sample sequences,
+FP32 weights, AdamW moments/counters and scheduler state. Lightning checkpoints
+are saved **inside** `on_train_batch_end`: optimizer and scheduler have advanced,
+while batch `completed` is one behind `processed`. Both current and total batch
+counters must match that shape in epoch zero. Saving after the callback produces
+a different loop state and is deliberately rejected. This relies on Lightning's
+restart handling; torch 2.8.0 / Lightning 2.5.3 integration remains UNVERIFIED.
+The general Lightning non-stateful-loader warning is not suppressed; local tests
+exercise the explicit rank offset, rather than assuming Lightning skips data.
 
 Replay v2 intentionally rejects v1 checkpoints. Batch, workers, world size, seed,
 data horizon, normalization, language/base identities, model configuration,
@@ -80,35 +96,56 @@ and offline processor/model caches. Confirm scheduler GPU/resource flags and the
    transfer contains a certificate hash, not the certificate itself. Verify
    train-only normalization and no episode/media overlap. Never decode/evaluate
    the test split during selection. Stage no replacement or modified dataset.
-2. Run the real CPU probe using the **production** DataModule/sample horizon:
+2. Set these variables to reviewed **existing** locations; use a separate new run
+   root for each CPU, uninterrupted GPU, and stopped/resumed GPU case:
 
    ```bash
-   export PYTHONPATH="$XR1_WORKTREE/xr1"
+   export XR1_WORKTREE=/path/to/isolated/b24_production
+   export XR1_PYTHON=/path/to/existing/claix/environment/bin/python
    export XR1_DOOSAN_ZIP_CACHE_ROOT=/path/to/approved/frames_zip/v1
-   export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-   "$XR1_PYTHON" "$XR1_WORKTREE/xr1/tools/claix_b24_worker_qualification.py" \
-     --overrides "$XR1_WORKTREE/.claix_b24_reference/configs/hydra_overrides.json" \
-     --output /persistent/qualification/workers.json
+   export XR1_RUN_ROOT=/persistent/qualification/cpu-workers-unique
    ```
 
-   It compares 24-example/48-view contents and resume digests for workers 0/4/8.
-   PASS is published only after completion. Fetch timings are CPU-fetch evidence,
-   not GPU throughput. Measure real worker RSS/PSS and ZIP/processor overhead.
-3. Review a GPU qualification plan (this prints only; it needs no allocation):
+   In an authorized **zero-GPU, 12-CPU, 48-GiB, 00:20:00** allocation, run:
 
    ```bash
-   python3 scripts/claix_b24_launch.py --mode qualification \
-     --workers 4 --run-root /persistent/qualification/w4
+   "$XR1_PYTHON" "$XR1_WORKTREE/scripts/claix_b24_launch.py" \
+     --mode cpu-qualification --execute --python "$XR1_PYTHON" \
+     --run-root "$XR1_RUN_ROOT"
    ```
 
-   Inside an already authorized 23:45:00 allocation, add `--execute` and
-   `--python "$XR1_PYTHON" --stop-after-step 3`. This executes six-step-budget
-   qualification with a completed-step stop at 3. It keeps the full 48284-step
-   data/scheduler horizon. Repeat with `--resume` pointing to the verified
-   `project_xr1_doosan/qualification_b24_w4/step-000003.ckpt`, omitting
-   `--stop-after-step`, to finish at 6. A fresh unique root provides uninterrupted
-   six-step comparison. Do the same for workers 0 and 8; choose and freeze one
-   count **before** results training. Do not change it mid-run/resume.
+   This measures **all 0/4/8 workers**, regardless of the GPU `--workers` option.
+   Each case fetches four full batches (96 examples), then two resumed batches
+   (48 examples) at offset two. Every measured batch must retain 24 examples and
+   48 views. This checks a prefix/resume suffix, not all 289703 training frames.
+   `workers.json` gets PASS only after every content/resume comparison completes;
+   deadline, signal, dropped sample, worker failure or insufficient shared memory
+   yields no PASS. CPU fetch timings are separate from total probe timing (which
+   includes iterator startup and hashing). They do not measure GPU throughput.
+   The probe hides CUDA, disables pinning, caps worker timeout at 60 seconds and
+   explicitly reaps persistent workers between cases. It does not load XR1 weights;
+   the existing processor and approved data must be cached offline.
+3. In a separate authorized **one-H100, 12-CPU, 96-GiB, 00:45:00** allocation,
+   set a new `XR1_RUN_ROOT` and run the six-step smoke:
+
+   ```bash
+   "$XR1_PYTHON" "$XR1_WORKTREE/scripts/claix_b24_launch.py" \
+     --mode h100-qualification --execute --python "$XR1_PYTHON" \
+     --workers 4 --run-root "$XR1_RUN_ROOT"
+   ```
+
+   Neither qualification mode requires a production PASS release record. Omit
+   `--execute` for a plan that needs no allocation. The old `--mode qualification`
+   is an alias for **short H100 qualification**. Both qualification modes reject
+   allocations over two hours, including accidental production walltime reuse.
+
+   For a separate stopped/resumed case, use a new root and add
+   `--stop-after-step 3`, then invoke the same H100 command with
+   `--resume "$XR1_RUN_ROOT/project_xr1_doosan/qualification_b24_w4/step-000003.ckpt"`
+   and omit `--stop-after-step`. It finishes at step 6. The data and scheduler
+   horizon stays 48284 throughout. Repeat uninterrupted and stopped/resumed cases
+   for workers 0 and 8 with separate roots; choose and freeze the worker count
+   **before** results training. Never change it during resume.
 4. Compare real compact master tensors, AdamW moments/steps, scheduler states,
    losses, batch-content/order evidence and frozen-weight checksums against the
    uninterrupted run. Test a near-horizon resume on a separate, explicitly
@@ -123,7 +160,8 @@ and offline processor/model caches. Confirm scheduler GPU/resource flags and the
    H100 memory safety. No batch-24 H100 throughput or memory result exists here.
 6. Exercise normal finish, callback deadline and batch-controller USR1 on the
    actual filesystem. Confirm save + read-back + checksum + fsync + rotation all
-   finish within the 1800-second margin. Inject interrupted I/O only into a
+   finish within the selected mode margin: 600 seconds for H100 qualification,
+   1800 seconds for production. Inject interrupted I/O only into a
    separate qualification directory; verify recovery from the previous receipt.
    Test controlled TERM behavior before expiry, process/worker failure and storage
    exhaustion. SIGKILL/node death cannot guarantee a final checkpoint.
@@ -134,20 +172,63 @@ and offline processor/model caches. Confirm scheduler GPU/resource flags and the
 
 ## Launcher and release gate
 
-`scripts/claix_b24_production.sbatch` defaults to **qualification** mode. It requests
-one c23g GPU, 23:45:00 and batch-controller USR1 1800 seconds before expiry. Supply
-`XR1_WORKTREE`, `XR1_PYTHON`, `XR1_RUN_ROOT`, offline cache environment and optional
-`XR1_WORKERS`, `XR1_RESUME`, `XR1_STOP_AFTER_STEP`. Production additionally needs
-`XR1_MODE=production` and `XR1_RELEASE_RECORD`. No submission command is executed
-by any launcher; the Python launcher runs only within an existing allocation.
+Three separate **unsubmitted drafts** define the resource requests:
 
-The launcher reads authoritative `scontrol show job` EndTime, subtracts 1800
-seconds and passes an absolute safe deadline. Missing/expired/incorrect allocation
-metadata fails closed. The batch controller receives Slurm USR1; its handler sets
-a flag. Normal controller code writes a request file, which the callback checks
-at completed-step boundaries. Direct worker signal handlers also only set flags.
-No signal handler saves a checkpoint. The independent deadline works without
-Slurm signal delivery. A stuck GPU/kernel may still prevent callback execution.
+| Script | Allocation | Walltime | Safety margin |
+| --- | --- | --- | --- |
+| `scripts/claix_b24_cpu_qualification.sbatch` | c23ms, zero GPUs, 12 CPUs, 48 GiB | 00:20:00 | 120 s |
+| `scripts/claix_b24_h100_qualification.sbatch` | c23g, 1 H100, 12 CPUs, 96 GiB | 00:45:00 | 600 s |
+| `scripts/claix_b24_production.sbatch` | c23g, 1 H100, 12 CPUs, 96 GiB | **23:45:00** | 1800 s |
+
+Review the site's typed `gpu:h100:1` GRES spelling and host-RAM adequacy on CLAIX.
+These are resource drafts, not proven capacity measurements. The CPU script
+explicitly requests `--gpus=0`. The GPU entrypoint checks that exactly one H100
+is visible. Each script fixes its mode; `XR1_MODE` no longer changes a production
+request into qualification. Supply `XR1_WORKTREE`, `XR1_PYTHON`, `XR1_RUN_ROOT`,
+ZIP cache, and optional GPU `XR1_WORKERS`, `XR1_RESUME`, `XR1_STOP_AFTER_STEP`.
+Only the production script requires `XR1_RELEASE_RECORD`.
+
+The Python commands above execute **inside existing authorized allocations**;
+they never call sbatch/salloc/srun. This review has not submitted any script.
+Keep Slurm stdout/stderr in a persistent submission directory. The launcher also
+puts raw logs, Hydra output and training results under the selected run root.
+
+For every mode the launcher reads authoritative `scontrol show job` TimeLimit,
+EndTime and AllocTRES, checks GPU count and at least 12 CPUs / 48 or 96 GiB, and
+subtracts its own safety margin. **Only production requires exactly 23:45:00.**
+Missing/expired/unlimited metadata or entry inside the margin fails closed.
+The launcher records the allocation metadata and passes an absolute safe deadline
+through `XR1_SAFE_STOP_EPOCH`; the shared Hydra training recipe contains no walltime
+margin. Qualification preserves the training recipe without inheriting its lease.
+The short margins are initial engineering choices, requiring measured CLAIX I/O
+qualification; if insufficient, revise/review the qualification profile first.
+
+The batch controller receives Slurm USR1; its handler sets a flag. Normal
+controller code writes a request file, which training checks at completed-step
+boundaries and CPU qualification checks before/after fetch. The controller also
+writes the request on its absolute deadline. Direct worker handlers only set
+flags. Handlers are restored after completion; the child starts in a separate
+session to avoid accidental terminal signal forwarding to torchrun. No signal
+handler saves checkpoints. Startup, a stuck loader/kernel, SIGKILL or node loss can
+prevent cooperation; Slurm remains the hard limit. Production's 1800-second
+margin still needs real save/read-back/fsync measurements.
+
+The launcher sets offline Hub/Transformers/datasets flags, disables W&B/network
+logging and tokenizer parallelism, prepends this worktree's `xr1` to PYTHONPATH,
+and limits OMP/MKL/OpenBLAS threads to one. GPU commands use quoted Hydra string
+paths, explicit six-step qualification overrides and per-invocation Hydra result
+directories with `hydra.job.chdir=false`. Local tests compose the emitted Hydra
+arguments, including spaces in run-root/resume paths. The approved ZIP cache is
+required and the alternate offline-frame root is rejected.
+
+For workers, prefetch is capped at two (at most 8 or 16 queued batches for 4 or 8
+workers). Shared-memory checks require at least 1 GiB free and, after measuring a
+batch, `2 * batch_tensor_bytes * (workers * prefetch_factor + 2)` free bytes.
+The CPU worker-0 measurement checks this estimate before starting workers 4/8;
+the GPU callback checks its first batch and logs `tensor_ipc_budget`. These
+estimates provide headroom, not proof of worst-case host/shared-memory safety.
+Inspect RSS/PSS, peak `/dev/shm` use, longest-token samples and worker cleanup on
+CLAIX. RSS includes shared pages. Eight workers do not guarantee full GPU use.
 
 `flock` is held by controller and inherited by torchrun, protecting the same run
 root against duplicate active invocations. A nonempty run target requires explicit
@@ -180,7 +261,10 @@ real checkpoint size, I/O time and filesystem guarantees on CLAIX.
 Keep newest two committed checkpoints plus step 2000 forever. Rotation happens
 after new publication. A filename alone is insufficient; a matching
 `.verified.json` receipt, file size, SHA256 and successful contract validation are
-mandatory. A crash between payload and receipt creates an orphan. Do not use it
+mandatory. The receipt configuration fingerprint must match the payload. At
+fit end the callback revalidates the last boundary checkpoint and emits
+`final_checkpoint_verified=true`; it does not save with post-callback counters.
+A crash between payload and receipt creates an orphan. Do not use it
 or guess its completeness. Preserve/quarantine it for inspection before retrying
 the same step, since existing destinations are deliberately never overwritten.
 
@@ -204,6 +288,11 @@ Recovery procedure:
 Telemetry lives in `telemetry.jsonl`, with independent local CSV metrics and
 per-invocation resolved configs. Throughput includes loader startup/wait, transfer,
 compute, callbacks and preceding checkpoint I/O; it is not GPU-stage-only timing.
+The `fit_end` rate additionally includes final checkpoint publication/receipt
+verification. Timing starts at `on_fit_start`, before loader setup, and excludes
+prior model construction and process startup. The local delayed-loader/save test
+checks these timing scopes. No actual GPU qualification telemetry exists locally;
+CLAIX must verify real GPU counters, startup costs and sustained rates.
 `pipeline_wait_seconds` includes host/callback/I/O overhead and is not presented
 as a pure loader-only measurement. RSS sums include shared pages, not unique
 physical memory. Unavailable GPU counters are null (with an error type when

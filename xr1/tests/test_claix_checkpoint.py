@@ -16,7 +16,8 @@ from mibot.utils.doosan_replay import make_contract, checkpoint_cursor
 
 def checkpoint_fixture(step=2, horizon=3000):
     contract = make_contract(data_horizon=horizon,batch_size=24,world_size=1,sampler_seed=42,num_workers=4)
-    return dict(global_step=step, state_dict={'model.weight': torch.ones(2,3)},
+    progress = dict(ready=step, started=step, processed=step, completed=step-1)
+    return dict(global_step=step, epoch=0, state_dict={'model.weight': torch.ones(2,3)},
                 xr1_compact_fp32=dict(schema='xr1-doosan-fp32-trainable-compact-lightning-v1',
                                       selected_tensor_count=1, trainable_parameter_count=6,
                                       pretrained_sha256='a'*64,language_sha256='b'*64,source_commit='synthetic',last_n=1,
@@ -29,7 +30,7 @@ def checkpoint_fixture(step=2, horizon=3000):
                                        param_groups=[dict(params=[0], lr=1e-5)])],
                 lr_schedulers=[dict(last_epoch=step)], loops={'fit_loop': {
                     'epoch_loop.automatic_optimization.optim_progress': {'optimizer': {'step': {'total': {'completed': step}}}},
-                    'epoch_loop.batch_progress': {'total': {'ready':step,'started':step,'processed':step,'completed':step-1}}}},
+                    'epoch_loop.batch_progress': {'total': progress, 'current': dict(progress)}}},
                 xr1_replay=checkpoint_cursor(contract,step), xr1_replay_contract=contract,
                 xr1_production=dict(schema='claix-b24-runtime-v1',config_sha256='a'*64,rng_by_rank=[rng_state()]))
 
@@ -92,6 +93,37 @@ class CheckpointTest(unittest.TestCase):
                 damaged['xr1_production']['config_sha256'] = 'b'*64
             with self.subTest(change=change), self.assertRaises(RuntimeError):
                 validate_production_checkpoint(damaged,ck['xr1_replay_contract'],expected_config='a'*64)
+
+    def test_batch_end_boundary_and_fractional_counters_fail_closed(self):
+        ck = checkpoint_fixture()
+        for change in ('current', 'after_batch_end', 'epoch', 'adam_fraction', 'scheduler_fraction'):
+            damaged = copy.deepcopy(ck)
+            progress = damaged['loops']['fit_loop']['epoch_loop.batch_progress']
+            if change == 'current':
+                progress['current']['ready'] -= 1
+            elif change == 'after_batch_end':
+                progress['total']['completed'] += 1
+                progress['current']['completed'] += 1
+            elif change == 'epoch':
+                damaged['epoch'] = 1
+            elif change == 'adam_fraction':
+                damaged['optimizer_states'][0]['state'][0]['step'] += .5
+            else:
+                damaged['lr_schedulers'][0]['last_epoch'] += .5
+            with self.subTest(change=change), self.assertRaises(RuntimeError):
+                validate_production_checkpoint(damaged,ck['xr1_replay_contract'])
+
+    def test_receipt_configuration_must_match_payload(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/'step-000002.ckpt'
+            ck = checkpoint_fixture()
+            publish_checkpoint(ck,path)
+            receipt_path = path.with_suffix('.verified.json')
+            row = json.loads(receipt_path.read_text())
+            row['config_sha256'] = 'b'*64
+            receipt_path.write_text(json.dumps(row))
+            with self.assertRaisesRegex(RuntimeError, 'Receipt configuration'):
+                load_verified(path,ck['xr1_replay_contract'])
 
     def test_interrupted_write_keeps_previous_commit(self):
         with tempfile.TemporaryDirectory() as folder:

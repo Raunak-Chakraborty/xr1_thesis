@@ -107,11 +107,20 @@ class ProductionRuntime(Callback):
         self.started = self.previous_end = self.fit_started
         self.initial_step = self.previous_step = int(trainer.global_step)
         self.emit(trainer, 'train_start', deadline_epoch=self.stop.deadline,
-                  workers=loader.num_workers, batch_size=loader.batch_size)
+                  workers=loader.num_workers, batch_size=loader.batch_size,
+                  torch_version=torch.__version__, lightning_version=__import__('lightning').__version__,
+                  prefetch_factor=loader.prefetch_factor, persistent_workers=loader.persistent_workers)
 
     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
         self.batch_started = time.perf_counter()
         self.data_pipeline_seconds = self.batch_started - self.previous_end
+        if int(trainer.global_step) == self.initial_step:
+            from mibot.data.datamodule.doosan_datamodule import shared_memory_budget
+            loader = trainer.train_dataloader
+            batch_bytes = sum(v.numel()*v.element_size() for v in batch.values() if isinstance(v, torch.Tensor))
+            budget = shared_memory_budget(batch_bytes, workers=loader.num_workers,
+                                          prefetch_factor=loader.prefetch_factor)
+            self.emit(trainer, 'tensor_ipc_budget', batch_tensor_bytes=batch_bytes, **budget)
         self.retained = int(batch['action_segments'].shape[0])
         self.tokens = int(batch['input_ids'].shape[1])
         self.views = int(batch['image_grid_thw'].shape[0])
@@ -202,5 +211,20 @@ class ProductionRuntime(Callback):
         self.stop.restore()
 
     def on_fit_end(self, trainer, pl_module):
-        self.emit(trainer, 'fit_end')
-        self.stop.restore()
+        try:
+            # Do not save here: Lightning has already advanced batch counters.
+            # The last completed batch must have published a verified receipt.
+            from mibot.utils.claix_checkpoint import load_verified
+            if self.last_saved != int(trainer.global_step):
+                raise RuntimeError('Training ended without a final boundary checkpoint')
+            if trainer.is_global_zero:
+                path = self.directory / f'step-{self.last_saved:06d}.ckpt'
+                load_verified(path, pl_module._replay_contract, resumable=False,
+                              expected_config=pl_module._compact_cfg['config_sha256'])
+            self.emit(trainer, 'fit_end', final_checkpoint_verified=True,
+                      end_to_end_seconds=time.perf_counter()-self.started,
+                      end_to_end_examples_per_second=(trainer.global_step-self.initial_step)
+                      * pl_module._replay_contract['batch_size'] * trainer.world_size
+                      / (time.perf_counter()-self.started))
+        finally:
+            self.stop.restore()

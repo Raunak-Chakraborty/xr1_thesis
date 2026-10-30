@@ -45,6 +45,12 @@ class TinyNetwork(torch.nn.Module):
 
 
 class TinyRunner(DoosanCompactRunner):
+    def training_step(self, batch, batch_idx):
+        if not hasattr(self, 'seen_indices'):
+            self.seen_indices = []
+        self.seen_indices.append(batch['x'][:,0].tolist())
+        return super().training_step(batch, batch_idx)
+
     def on_before_batch_transfer(self, batch, dataloader_idx):
         return {key:torch.from_numpy(value) for key,value in batch.items()}
     def configure_model(self):
@@ -98,12 +104,13 @@ class RuntimeTest(unittest.TestCase):
                 root=Path(folder)
                 full,_=tiny_run(root/'full',workers=workers)
                 expected=load_verified(root/'full/step-000008.ckpt',full._replay_contract,resumable=False)
-                for split in (3,6):
+                for split in (1,3,6,7):
                     run=root/f'split{split}'
                     _,first=tiny_run(run,workers=workers,stop_after=split)
                     self.assertEqual(first.global_step,split)
                     resumed,last=tiny_run(run,workers=workers,resume=(run/f'step-{split:06d}.ckpt',split))
                     self.assertEqual(last.global_step,8)
+                    self.assertEqual(resumed.seen_indices,full.seen_indices[split:])
                     actual=load_verified(run/'step-000008.ckpt',resumed._replay_contract,resumable=False)
                     self.assertTrue(torch.equal(expected['state_dict']['model.weight'],actual['state_dict']['model.weight']))
                     self.assertEqual(expected['lr_schedulers'],actual['lr_schedulers'])
@@ -113,6 +120,30 @@ class RuntimeTest(unittest.TestCase):
                     self.assertEqual(float(resumed.model.frozen),1.)
                     self.assertEqual(resumed.model.frozen.dtype,torch.bfloat16)
                     self.assertEqual(resumed.model.weight.dtype,torch.float32)
+                    rows=[json.loads(line) for line in (run/'telemetry.jsonl').read_text().splitlines()]
+                    steps=[r['step'] for r in rows if r['event']=='step']
+                    self.assertEqual(steps,list(range(1,9)))
+                    self.assertTrue(rows[-1]['final_checkpoint_verified'])
+
+    def test_telemetry_includes_loader_wait_and_final_checkpoint_io(self):
+        original_getitem=AugmentedFixture.__getitem__
+        original_save=ProductionRuntime.save
+        def slow_getitem(dataset,index):
+            time.sleep(.02)
+            return original_getitem(dataset,index)
+        def slow_save(runtime,*args):
+            time.sleep(.03)
+            return original_save(runtime,*args)
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(AugmentedFixture,'__getitem__',slow_getitem), \
+             patch.object(ProductionRuntime,'save',slow_save):
+            tiny_run(folder,workers=0,max_steps=1)
+            rows=[json.loads(line) for line in (Path(folder)/'telemetry.jsonl').read_text().splitlines()]
+            step=next(r for r in rows if r['event']=='step')
+            final=rows[-1]
+            self.assertGreaterEqual(step['pipeline_wait_seconds'],.04)
+            self.assertGreaterEqual(final['end_to_end_seconds'],.07)
+            self.assertLess(final['end_to_end_examples_per_second'],step['end_to_end_examples_per_second'])
 
     def test_deadline_stops_on_completed_optimizer_step(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -83,9 +83,11 @@ def validate_production_checkpoint(ck, contract, *, expected_config=None, resuma
         loop = ck['loops']['fit_loop']
         completed = loop['epoch_loop.automatic_optimization.optim_progress']['optimizer']['step']['total']['completed']
         batches = loop['epoch_loop.batch_progress']['total']
+        current = loop['epoch_loop.batch_progress']['current']
         if (completed != ck['global_step'] or batches['processed'] != completed
                 or batches['ready'] != completed or batches['started'] != completed
-                or batches['completed'] != completed - 1):
+                or batches['completed'] != completed - 1 or current != batches
+                or ck.get('epoch') != 0):
             raise RuntimeError('Checkpoint is not at an on_train_batch_end optimizer boundary')
     except (KeyError, TypeError) as error:
         raise RuntimeError('Incomplete Lightning optimizer/batch loop progress') from error
@@ -162,6 +164,8 @@ def load_verified(path, contract, *, expected_config=None, resumable=True):
     validate_production_checkpoint(ck, contract, expected_config=expected_config, resumable=resumable)
     if receipt['global_step'] != ck['global_step']:
         raise RuntimeError('Receipt step mismatch')
+    if receipt.get('config_sha256') != ck['xr1_production']['config_sha256']:
+        raise RuntimeError('Receipt configuration mismatch')
     return ck
 
 

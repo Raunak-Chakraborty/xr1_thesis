@@ -11,6 +11,7 @@ import torch
 from torch.utils.data import DataLoader, DistributedSampler
 from torch.utils.data import default_collate
 
+from mibot.data.datamodule.doosan_datamodule import shutdown_loader
 from mibot.data.datasets.doosan_json_dataset import DoosanJsonDataset, FrameSampleTable
 from mibot.utils.doosan_replay import (
     RankOffsetSampler, checkpoint_cursor, make_contract, seed_worker, stable_sample_seed, validate_cursor,
@@ -69,6 +70,9 @@ class ReplayTest(unittest.TestCase):
                 contract = make_contract(data_horizon=20, batch_size=6, world_size=1,
                                          sampler_seed=42, num_workers=workers)
                 self.assertEqual(checkpoint_cursor(contract, 2)['rank_sample_offset'], 12)
+                processes = list(getattr(iterator, '_workers', []))
+                shutdown_loader(loader, iterator)
+                self.assertTrue(all(not p.is_alive() for p in processes))
                 del iterator, loader
                 resumed_loader = fixture_loader(dataset, workers, step=2)
                 resumed_iterator = iter(resumed_loader)
@@ -82,6 +86,9 @@ class ReplayTest(unittest.TestCase):
                     for expected, actual in zip(baseline, full):
                         for key in expected:
                             np.testing.assert_array_equal(expected[key], actual[key])
+                processes = list(getattr(resumed_iterator, '_workers', []))
+                shutdown_loader(resumed_loader, resumed_iterator)
+                self.assertTrue(all(not p.is_alive() for p in processes))
                 del resumed_iterator, resumed_loader
 
     def test_partial_batch_and_sampler_failures(self):

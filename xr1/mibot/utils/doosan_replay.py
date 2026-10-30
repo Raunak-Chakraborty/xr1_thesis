@@ -166,12 +166,12 @@ def validate_full_compact_resume(ck: dict[str, Any], contract: dict[str, Any],
         if param_state['exp_avg'].shape != param_state['exp_avg_sq'].shape:
             raise RuntimeError('AdamW moment shape mismatch')
         t = param_state.get('step', None)
-        if t is None or int(t.item() if hasattr(t, 'item') else t) != step:
+        if t is None or (t.item() if hasattr(t, 'item') else t) != step:
             raise RuntimeError('AdamW step counter does not match global_step')
     schedulers = ck['lr_schedulers']
     if not schedulers or len(schedulers) != 1:
         raise RuntimeError('Missing scheduler state')
-    if int(schedulers[0].get('last_epoch', -1)) != step:
+    if schedulers[0].get('last_epoch', -1) != step:
         raise RuntimeError('Scheduler step does not match global_step')
     if not isinstance(ck['loops'], dict) or not ck['loops']:
         raise RuntimeError('Missing Lightning loop progress')

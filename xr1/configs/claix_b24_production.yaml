@@ -6,7 +6,7 @@ defaults:
 
 production:
   max_length: 12288
-  stop_margin_seconds: 1800
+  # Allocation deadlines/margins belong to the launcher mode, not this recipe.
   stop_after_step: null
 
 model:

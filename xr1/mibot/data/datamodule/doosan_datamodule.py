@@ -15,6 +15,7 @@ from copy import deepcopy
 
 import torch.distributed as dist
 import inspect
+import os
 import torch
 from mmengine import Config, DATASETS
 from torch.utils.data import (
@@ -29,6 +30,31 @@ from mibot.data.datasets.doosan_json_dataset import (
     DoosanJsonDataset,
 )
 from mibot.utils.doosan_replay import RankOffsetSampler, seed_worker
+
+
+def shared_memory_budget(batch_bytes=0, *, workers, prefetch_factor):
+    """Conservative tensor-IPC headroom, not a bound on worker/model host RAM."""
+    if not workers:
+        return dict(free_bytes=None, required_bytes=0)
+    usage = os.statvfs('/dev/shm')
+    free = usage.f_bavail * usage.f_frsize
+    # Reserve two extra batches and a factor of two for IPC overlap/variation.
+    required = max(1024**3, 2 * batch_bytes * (workers * prefetch_factor + 2))
+    if free < required:
+        raise RuntimeError(f'Insufficient /dev/shm: free={free}, required={required}')
+    return dict(free_bytes=free, required_bytes=required)
+
+
+def shutdown_loader(loader, iterator):
+    """Explicitly reap persistent workers before constructing another probe case.
+
+    PyTorch exposes no public iterator close API. This private hook is exercised
+    locally and must also be checked on the exact CLAIX torch version.
+    """
+    if iterator is not None and hasattr(iterator, '_shutdown_workers'):
+        iterator._shutdown_workers()
+    if loader is not None:
+        loader._iterator = None
 
 
 class ReplayDataLoader(DataLoader):
@@ -92,6 +118,8 @@ class DoosanDataModule(BaseDataModule):
             raise ValueError("Deterministic replay supports workers=0,4,8")
         if self.deterministic_replay and data.get("in_order", True) is not True:
             raise ValueError("Deterministic replay requires in_order=True")
+        if self.deterministic_replay and self.num_workers and self.prefetch_factor > 2:
+            raise ValueError("Qualified replay prefetch_factor must be at most 2")
         if self.deterministic_replay:
             self.collate_fn.strict_samples = True
             self.collate_fn.expected_views = 2
@@ -186,6 +214,8 @@ class DoosanDataModule(BaseDataModule):
             raise RuntimeError("Worker replay requires DataLoader with explicit in_order support")
 
         if self.num_workers > 0:
+            if self.deterministic_replay:
+                shared_memory_budget(workers=self.num_workers, prefetch_factor=self.prefetch_factor)
             kwargs[
                 "prefetch_factor"
             ] = self.prefetch_factor

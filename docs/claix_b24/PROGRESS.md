@@ -5,6 +5,73 @@ Baseline: `52676ccfa3b52f05de51d3d7407f33855159ac95`, branch
 ancestor directories. The complete brief and all 18 transferred reference files
 were read before editing. Reference checksums are recorded separately below.
 
+## Focused correctness / qualification-launcher review (2026-10-30)
+
+The WIP recovery commit `3c41f20` is preserved; this review works from that commit
+in the isolated worktree. No original broad source audit was repeated. Earlier
+phase evidence below describes the previous session, not new CLAIX qualification.
+
+Implemented during this review:
+
+- Separate CPU (zero GPUs, 12 CPUs, 48 GiB, 20 min), H100 qualification (one H100,
+  12 CPUs, 96 GiB, 45 min) and production (one H100, 12 CPUs, 96 GiB, 23:45:00)
+  Slurm drafts. Production script fixes production mode. No script was submitted.
+- Authoritative allocation TimeLimit/EndTime/AllocTRES checks for each launcher
+  mode; safety margins 120/600/1800 s respectively. Only production requires exact
+  23:45:00; qualification refuses walltimes above two hours. All modes fail closed
+  on wrong GPU/CPU/RAM allocation or an expired safe deadline. Qualification needs
+  no release record; production still checks every source/plan/evidence gate.
+- CPU probe measures all 0/4/8 cases: 96 examples per full prefix and 48 per resumed
+  suffix, with strict 24 examples / 48 views each. Deadline/signal/failure cannot
+  publish partial PASS. Bounded prefetch, shared-memory floor/batch-size estimate,
+  RSS snapshots, 60-second CPU worker timeout, explicit persistent-worker cleanup.
+- Checkpoint validation now checks epoch-zero current/total Lightning batch-end
+  progress, exact optimizer/scheduler counters (fractional values rejected), and
+  receipt/payload configuration agreement. Final fit revalidates the last saved
+  boundary and records final-checkpoint verification; it never saves after the
+  callback when loop counters have changed. Existing transactional publication
+  and newest-two/step-2000 retention are retained.
+- Resume coverage expanded to steps 1/3/6/7 of an eight-step synthetic horizon for
+  every worker count, comparing the exact suffix consumed as well as FP32 model,
+  AdamW moments/steps and cosine state. Workers are reaped and checked no longer
+  alive in multiprocessing replay tests. ReplayDataLoader keeps its original-epoch
+  length: changing it to the suffix would break restored absolute counters.
+- Final telemetry includes final checkpoint I/O/verification in the fit-end rate;
+  a deliberate loader/save delay test verifies timing. Per-step rates continue to
+  include data wait and earlier checkpoint I/O. Version and IPC-budget telemetry
+  added. No actual GPU telemetry was collected; eight workers prove no utilization.
+- Hydra command composition (including spaces/resume) tested; Hydra output stays
+  under run root. Offline datasets/Hub/Transformers, disabled W&B, local PYTHONPATH,
+  thread limits, signal-handler restoration and run-root lock behavior are checked.
+  State/action semantics, normalization and train/validation/test splits unchanged.
+
+Final focused review run: **68 tests passed in 7.470 s**, exit 0, with CUDA
+hidden; Python 3.11.15, torch 2.7.1+cu128 and Lightning 2.5.1.post0. `compileall`,
+`bash -n` for all three scripts, `git diff --check`, and CPU/H100/production
+launcher dry-runs all exited 0. Dry-runs created no result directories. The
+existing offline registry/backbone mocks, NumPy worker transport and mocked
+DataModule rank lookup remain explicit limitations; no model/data downloads,
+Slurm calls/submissions, GPU training, push or baseline edits occurred.
+
+Exact final results and commands are recorded in
+`evidence/review_commands.txt`, `evidence/review_cpu_tests.txt` and
+`evidence/review_dry_runs.txt` after the final verification run. The intermediate
+59-test run had one fixture error because the old mocked scontrol response omitted
+AllocTRES; the fixture was corrected to describe the now-required resources.
+The next run passed all 67 tests in 7.434 s. Neither run used GPU or real data.
+
+Remaining CLAIX-only gates: torch **2.8.0** / Lightning **2.5.3** restart/counter
+behavior; real DDP/tensor IPC, exact processor/augmentation contents; real b24
+H100 memory and sustained end-to-end rates; host RAM and shared-memory peaks;
+Slurm GRES syntax, authoritative time metadata, USR1/TERM delivery and deadline
+stops; persistent-worker teardown on torch 2.8; shared filesystem locks,
+hard-link/rename/fsync, checkpoint size, write/read/verify duration and failure
+recovery; real validation inference and all 34 validation episodes. The original
+token certificate/frozen split identities and scientific LR/horizon approval are
+still required. **No exact-version or production-ready claim is made.**
+
+## Previous session evidence
+
 ## Phase A — audit (completed locally)
 
 - Existing fixed-horizon replay uses a seeded DistributedSampler at epoch zero,
@@ -89,7 +156,7 @@ data is used only for split-identity audit, never inference or model selection.
 
 ## Phase F — evidence and handoff
 
-Final local run: **57 tests passed in 3.565 seconds**, exit code 0, using PyTorch
+Previous session final local run: **57 tests passed in 3.565 seconds**, exit code 0, using PyTorch
 2.7.1+cu128 (CUDA hidden), Python 3.11.15, torchvision 0.22.1+cu128,
 transformers 4.48.1 and Lightning 2.5.1.post0. Exact commands and raw output are
 recorded in [evidence/commands.txt](evidence/commands.txt) and
@@ -101,8 +168,8 @@ cached lightweight wheels provided Lightning/Hydra instead.
 
 Additional executed gates: `python3 -m compileall -q xr1 scripts`, `bash -n
 scripts/claix_b24_production.sbatch`, `git diff --check`, qualification launcher
-dry-run, and SHA256 recheck of all 18 transferred files: **all exit 0**. HEAD
-remains the pinned commit and the branch remains the isolated development branch.
+dry-run, and SHA256 recheck of all 18 transferred files: **all exit 0**. At that earlier evidence capture, HEAD remained the pinned commit; the subsequent
+WIP recovery commit is now preserved and the isolated branch remains unchanged.
 The raw launcher plan is in `evidence/qualification_dry_run.txt`; reference hashes
 are in `evidence/reference_sha256.txt`.
 

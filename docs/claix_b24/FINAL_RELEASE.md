@@ -151,59 +151,30 @@ For local validation only, the existing approved
 file on CLAIX or pass `--overrides` explicitly. Its exact contents are bound in
 the production plan. It is an ignored local input, not a new training recipe.
 
-## Read-only storage/quota preflight
+## Read-only storage preflight
 
-Run separately at the actual existing persistent parent, before a fresh run:
+The current policy and exact release-record binding are in
+[FINAL_CORRECTIONS.md, section 6](FINAL_CORRECTIONS.md#6-storage-protection-after-long-queue-waits).
+Before submission, save the actual report from:
 
 ```bash
 "$XR1_PYTHON" "$XR1_WORKTREE/scripts/claix_b24_storage_preflight.py" \
-  --run-root "$XR1_RUN_ROOT" --filesystem-source '<reviewed findmnt SOURCE>' \
-  > /existing/persistent/review/storage-initial.json
+  --run-root "$XR1_RUN_ROOT" --filesystem-source '<verified findmnt SOURCE>' \
+  > /existing/persistent/review/storage-submission.json
 ```
 
-This does not create the run root or write/delete probe files. `findmnt` must
-match the operator's confirmed persistent source; tmpfs/overlay/ramfs and
-temporary run paths fail. `statvfs.f_bavail` must show at least **30 GiB** usable
-headroom and `f_favail` at least **10000** inodes. The conservative peak budget
-is six milestones + two recovery + one safe-stop + one new 2 GiB compact
-publication (20 GiB), plus 4 GiB for logs and temporary metadata; 30 GiB leaves
-additional headroom. Existing retained/orphan/unrelated files already consume
-space and must be included in operator review. Resume should also retain at
-least this free headroom; nothing is deleted by preflight.
+Require a verified approved persistent filesystem, **30 GiB** available and
+**10000** available inodes. The report records actual source/target/type and
+space/inode measurements without creating the run root or writing probes.
+Optionally add `--quota-diagnostics --project-id 44885` for raw `lfs quota` and
+`r_quota` diagnostics; their output does not affect approval. Bind the saved
+report path and SHA-256 in `storage_preflight` in the release record. Operator
+quota attestations and identical quota-query output are not required.
 
-It queries `lfs quota -u` and `quota -s -u`, with a ten-second bound per query.
-If the Lustre project ID is known, add `--project-id ID` to query that quota;
-GID is **not** assumed to be a project ID. Raw results are retained in the
-report. Automatic interpretation across quota systems is intentionally not
-trusted: quota remains **UNVERIFIED**, exit 1, until an explicit operator
-attestation establishes both applicable user and project limits (including
-soft/hard limits, grace and inode quotas), or establishes non-applicability.
-There is no automatic quota PASS and no CLAIX quota claim from this local run.
-
-After actual site quota review, create a separate attestation JSON with:
-
-```json
-{
-  "reviewed_by": "REAL_OPERATOR",
-  "timestamp": "CURRENT_UTC_ISO_TIMESTAMP",
-  "run_root": "/EXACT/PERSISTENT/RUN/ROOT",
-  "filesystem_source": "EXACT_SOURCE_FROM_REPORT",
-  "uid": 0,
-  "user_and_project_reviewed": true,
-  "usable_bytes": 0,
-  "usable_inodes": 0,
-  "quota_query_sha256": "EXACT_QUOTA_QUERY_SHA256_FROM_REPORT"
-}
-```
-
-The UID, usable limits and timestamp above are placeholders, not approval.
-Use effective remaining capacity after **both** applicable quota limits and
-retention/log/publication reservations. Repeat preflight with the same arguments
-and `--quota-review /absolute/review.json`. The attestation must be no older
-than one hour and match run root, filesystem, UID and current raw quota-query
-hash. Changed quota output requires fresh review. Invalid/unknown quota,
-filesystem or inode status exits nonzero. Preserve and hash the resulting
-report as release evidence; repeat close to submission.
+At allocation, the launcher measures current available bytes and inodes and
+reverifies the persistent filesystem/SOURCE before model loading. There is no
+one-hour review limit or manual renewal after a long queue wait. Missing or
+corrupt report evidence and unverified release gates remain rejected.
 
 ## Release record preparation and evidence
 
@@ -357,8 +328,8 @@ the reviewed base. In particular: LR 2e-5 / 5e-6 / 5e-7, 500 warmup steps,
 48284-step horizon, batch 24, workers 4, last_n=1, two cameras, BF16 compute,
 FP32 selected trainable weights and 250-step checkpoint interval remain intact.
 
-No production gate is certified PASS by this review. Remaining work is actual
-persistent storage/quota review, final-source H100 evidence, applicable held-out
+No production gate is certified PASS by this review. Remaining work is the
+actual persistent storage report, final-source H100 evidence, applicable held-out
 validation and scientific LR/horizon approval, nine explicit gate decisions,
 and final review of the exact production record before any submission.
 

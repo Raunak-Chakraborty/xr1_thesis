@@ -38,7 +38,7 @@ def reviewed_fixture(root):
     artifact = root/'synthetic-artifact.txt'
     artifact.write_text('SYNTHETIC TEST ONLY: no hardware qualification')
     plan = dict(batch_size=24, max_length=12288, data_horizon=48284, scheduler_steps=48284,
-                warmup_steps=500, workers=4, world_size=1, run_root=str(root/'run'), overrides=[])
+                warmup_steps=500, workers=4, world_size=1, run_root=f'/hpcwork/SYNTHETIC/{root.name}/run', overrides=[])
     record = dict(schema='claix-b24-release-v2', plan=plan, source_tree_sha256=launch.tree_digest(),
                   reviewed_by='synthetic reviewer', reviewed_at='2026-11-01',
                   scientific_parameters=release.SCIENCE, scientific_approved_by='synthetic scientist', gates={})
@@ -56,19 +56,16 @@ def reviewed_fixture(root):
         record['gates'][gate] = dict(status='PASS', evidence=str(envelope),
             sha256=hashlib.sha256(envelope.read_bytes()).hexdigest(),
             applicability_reviewed_by='synthetic reviewer', applicability_rationale='test fixture only')
-    review = root/'synthetic-quota-review.json'
-    now = datetime.now(timezone.utc).isoformat()
-    review.write_text(json.dumps(dict(timestamp=now, reviewed_by='synthetic operator',
-        run_root=plan['run_root'], filesystem_source='synthetic-lustre', project_id=42,
-        uid=os.getuid(), user_and_project_reviewed=True, quota_query_sha256='a'*64)))
     report = root/'synthetic-storage-report.json'
-    report.write_text(json.dumps(dict(timestamp=now, status='PASS', stage='submission',
-        quota_verification='explicit_operator_review', run_root=plan['run_root'], project_id=42,
-        quota_query_sha256='a'*64, filesystem=dict(source='synthetic-lustre'),
-        quota_review_sha256=hashlib.sha256(review.read_bytes()).hexdigest())))
+    report.write_text(json.dumps(dict(schema='claix-b24-storage-v1',
+        timestamp=datetime.now(timezone.utc).isoformat(), status='PASS', stage='submission',
+        run_root=plan['run_root'], existing_parent='/hpcwork/SYNTHETIC', project_id=44885,
+        filesystem=dict(source='synthetic-lustre', target='/hpcwork', fstype='lustre'),
+        available_bytes=40*storage.GIB, available_inodes=20000,
+        budget=dict(required_free_bytes=30*storage.GIB, required_free_inodes=10000),
+        checks=dict(persistent_filesystem=True, filesystem_headroom=True, inodes=True), abort_reasons=[])))
     record['storage_preflight']=dict(report=str(report), report_sha256=hashlib.sha256(report.read_bytes()).hexdigest(),
-        quota_review=str(review), quota_review_sha256=hashlib.sha256(review.read_bytes()).hexdigest(),
-        filesystem_source='synthetic-lustre', project_id=42)
+        filesystem_source='synthetic-lustre', project_id=44885)
     return record
 
 
@@ -341,121 +338,113 @@ class StoragePreflightTest(unittest.TestCase):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.root = Path(self.folder.name)
-        self.run = '/hpcwork/account/new-run'
-        self.mount = self.root  # synthetic existing mount only, never CLAIX
+        self.run = str(self.root/'new-run')
         self.location = dict(resolved_path=self.run, existing_parent=str(self.root),
-            filesystem=dict(source='approved', target=str(self.mount), fstype='lustre'))
+            filesystem=dict(source='approved', target=str(self.root), fstype='lustre'))
         self.stat = SimpleNamespace(f_bavail=40, f_frsize=storage.GIB, f_favail=20000)
         self.user_output = self.snapshot('uid', os.getuid())
-        self.project_output = self.snapshot('projid', 42)
+        self.project_output = self.snapshot('pid', 44885)
         for mock in (patch.object(storage, 'inspect_directory', return_value=self.location),
                      patch.object(storage.os, 'statvfs', return_value=self.stat),
-                     patch.object(storage, 'query', side_effect=self.query)):
+                     patch.object(storage, 'query', side_effect=self.query),
+                     patch('claix_b24_filesystem.APPROVED_ROOTS', (self.root,))):
             mock.start()
             self.addCleanup(mock.stop)
 
     def snapshot(self, identity, value):
         return (f'Disk quotas for test ({identity} {value}):\n'
-            'Filesystem kbytes quota limit grace files quota limit grace\n'
-            f'{self.mount} 1000 100000000 110000000 - 10 200000 210000 -\n')
+            'Filesystem kbytes bquota blimit bgrace files iquota ilimit igrace\n'
+            f'{self.root} 1000 100000000 110000000 - 10 200000 210000 -\n')
 
     def query(self, cmd):
         return dict(command=cmd, returncode=0, stderr='', stdout=(self.user_output
-            if '-u' in cmd and cmd[0]=='lfs' else self.project_output if '-p' in cmd else 'generic quota output'))
+            if '-u' in cmd else self.project_output if '-p' in cmd else 'r_quota diagnostics'))
 
-    def attest(self, age=0, policy=False):
-        report = storage.evaluate(self.run, 'approved', project_id=42)
-        reviewed = datetime.now(timezone.utc)-timedelta(seconds=age)
-        row = dict(reviewed_by='synthetic operator', timestamp=reviewed.isoformat(),
-            run_root=self.run, filesystem_source='approved', uid=os.getuid(), project_id=42,
-            user_and_project_reviewed=True, usable_bytes=40*storage.GIB, usable_inodes=20000,
-            quota_query_sha256=report['quota_query_sha256'])
-        if policy:
-            row.update(allocation_refresh_policy=storage.REFRESH_POLICY,
-                       allocation_valid_until=(reviewed+timedelta(days=7)).isoformat())
-        path = self.root/'review.json'
-        path.write_text(json.dumps(row))
-        return path
+    def evaluate(self, stage='submission', diagnostics=False):
+        return storage.evaluate(self.run, 'approved', 44885, stage=stage, quota_diagnostics=diagnostics)
 
-    def evaluate(self, path=None, stage='submission'):
-        return storage.evaluate(self.run, 'approved', path, 42, stage=stage)
+    def bound_record(self, age=0):
+        report = self.evaluate(diagnostics=True)
+        report['timestamp'] = (datetime.now(timezone.utc)-timedelta(seconds=age)).isoformat()
+        path = self.root/'synthetic-storage-report.json'
+        path.write_text(json.dumps(report))
+        return dict(plan=dict(run_root=self.run), storage_preflight=dict(report=str(path),
+            report_sha256=hashlib.sha256(path.read_bytes()).hexdigest(), filesystem_source='approved', project_id=44885))
 
-    def test_quota_unknown_and_low_headroom_fail_closed_without_writes(self):
-        self.assertEqual(self.evaluate()['status'], 'UNVERIFIED')
+    def test_storage_pass_needs_no_attestation_or_quota_queries_and_does_not_write(self):
+        with patch.object(storage, 'query', side_effect=AssertionError('optional query')):
+            result = self.evaluate()
+        self.assertEqual(result['status'], 'PASS')
+        self.assertEqual(result['filesystem'], self.location['filesystem'])
+        self.assertEqual(result['available_bytes'], 40*storage.GIB)
+        self.assertEqual(result['available_inodes'], 20000)
+        self.assertEqual(result['quota_queries'], [])
         self.assertEqual(list(self.root.iterdir()), [])
-        review = self.attest()
-        self.assertEqual(self.evaluate(review)['status'], 'PASS')
-        for change in ('bytes', 'inodes', 'snapshot'):
-            self.stat.f_bavail, self.stat.f_favail = 40, 20000
-            if change=='bytes': self.stat.f_bavail=29
-            if change=='inodes': self.stat.f_favail=1
-            if change=='snapshot': self.user_output += 'changed quota output'
-            result = self.evaluate(review, 'allocation')
-            self.assertNotEqual(result['status'], 'PASS')
-            self.assertTrue(result['abort_reasons'])
-        self.assertEqual({p.name for p in self.root.iterdir()}, {'review.json'})
 
-    def test_long_queue_requires_explicit_policy_and_fresh_identical_lustre_quotas(self):
-        for age in (7200, 3*86400):
-            review = self.attest(age)
-            result = self.evaluate(review, 'allocation')
-            self.assertEqual(result['quota_status'], 'UNVERIFIED')
-            self.assertIn('stale', result['reason'])
-            review = self.attest(age, policy=True)
-            self.assertEqual(self.evaluate(review)['status'], 'UNVERIFIED')
-            result = self.evaluate(review, 'allocation')
-            self.assertEqual(result['status'], 'PASS')
-            self.assertEqual(result['quota_verification'], storage.REFRESH_POLICY)
-            self.assertEqual(result['available_bytes'], 40*storage.GIB)
-        self.stat.f_bavail=1
-        self.assertEqual(self.evaluate(review, 'allocation')['status'], 'FAIL')
+    def test_insufficient_disk_space_and_exact_boundary(self):
+        self.stat.f_frsize = 1
+        for available in (0, 30*storage.GIB-1, 30*storage.GIB):
+            self.stat.f_bavail = available
+            for stage in ('submission', 'allocation'):
+                with self.subTest(available=available, stage=stage):
+                    result = self.evaluate(stage)
+                    self.assertEqual(result['status'], 'PASS' if available == 30*storage.GIB else 'FAIL')
+                    self.assertEqual(result['checks']['filesystem_headroom'], available >= 30*storage.GIB)
 
-    def test_expiry_future_wrong_identity_and_ambiguous_queries_abort(self):
-        for change in ('expired', 'fresh_expired', 'future', 'long_policy', 'uid', 'project', 'user_failed',
-                       'project_failed', 'rounded', 'grace', 'warning', 'format', 'nfs'):
-            self.user_output=self.snapshot('uid', os.getuid())
-            self.project_output=self.snapshot('projid', 42)
-            self.location['filesystem']['fstype']='lustre'
-            review=self.attest(7200, policy=True)
-            row=json.loads(review.read_text())
-            if change=='expired': row['allocation_valid_until']=(datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat()
-            if change=='fresh_expired':
-                row['timestamp']=datetime.now(timezone.utc).isoformat()
-                row['allocation_valid_until']=(datetime.now(timezone.utc)-timedelta(seconds=1)).isoformat()
-            if change=='future': row['timestamp']=(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat()
-            if change=='long_policy': row['allocation_valid_until']=(datetime.now(timezone.utc)+timedelta(days=8)).isoformat()
-            if change=='uid': row['uid']=-1
-            if change=='project': row['project_id']=99
-            if change=='rounded': self.user_output=self.user_output.replace('1000 ', '1M ')
-            if change=='grace': self.project_output=self.project_output.replace(' - ', ' 6days ', 1)
-            if change=='format': self.user_output='unknown site format'
-            if change=='nfs': self.location['filesystem']['fstype']='nfs'
-            if change in ('rounded', 'grace', 'format'):
-                # Even an operator-reviewed unknown snapshot cannot be auto-refreshed.
-                row['quota_query_sha256']=self.evaluate()['quota_query_sha256']
-            review.write_text(json.dumps(row))
-            original=self.query
-            def changed(cmd):
-                result=original(cmd)
-                if change=='warning': result['stderr']='warning: incomplete quota information'
-                if change=='user_failed' and '-u' in cmd: result['returncode']=1
-                if change=='project_failed' and '-p' in cmd: result['returncode']=1
-                return result
-            with patch.object(storage, 'query', side_effect=changed):
-                if change in ('warning', 'user_failed', 'project_failed'):
-                    row['quota_query_sha256']=self.evaluate()['quota_query_sha256']
-                    review.write_text(json.dumps(row))
-                with self.subTest(change=change):
-                    self.assertNotEqual(self.evaluate(review, 'allocation')['status'], 'PASS')
+    def test_insufficient_inodes_and_exact_boundary(self):
+        for available in (-1, 0, 9999, 10000):
+            self.stat.f_favail = available
+            for stage in ('submission', 'allocation'):
+                with self.subTest(available=available, stage=stage):
+                    result = self.evaluate(stage)
+                    self.assertEqual(result['status'], 'PASS' if available == 10000 else 'FAIL')
+                    self.assertEqual(result['checks']['inodes'], available >= 10000)
 
-    def test_bound_allocation_review_cannot_be_changed(self):
-        review=self.attest(7200, policy=True)
-        record=dict(plan=dict(run_root=self.run), storage_preflight=dict(quota_review=str(review),
-            quota_review_sha256=hashlib.sha256(review.read_bytes()).hexdigest(), filesystem_source='approved', project_id=42))
+    def test_long_queue_and_changed_shared_quota_do_not_abort(self):
+        for age in (7200, 3*86400, 8*86400):
+            record = self.bound_record(age)
+            self.user_output += 'changed shared usage'
+            self.project_output += 'changed shared usage'
+            with self.subTest(age=age), patch.object(storage, 'query', side_effect=AssertionError('not essential')):
+                result = storage.allocation_recheck(record)
+                self.assertEqual(result['status'], 'PASS')
+                self.assertEqual(result['stage'], 'allocation')
+                self.assertEqual(result['available_bytes'], 40*storage.GIB)
+        self.stat.f_bavail = 1
+        self.assertEqual(storage.allocation_recheck(record)['status'], 'FAIL')
+        self.stat.f_bavail, self.stat.f_favail = 40, 9999
+        self.assertEqual(storage.allocation_recheck(record)['status'], 'FAIL')
+
+    def test_optional_real_claix_quota_format_and_query_failures_are_diagnostic_only(self):
+        result = self.evaluate(diagnostics=True)
+        self.assertEqual(result['status'], 'PASS')
+        self.assertIn('(pid 44885)', result['quota_queries'][1]['stdout'])
+        self.assertIn('bquota blimit bgrace', result['quota_queries'][0]['stdout'])
+        for diagnostic in (dict(returncode=1, stderr='quota unavailable'), dict(error='timeout'),
+                           dict(returncode=0, stdout='unknown format', stderr='warning')):
+            with self.subTest(diagnostic=diagnostic), patch.object(storage, 'query', return_value=diagnostic):
+                self.assertEqual(self.evaluate(diagnostics=True)['status'], 'PASS')
+
+    def test_bound_allocation_report_cannot_be_changed_or_removed(self):
+        record = self.bound_record()
+        path = Path(record['storage_preflight']['report'])
         self.assertEqual(storage.allocation_recheck(record)['status'], 'PASS')
-        review.write_text('{}')
-        with self.assertRaisesRegex(RuntimeError, 'changed'):
+        path.write_text('{}')
+        with self.assertRaisesRegex(RuntimeError, 'storage evidence'):
             storage.allocation_recheck(record)
+        path.unlink()
+        with self.assertRaisesRegex(RuntimeError, 'storage evidence'):
+            storage.allocation_recheck(record)
+
+    def test_allocation_reverifies_filesystem_and_source(self):
+        record = self.bound_record(7200)
+        for reason in ('unapproved tmpfs mount', 'filesystem source changed', 'findmnt unavailable'):
+            with self.subTest(reason=reason), patch.object(storage, 'inspect_directory', side_effect=RuntimeError(reason)), \
+                 self.assertRaisesRegex(RuntimeError, reason):
+                storage.allocation_recheck(record)
+        with patch.object(storage, 'inspect_directory', return_value=self.location) as inspect:
+            self.assertEqual(storage.allocation_recheck(record)['status'], 'PASS')
+            inspect.assert_called_once_with(self.run, allow_missing=True, expected_source='approved')
 
 
 class MonitorQualificationTest(unittest.TestCase):

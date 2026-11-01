@@ -84,31 +84,42 @@ def validate_review(record):
 
 
 def validate_storage_binding(record):
-    """Bind a real pre-submission review; its age is re-evaluated at allocation."""
+    """Bind the actual submission measurement; allocation measures space anew."""
+    from claix_b24_filesystem import approved, PERSISTENT_TYPES
+    from claix_b24_storage_preflight import MIN_FREE_BYTES, MIN_FREE_INODES
+
     binding = record.get('storage_preflight', {})
-    for key in ('report', 'quota_review'):
-        path = Path(binding.get(key, ''))
-        if not path.is_absolute() or file_digest(path) != binding.get(key+'_sha256'):
-            raise RuntimeError('Missing or changed submission storage evidence: ' + key)
-    report = json.loads(Path(binding['report']).read_text())
-    review = json.loads(Path(binding['quota_review']).read_text())
-    checked = datetime.fromisoformat(report['timestamp'])
-    reviewed = datetime.fromisoformat(review['timestamp'])
-    if (checked.tzinfo is None or reviewed.tzinfo is None
-            or not 0 <= (checked-reviewed).total_seconds() <= 3600
+    path = Path(binding.get('report', ''))
+    if not path.is_absolute() or not path.is_file() or file_digest(path) != binding.get('report_sha256'):
+        raise RuntimeError('Missing or changed submission storage evidence: report')
+    try:
+        report = json.loads(path.read_text())
+        checked = datetime.fromisoformat(report['timestamp'])
+        fs = report['filesystem']
+        root, parent = (Path(report[key]) for key in ('run_root', 'existing_parent'))
+        mount = Path(fs['target'])
+        if not all(isinstance(value, dict) for value in (fs, report.get('checks'), report.get('budget'))):
+            raise ValueError('Missing storage measurements/checks')
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise RuntimeError('Invalid pre-submission storage report') from error
+    if (checked.tzinfo is None
+            or report.get('schema') != 'claix-b24-storage-v1'
             or report.get('status') != 'PASS' or report.get('stage') != 'submission'
-            or report.get('quota_verification') != 'explicit_operator_review'
             or report.get('run_root') != record['plan']['run_root']
-            or review.get('run_root') != record['plan']['run_root']
-            or report.get('quota_review_sha256') != binding['quota_review_sha256']
-            or report.get('quota_query_sha256') != review.get('quota_query_sha256')
             or not binding.get('filesystem_source')
-            or report.get('filesystem', {}).get('source') != binding['filesystem_source']
-            or review.get('filesystem_source') != binding['filesystem_source']
+            or fs.get('source') != binding['filesystem_source']
+            or fs.get('fstype') not in PERSISTENT_TYPES
+            or not all(p.is_absolute() and approved(p) for p in (root, parent, mount))
+            or not root.is_relative_to(parent) or not parent.is_relative_to(mount)
             or report.get('project_id') != binding.get('project_id')
-            or review.get('project_id') != binding.get('project_id')
-            or not review.get('reviewed_by') or review.get('user_and_project_reviewed') is not True):
-        raise RuntimeError('Invalid pre-submission storage/quota review')
+            or report.get('abort_reasons') != []
+            or any(report.get('checks', {}).get(key) is not True
+                   for key in ('persistent_filesystem', 'filesystem_headroom', 'inodes'))
+            or any(type(report.get(key)) is not int or report[key] < minimum
+                   for key, minimum in (('available_bytes', MIN_FREE_BYTES), ('available_inodes', MIN_FREE_INODES)))
+            or report.get('budget', {}).get('required_free_bytes') != MIN_FREE_BYTES
+            or report.get('budget', {}).get('required_free_inodes') != MIN_FREE_INODES):
+        raise RuntimeError('Invalid pre-submission storage report')
 
 
 
@@ -127,8 +138,7 @@ def main(argv=None):
     elif args.output:
         record = dict(schema='claix-b24-release-v2', source_tree_sha256=tree_digest(),
                       checkout=checkout_identity(), plan=plan, scientific_parameters=SCIENCE,
-                      storage_preflight=dict(report='', report_sha256='', quota_review='',
-                          quota_review_sha256='', filesystem_source='', project_id=None),
+                      storage_preflight=dict(report='', report_sha256='', filesystem_source='', project_id=None),
                       scientific_approved_by='', reviewed_by='', reviewed_at='',
                       gates={gate: dict(status='UNVERIFIED', evidence='', sha256='',
                               applicability_reviewed_by='', applicability_rationale='') for gate in GATES})

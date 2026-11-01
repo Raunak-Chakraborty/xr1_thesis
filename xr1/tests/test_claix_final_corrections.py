@@ -194,26 +194,64 @@ class ExactRestartTest(unittest.TestCase):
 
 
 class AllocationStorageGateTest(unittest.TestCase):
-    def test_release_binds_submission_report_and_attestation(self):
+    def test_release_binds_actual_submission_report_and_rejects_corrupt_or_missing_evidence(self):
+        changes = ('missing', 'file_missing', 'relative_path', 'report_changed', 'invalid_json', 'empty',
+                   'unverified', 'allocation_stage', 'run_root', 'source', 'project', 'tmpfs', 'mount',
+                   'bytes', 'inodes', 'measurements_missing', 'checks', 'budget', 'timestamp')
         with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder)
-            for change in ('missing','report_changed','review_changed','unverified','old_at_submission'):
-                record=reviewed_fixture(root)
-                binding=record['storage_preflight']
-                if change=='missing': del record['storage_preflight']
-                elif change=='report_changed': Path(binding['report']).write_text('{}')
-                elif change=='review_changed': Path(binding['quota_review']).write_text('{}')
+            root = Path(folder)
+            for change in changes:
+                record = reviewed_fixture(root)
+                binding = record['storage_preflight']
+                path = Path(binding['report'])
+                if change == 'missing': del record['storage_preflight']
+                elif change == 'file_missing': path.unlink()
+                elif change == 'relative_path': binding['report'] = 'relative.json'
+                elif change == 'report_changed': path.write_text('{}')
                 else:
-                    path=Path(binding['report']); row=json.loads(path.read_text())
-                    if change=='unverified': row['status']='UNVERIFIED'
-                    else: row['timestamp']='2020-01-01T00:00:00+00:00'
-                    path.write_text(json.dumps(row));binding['report_sha256']=hashlib.sha256(path.read_bytes()).hexdigest()
-                with self.subTest(change=change), self.assertRaises(RuntimeError): release.validate_review(record)
+                    row = json.loads(path.read_text())
+                    if change == 'unverified': row['status'] = 'UNVERIFIED'
+                    if change == 'allocation_stage': row['stage'] = 'allocation'
+                    if change == 'run_root': row['run_root'] += '-other'
+                    if change == 'source': row['filesystem']['source'] = 'other'
+                    if change == 'project': row['project_id'] = 99
+                    if change == 'tmpfs': row['filesystem']['fstype'] = 'tmpfs'
+                    if change == 'mount': row['filesystem']['target'] = '/tmp'
+                    if change == 'bytes': row['available_bytes'] = 30*1024**3-1
+                    if change == 'inodes': row['available_inodes'] = 9999
+                    if change == 'measurements_missing': del row['available_bytes']
+                    if change == 'checks': row['checks']['inodes'] = False
+                    if change == 'budget': row['budget']['required_free_bytes'] = 1
+                    if change == 'timestamp': row['timestamp'] = 'invalid'
+                    if change == 'empty': row = {}
+                    path.write_text('{' if change == 'invalid_json' else json.dumps(row))
+                    binding['report_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+                with self.subTest(change=change), self.assertRaises(RuntimeError):
+                    release.validate_review(record)
+
+    def test_old_submission_report_does_not_expire_or_approve_unverified_gates(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            record = reviewed_fixture(root)
+            binding = record['storage_preflight']
+            report = Path(binding['report'])
+            row = json.loads(report.read_text())
+            row['timestamp'] = '2020-01-01T00:00:00+00:00'
+            report.write_text(json.dumps(row))
+            binding['report_sha256'] = hashlib.sha256(report.read_bytes()).hexdigest()
+            release.validate_review(record)
+            path = root/'release.json'
+            for gate in launch.GATES:
+                record['gates'][gate]['status'] = 'UNVERIFIED'
+                path.write_text(json.dumps(record))
+                with self.subTest(gate=gate), self.assertRaisesRegex(RuntimeError, 'Unqualified production gate'):
+                    launch.check_release(path, record['plan'])
+                record['gates'][gate]['status'] = 'PASS'
 
     def test_allocation_failure_is_machine_readable_and_never_loads_model(self):
         import claix_b24_storage_preflight as storage_module
-        for outcome in (dict(status='UNVERIFIED',abort_reasons=['Quota review stale']),
-                        dict(status='FAIL',abort_reasons=['inodes failed']),RuntimeError('query unavailable')):
+        for outcome in (dict(status='UNVERIFIED',abort_reasons=['Persistent filesystem unverified']),
+                        dict(status='FAIL',abort_reasons=['inodes failed']),RuntimeError('findmnt unavailable')):
             with tempfile.TemporaryDirectory() as folder:
                 root=Path(folder); record=reviewed_fixture(root); record['plan']['run_root']=folder
                 path=root/'release.json';path.write_text(json.dumps(record))

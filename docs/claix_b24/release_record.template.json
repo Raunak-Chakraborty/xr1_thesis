@@ -88,8 +88,6 @@
   "storage_preflight": {
     "report": "",
     "report_sha256": "",
-    "quota_review": "",
-    "quota_review_sha256": "",
     "filesystem_source": "",
     "project_id": null
   }

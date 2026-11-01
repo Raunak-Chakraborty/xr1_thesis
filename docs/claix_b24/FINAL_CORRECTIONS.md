@@ -7,6 +7,12 @@ training, Slurm submission, commit, push, installation, download, data deletion
 or browser launch occurred. Original job **5357168** and its evidence remain
 untouched; its results must retain their original source identity.
 
+Storage policy was subsequently simplified against base
+`b90c14f5b332ae9577667e1ef9deae3847a268f3`; section 6 describes the current
+policy and release binding. Validation counts in section 2 are historical;
+the storage correction's local results are recorded below. No missing release
+gate has been approved.
+
 ## 1. Exact changes in this correction pass
 
 - `scripts/claix_b24_targeted_h100.py`: add isolated uninterrupted 6 / stop 3 /
@@ -21,12 +27,12 @@ untouched; its results must retain their original source identity.
 - New `scripts/claix_b24_filesystem.py`: canonical directory and mount checks.
   `claix_b24_environment.sh` exposes this check; production batch checks both
   submission directory and current directory for persistent Slurm logs.
-- `scripts/claix_b24_storage_preflight.py`: distinguish submission review from
-  allocation-time measurements; implement the conservative unattended refresh
-  policy described below, with explicit reasons and machine-readable outputs.
-- `scripts/claix_b24_release.py` and `release_record.template.json`: bind actual
-  pre-submission storage report and quota attestation bytes to the immutable
-  reviewed record. Drafts still approve nothing.
+- `scripts/claix_b24_storage_preflight.py`: distinguish submission from
+  allocation-time measurements, with explicit reasons and machine-readable
+  outputs. The current essential-check policy is described in section 6.
+- `scripts/claix_b24_release.py` and `release_record.template.json`: bind the
+  actual pre-submission storage report bytes to the immutable reviewed record.
+  Drafts still approve nothing.
 - `scripts/claix_b24_launch.py`: fresh storage check before any training child;
   persist `launch-*.storage.json`, abort on FAIL/UNVERIFIED, and keep immutable
   release-record checks. Add an optional narrower allocation cap for the
@@ -180,83 +186,64 @@ submission/current directory; launch logs also remain beneath the run root.
 Approved production account/partition/GRES, **23:45:00** and **USR1@1800** are
 unchanged, as is read-only release-record validation.
 
-## 6. Quota and space after long queue waits
+## 6. Storage protection after long queue waits
 
-Before submission, run the read-only preflight at the real proposed run root
-with the confirmed filesystem SOURCE and, when applicable, actual Lustre
-project ID. Initial output is UNVERIFIED until an operator reviews both user
-and project limits/non-applicability, grace/soft/hard limits, effective remaining
-bytes/inodes, existing retention/orphans and publication/log reserve. GID is not
-substituted for project ID. No tool failure or empty quota output implies PASS.
+Before submission, run the read-only preflight at the proposed persistent run
+root with the confirmed `findmnt` SOURCE. Save its machine-readable output to
+an existing persistent review directory:
 
-The attestation fields from the earlier review remain, plus `project_id` if used.
-`run_root` is the canonical path. To authorize the conservative unattended
-Lustre refresh, the operator may additionally supply:
-
-```json
-{
-  "project_id": "REPLACE_WITH_ACTUAL_INTEGER",
-  "allocation_refresh_policy": "identical_successful_lustre_queries_v1",
-  "allocation_valid_until": "OPERATOR_CHOSEN_TIMEZONE_AWARE_ISO_TIMESTAMP"
-}
+```bash
+"$XR1_PYTHON" "$XR1_WORKTREE/scripts/claix_b24_storage_preflight.py" \
+  --run-root "$XR1_RUN_ROOT" --filesystem-source '<verified findmnt SOURCE>' \
+  > /existing/persistent/review/storage-submission.json
 ```
 
-This is a schema illustration, not an approval or a valid attestation. Expiry
-must be after review and no later than **seven days** after it. Re-run preflight
-with the actual reviewed attestation **within one hour of its timestamp**.
-Submission stage never accepts an older review. Preserve the resulting PASS
-report and attestation as hashed artifacts. Fill the release record binding:
+Require exit zero and `status: PASS`. The report includes canonical run root,
+existing parent, actual mount source/target/type, `statvfs.f_bavail * f_frsize`
+available bytes, `f_favail` available inodes, thresholds and check outcomes.
+At least **30 GiB** and **10000 available inodes** are required. Canonical
+approved persistent mount verification (including Lustre) remains mandatory;
+tmpfs, ramfs, overlay, local mounts, escaping paths and a different SOURCE fail.
+No run root or data probes are created, and nothing is deleted.
+
+Optional `--quota-diagnostics --project-id 44885` records bounded `lfs quota -u`,
+`lfs quota -p` and `r_quota` output. Project ID is never inferred from GID.
+Quota output is diagnostic only, so the real CLAIX `bquota blimit bgrace` /
+`iquota ilimit igrace` fields and `(uid 44885)` / `(pid 44885)` identities need
+no parser. Changed shared usage, warnings, unsupported formats or unavailable
+quota tools cannot reject an otherwise passing storage check. No operator
+quota attestation or byte-identical quota output is required.
+
+Bind the actual saved report in the release record:
 
 ```json
 "storage_preflight": {
-  "report": "/absolute/actual-submission-report.json",
-  "report_sha256": "ACTUAL_SHA256",
-  "quota_review": "/absolute/actual-quota-review.json",
-  "quota_review_sha256": "ACTUAL_SHA256",
-  "filesystem_source": "ACTUAL_REVIEWED_FINDMNT_SOURCE",
-  "project_id": "ACTUAL_INTEGER_OR_NULL"
+  "report": "/absolute/actual-storage-submission.json",
+  "report_sha256": "ACTUAL_SHA256_OF_SAVED_REPORT",
+  "filesystem_source": "ACTUAL_VERIFIED_FINDMNT_SOURCE",
+  "project_id": 44885
 }
 ```
 
-The record checker verifies these hashes, report status/stage, matching root,
-filesystem/project, query fingerprint, reviewer and review-to-measurement age.
-Do not edit these artifacts while a job is queued. Finalize the reviewed release
-record read-only as before. The stale submission measurement is retained solely
-as provenance; it is **never** the allocation's free-space measurement.
+This illustrates the schema; it is not evidence or an approval. Project ID may
+be null when no diagnostics are requested. Hash the actual report bytes, for
+example with `sha256sum /absolute/actual-storage-submission.json`. The checker
+requires an intact submission-stage PASS report, matching root/source/project,
+verified persistent mount, sufficient numeric measurements and passing checks.
+Corrupt, missing, modified or incomplete evidence is rejected. Preserve this
+report and finalize the reviewed release record read-only as before. All nine
+real evidence gates, exact source binding and scientific approvals still apply.
 
-At allocation, before any model child starts, the launcher independently repeats
-canonical filesystem/SOURCE verification, `statvfs.f_bavail` and `f_favail`, and
-all quota queries. Require current **30 GiB** and **10000 inodes**. Queries use
-the stable mount target, rather than whichever ancestor existed before the run
-root was created. `findmnt` and each quota command have ten-second timeouts.
-The machine-readable result is saved as `launch-*.storage.json` and also emitted
-as `ALLOCATION_STORAGE=` JSON to persistent Slurm stdout if that report cannot
-be written. Explicit policy expiry is honored even for a review under one hour
-old. Failures have
-explicit `abort_reasons` and stop before loading the 5B model.
-
-A review under one hour old still requires identical **fresh** query output.
-A review older than one hour requires the explicit unexpired allocation policy,
-Lustre, an explicit project ID, successful complete unrounded user **and**
-project quota rows with matching identities, no warnings/grace indicators, and
-byte-identical freshly queried usage/limits versus the operator-reviewed
-snapshot. This method carries forward the human's capacity interpretation
-only when its underlying current measurements are unchanged. It does not infer
-limits from an unsupported command or extend an old free-space measurement.
-
-Changed shared-project usage, unknown formats, grace output, quota query errors,
-missing/expired policy or queue waits beyond expiry abort unattended. Generic
-`quota -s` output alone cannot renew an old review. This intentionally strict
-policy may reject a still-safe filesystem; it cannot reliably authorize every
-long-queued CLAIX job. Site quota output must first be inspected to establish
-that this format is supported. If it is not, there is **no automatic quota PASS**:
-use an operator-arranged bounded start/reservation window with fresh review,
-or obtain a separately reviewed reliable site quota adapter. If the check
-aborts, re-review on the login node and prepare a new immutable record/job.
-No human is asked to approve anything at the instant of allocation. No fallback
-silently extends validity. No dataset/checkpoint deletion or production-data
-writing probe occurs. Quotas remain shared and can change after the check;
-this is a start preflight, not a reservation of disk capacity.
+At allocation, before loading any model, independently recheck the actual
+filesystem/SOURCE and available bytes/inodes. The submission report is retained
+as provenance, never reused as the current free-space measurement. There is no
+one-hour review window, expiry, maximum queue age or manual renewal. Long waits
+and changed shared quota usage do not themselves abort. Insufficient current
+space/inodes or an unverified/unapproved filesystem abort before training.
+The launcher saves `launch-*.storage.json` and emits `ALLOCATION_STORAGE=` JSON
+in persistent Slurm stdout. Existing release-integrity, checkpoint/resume,
+no-clobber, Slurm safe-stop and telemetry protections remain in force. This is
+a start preflight, not a reservation of storage capacity.
 
 ## 7. Checkpoint verification cost and error-path review
 
@@ -300,8 +287,8 @@ tail requires recovery into a new root. Checkpoint interval stays 250.
 - Actual final-source H100 execution and exact comparison, sustained memory,
   throughput, rotation and safe-stop evidence have **not** been obtained.
 - Completion within the prepared 45-minute bound is not established.
-- Actual CLAIX filesystem/SOURCE, user/project quota support and operator review
-  are still needed; unsupported stale quota refresh blocks unattended launch.
+- The actual proposed run root still needs its saved pre-submission storage
+  report, and allocation independently rechecks current persistent storage.
 - Nine evidence/applicability decisions, scientific LR/horizon approval and any
   required held-out validation evidence remain operator/scientific work.
 - A new actual-root plan and immutable release record must bind this exact tree
@@ -354,7 +341,37 @@ All four hardware-sensitive gates still require `current_h100` evidence matching
 this final source, with original hashed provenance bindings; old 5357168 results
 cannot fill those requirements by themselves. The targeted run can supply the
 missing engineering evidence if it actually passes. Operator signatures alone
-cannot manufacture missing held-out validation or quota results. If existing
-scientific validation is insufficient, that remains an additional blocker after
+cannot manufacture missing held-out validation or storage measurements. If
+existing scientific validation is insufficient, that remains an additional blocker after
 the targeted run. No gate has been automatically populated or declared PASS by
 this CPU review, and no final source is claimed H100-qualified.
+
+## 10. Storage correction validation (base b90c14f5)
+
+The complete offline CPU harness passed **138/138 tests**, with zero final
+failures or errors (24.085 seconds). Storage tests cover insufficient bytes and
+inodes and their exact thresholds, diagnostic-only CLAIX quota output/errors,
+queue waits of two hours/three days/eight days, fresh allocation measurements,
+filesystem/SOURCE rejection, corrupt/missing report evidence, and rejection of
+each of the nine unverified gates. Existing checkpoint, exact resume, telemetry
+and scientific configuration tests remain in the harness.
+
+Python syntax passed for **85** tracked Python files; Bash syntax passed for
+**13** shell/batch files. All **88** protected scientific/training/data and
+other launcher files are byte-identical to the specified base, including
+checkpoint serialization/rotation, the targeted H100 procedure and production
+**23:45:00** walltime. Exact source-fingerprint binding and `git diff --check`
+passed. Production, H100 launcher and targeted H100 dry-runs passed without
+creating run roots or starting training. An immutable UNVERIFIED release draft
+and submission/allocation CLI checks of an invalid filesystem were rejected
+as required, with machine-readable storage failure output.
+
+The initial harness attempt encountered the missing ignored
+`.claix_b24_reference/configs/hydra_overrides.json` input (one failure and 17
+errors). The existing reference was copied unchanged from
+`references/claix_b24/extracted/configs/hydra_overrides.json` in the main
+checkout; no dependencies or scientific settings were changed. Intermediate
+tests using the superseded attestation fixtures were updated for this policy.
+Final checks have no failures. Local logs are `/tmp/b24-storage-cpu-tests.txt`
+and `/tmp/b24-storage-static-and-dry-checks.json`; these are CPU validation,
+not CLAIX measurements or H100 evidence. No release gate was approved.

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -13,12 +15,87 @@ import shlex
 import signal
 import subprocess
 import sys
+import threading
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
 GATES = ('frozen_splits', 'tokens_24_examples_48_views', 'workers_0_4_8',
          'h100_b24_memory', 'end_to_end_throughput', 'real_compact_resume',
          'safe_stop_and_storage', 'held_out_validation', 'lr_and_horizon_approval')
+
+
+class NvidiaSmiMonitor:
+    """Best-effort controller-side sampling; no training hooks or signal handlers."""
+    def __init__(self, path):
+        self.path = Path(path)
+        self.stopping = threading.Event()
+        self.thread = threading.Thread(target=self._run, daemon=True, name='nvidia-smi-monitor')
+
+    def _append(self, **fields):
+        with self.path.open('a') as stream:
+            stream.write(json.dumps(dict(timestamp=datetime.now(timezone.utc).isoformat(),
+                                         cuda_visible_devices=os.environ.get('CUDA_VISIBLE_DEVICES'),
+                                         slurm_job_id=os.environ.get('SLURM_JOB_ID'), **fields)) + '\n')
+
+    def _run(self):
+        try:
+            while not self.stopping.is_set():
+                result = subprocess.run(
+                    ['nvidia-smi', '--query-gpu=index,uuid,utilization.gpu,memory.used,memory.total',
+                     '--format=csv,noheader,nounits'],
+                    capture_output=True, text=True, check=True, timeout=3, start_new_session=True)
+                devices = []
+                for row in csv.reader(result.stdout.splitlines(), skipinitialspace=True):
+                    index, uuid, utilization, used, total = [value.strip() for value in row]
+                    def number(value):
+                        try:
+                            return float(value)
+                        except ValueError:
+                            return None
+                    devices.append(dict(index=index, uuid=uuid, utilization_percent=number(utilization),
+                                        memory_used_mib=number(used), memory_total_mib=number(total)))
+                if not devices:
+                    raise RuntimeError('nvidia-smi returned no devices')
+                self._append(event='sample', devices=devices)
+                self.stopping.wait(15)
+        except Exception as error:
+            # Missing binary, query timeout, unsupported driver, and log I/O
+            # disable monitoring only. subprocess.run kills/reaps timed-out queries.
+            try:
+                self._append(event='monitor_disabled', error_type=type(error).__name__, error=str(error))
+            except Exception:
+                pass
+
+    def start(self):
+        try:
+            self.thread.start()
+        except Exception:
+            pass
+
+    def close(self):
+        self.stopping.set()
+        if self.thread.ident is not None:
+            self.thread.join(timeout=4)
+
+
+def checkout_identity():
+    return dict(
+        git_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+        git_status=subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True))
+
+
+def write_provenance(prefix, plan, release_record=None):
+    """Keep exact checkout identity and source checksums per invocation/resume."""
+    files = sorted([*ROOT.joinpath('xr1').rglob('*.py'), *ROOT.joinpath('xr1/configs').rglob('*.yaml'),
+                    *ROOT.joinpath('scripts').glob('claix_b24*')])
+    record = dict(
+        **checkout_identity(),
+        source_tree_sha256=tree_digest(), plan=plan,
+        source_files={p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
+        release_record=json.loads(Path(release_record).read_text()) if release_record else None,
+        slurm={key: os.environ.get(key) for key in
+               ('SLURM_JOB_ID', 'SLURM_SUBMIT_DIR', 'SLURM_JOB_NODELIST')})
+    Path(str(prefix) + '.provenance.json').write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
 
 
 def tree_digest():
@@ -182,6 +259,8 @@ def main(argv=None):
             target = run_root / 'workers.json'
         if target.is_file() or (target.exists() and any(target.iterdir()) and not args.resume):
             raise RuntimeError('Run directory already contains state; explicitly resume or use a new root')
+        log_prefix = run_root / f'launch-{time.time_ns()}'
+        write_provenance(log_prefix, plan, args.release_record)
         env = dict(os.environ, MAX_LENGTH='12288', CUBLAS_WORKSPACE_CONFIG=':4096:8',
                    HF_DATASETS_OFFLINE='1', WANDB_MODE='disabled', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', TOKENIZERS_PARALLELISM='false',
                    PYTHONUNBUFFERED='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1',
@@ -198,7 +277,6 @@ def main(argv=None):
             pending['signal'] = signum
         old_handlers = {sig: signal.signal(sig, request_stop)
                         for sig in (signal.SIGUSR1, signal.SIGTERM, signal.SIGINT)}
-        log_prefix = run_root / f'launch-{time.time_ns()}'
         stdout = Path(str(log_prefix) + '.out').open('x')
         stderr = Path(str(log_prefix) + '.err').open('x')
         stdout.write(f'LAUNCH_EPOCH={time.time()} SAFE_STOP_EPOCH={deadline}\nCOMMAND={shlex.join(cmd)}\n')
@@ -208,10 +286,14 @@ def main(argv=None):
         # Handlers set flags; ordinary controller code requests a worker stop.
         child = None
         child_finished = False
+        monitor = (NvidiaSmiMonitor(str(log_prefix) + '.gpu.jsonl')
+                   if args.mode == 'production' and os.environ.get('XR1_NVIDIA_SMI_MONITOR', '1') != '0'
+                   else None)
         try:
+            if monitor is not None:
+                monitor.start()
             child = subprocess.Popen(cmd, cwd=ROOT / 'xr1', env=env, pass_fds=(lock.fileno(),),
                                      stdout=stdout, stderr=stderr, start_new_session=True)
-            from datetime import datetime, timezone
             while True:
                 if time.time() >= deadline:
                     pending.setdefault('reason', 'safe_deadline')
@@ -236,6 +318,8 @@ def main(argv=None):
                 except subprocess.TimeoutExpired:
                     continue
         finally:
+            if monitor is not None:
+                monitor.close()
             # Only our new-session child group; never signal a Slurm daemon or job group.
             # A stuck qualification must not leave training running behind the controller.
             if args.mode == 'h100-qualification' and child is not None and not child_finished:

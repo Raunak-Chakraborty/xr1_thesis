@@ -1,0 +1,124 @@
+TEST_MOCK=mmengine.Config/Registry (dependency unavailable)
+TEST_MOCK=XR1 backbone import; existing flow-loss methods extracted verbatim via AST
+test_per_step_csv_across_resume_and_identical_optimizer_results (test_claix_metrics_release.MetricsReleaseTest.test_per_step_csv_across_resume_and_identical_optimizer_results) ... GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+XR1_PRODUCTION_SAMPLER=PASS rank=0 offset=0 horizon=8
+/home/horus/anaconda3/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:425: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+CLAIX {"batch_size": 2, "deadline_epoch": 1793543758.4852035, "event": "train_start", "lightning_version": "2.5.1.post0", "persistent_workers": false, "prefetch_factor": null, "replay_contract": {"accumulate_grad_batches": 1, "batch_size": 2, "data_horizon": 8, "num_workers": 0, "sampler_seed": 42, "schema": "xr1-doosan-fixed-horizon-replay-v2", "world_size": 1}, "replay_offset": 0, "step": 0, "timestamp": "2026-11-01T13:35:58.548179+00:00", "torch_version": "2.6.0+cu124", "trainable_parameter_count": 2, "workers": 0}
+/home/horus/anaconda3/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:369: You have overridden `on_before_batch_transfer` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+CLAIX {"batch_tensor_bytes": 312, "event": "tensor_ipc_budget", "free_bytes": null, "required_bytes": 0, "step": 0, "timestamp": "2026-11-01T13:35:58.553241+00:00"}
+CLAIX {"cpu_rss_bytes": 769089536, "elapsed_seconds": 0.03297309100025814, "end_to_end_examples_per_second": 60.655520587510054, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.010499999999999999, "loss": 0.028261583298444748, "packed_tokens": 20, "pipeline_wait_seconds": 0.006739789000221208, "remaining_seconds": 0.23081163700180696, "retained_examples": 2, "safe_stop_in_seconds": 3599.905688524246, "samples_consumed": 2, "step": 1, "step_seconds": 0.03297309100025814, "timestamp": "2026-11-01T13:35:58.579981+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769114112, "elapsed_seconds": 0.04121173400017142, "end_to_end_examples_per_second": 97.05973546231668, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.02, "loss": 0.03927301615476608, "packed_tokens": 20, "pipeline_wait_seconds": 0.003352580999944621, "remaining_seconds": 0.12363520200051425, "retained_examples": 2, "safe_stop_in_seconds": 3599.897448539734, "samples_consumed": 4, "step": 2, "step_seconds": 0.008238642999913282, "timestamp": "2026-11-01T13:35:58.588293+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769114112, "elapsed_seconds": 0.05197786799999449, "end_to_end_examples_per_second": 115.43374576272802, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.01899519052838329, "loss": 0.0026398072950541973, "packed_tokens": 20, "pipeline_wait_seconds": 0.006538734000059776, "remaining_seconds": 0.08662977999999082, "retained_examples": 2, "safe_stop_in_seconds": 3599.8866877555847, "samples_consumed": 6, "step": 3, "step_seconds": 0.010766133999823069, "timestamp": "2026-11-01T13:35:58.598858+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769114112, "elapsed_seconds": 0.05887943500010806, "end_to_end_examples_per_second": 135.8708690052022, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.01625, "loss": 0.0159800685942173, "packed_tokens": 20, "pipeline_wait_seconds": 0.0031797010001355375, "remaining_seconds": 0.05887943500010806, "retained_examples": 2, "safe_stop_in_seconds": 3599.8798110485077, "samples_consumed": 8, "step": 4, "step_seconds": 0.006901567000113573, "timestamp": "2026-11-01T13:35:58.605715+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769118208, "elapsed_seconds": 0.06487026100012372, "end_to_end_examples_per_second": 154.15384254398063, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.0125, "loss": 0.002975040813907981, "packed_tokens": 20, "pipeline_wait_seconds": 0.0023687110001446854, "remaining_seconds": 0.03892215660007423, "retained_examples": 2, "safe_stop_in_seconds": 3599.8738186359406, "samples_consumed": 10, "step": 5, "step_seconds": 0.005990826000015659, "timestamp": "2026-11-01T13:35:58.611694+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769118208, "elapsed_seconds": 0.07236758699991697, "end_to_end_examples_per_second": 165.82009291001742, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.00875, "loss": 0.0011586803011596203, "packed_tokens": 20, "pipeline_wait_seconds": 0.00393925800017314, "remaining_seconds": 0.02412252899997232, "retained_examples": 2, "safe_stop_in_seconds": 3599.8663227558136, "samples_consumed": 12, "step": 6, "step_seconds": 0.007497325999793247, "timestamp": "2026-11-01T13:35:58.619212+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769118208, "elapsed_seconds": 0.0784393240001009, "end_to_end_examples_per_second": 178.48190532572656, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.00600480947161671, "loss": 0.010884996503591537, "packed_tokens": 20, "pipeline_wait_seconds": 0.002466597000420734, "remaining_seconds": 0.011205617714300129, "retained_examples": 2, "safe_stop_in_seconds": 3599.860251188278, "samples_consumed": 14, "step": 7, "step_seconds": 0.00607173700018393, "timestamp": "2026-11-01T13:35:58.625255+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 769118208, "elapsed_seconds": 0.08401636000007784, "end_to_end_examples_per_second": 190.43910019411905, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.005, "loss": 0.012262409552931786, "packed_tokens": 20, "pipeline_wait_seconds": 0.002118789000178367, "remaining_seconds": 0.0, "retained_examples": 2, "safe_stop_in_seconds": 3599.854674577713, "samples_consumed": 16, "step": 8, "step_seconds": 0.0055770359999769425, "timestamp": "2026-11-01T13:35:58.630809+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+XR1_COMPACT_REPLAY_SAVED=PASS global_step=8 offset=16
+CLAIX {"bytes": 18188, "duration_seconds": 0.02624570499983747, "event": "checkpoint", "path": "/tmp/tmpc6lxp29p/reference/step-000008.ckpt", "reason": "natural_finish", "step": 8, "timestamp": "2026-11-01T13:35:58.657379+00:00", "verified": true}
+`Trainer.fit` stopped: `max_steps=8` reached.
+CLAIX {"end_to_end_examples_per_second": 133.54342830612677, "end_to_end_seconds": 0.11980423100021653, "event": "fit_end", "final_checkpoint_verified": true, "step": 8, "timestamp": "2026-11-01T13:35:58.666289+00:00"}
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+XR1_PRODUCTION_SAMPLER=PASS rank=0 offset=0 horizon=8
+CLAIX {"batch_size": 2, "deadline_epoch": 1793543758.668935, "event": "train_start", "lightning_version": "2.5.1.post0", "persistent_workers": false, "prefetch_factor": null, "replay_contract": {"accumulate_grad_batches": 1, "batch_size": 2, "data_horizon": 8, "num_workers": 0, "sampler_seed": 42, "schema": "xr1-doosan-fixed-horizon-replay-v2", "world_size": 1}, "replay_offset": 0, "step": 0, "timestamp": "2026-11-01T13:35:58.806635+00:00", "torch_version": "2.6.0+cu124", "trainable_parameter_count": 2, "workers": 0}
+CLAIX {"batch_tensor_bytes": 312, "event": "tensor_ipc_budget", "free_bytes": null, "required_bytes": 0, "step": 0, "timestamp": "2026-11-01T13:35:58.810854+00:00"}
+CLAIX {"cpu_rss_bytes": 773853184, "elapsed_seconds": 0.022346563000155584, "end_to_end_examples_per_second": 89.49922187076713, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.010499999999999999, "loss": 0.028261583298444748, "packed_tokens": 20, "pipeline_wait_seconds": 0.005771986000127072, "remaining_seconds": 0.15642594100108909, "retained_examples": 2, "safe_stop_in_seconds": 3599.8414821624756, "samples_consumed": 2, "step": 1, "step_seconds": 0.022346563000155584, "timestamp": "2026-11-01T13:35:58.827809+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 773890048, "elapsed_seconds": 0.031652066000333434, "end_to_end_examples_per_second": 126.37405722450669, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.02, "loss": 0.03927301615476608, "packed_tokens": 20, "pipeline_wait_seconds": 0.00351916199997504, "remaining_seconds": 0.0949561980010003, "retained_examples": 2, "safe_stop_in_seconds": 3599.832177400589, "samples_consumed": 4, "step": 2, "step_seconds": 0.00930550300017785, "timestamp": "2026-11-01T13:35:58.837080+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 773902336, "elapsed_seconds": 0.04167879600026936, "end_to_end_examples_per_second": 143.9580932223, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.01899519052838329, "loss": 0.0026398072950541973, "packed_tokens": 20, "pipeline_wait_seconds": 0.004355930999736302, "remaining_seconds": 0.06946466000044893, "retained_examples": 2, "safe_stop_in_seconds": 3599.8221538066864, "samples_consumed": 6, "step": 3, "step_seconds": 0.010026729999935924, "timestamp": "2026-11-01T13:35:58.847069+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+XR1_COMPACT_REPLAY_SAVED=PASS global_step=3 offset=6
+CLAIX {"bytes": 18124, "duration_seconds": 0.024946141999862448, "event": "checkpoint", "path": "/tmp/tmpc6lxp29p/logged/step-000003.ckpt", "reason": "qualification_step", "step": 3, "timestamp": "2026-11-01T13:35:58.872339+00:00", "verified": true}
+CLAIX {"event": "graceful_stop", "reason": "qualification_step", "step": 3, "timestamp": "2026-11-01T13:35:58.877083+00:00"}
+`Trainer.fit` stopped: `max_epochs=1` reached.
+CLAIX {"end_to_end_examples_per_second": 77.35724844669028, "end_to_end_seconds": 0.07755538299988984, "event": "fit_end", "final_checkpoint_verified": true, "step": 3, "timestamp": "2026-11-01T13:35:58.882631+00:00"}
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+Restoring states from the checkpoint path at /tmp/tmpc6lxp29p/logged/step-000003.ckpt
+XR1_COMPACT_REPLAY_RESTORED=PASS global_step=3
+Restored all states from the checkpoint at /tmp/tmpc6lxp29p/logged/step-000003.ckpt
+XR1_PRODUCTION_SAMPLER=PASS rank=0 offset=6 horizon=8
+CLAIX {"batch_size": 2, "deadline_epoch": 1793543758.8836703, "event": "train_start", "lightning_version": "2.5.1.post0", "persistent_workers": false, "prefetch_factor": null, "replay_contract": {"accumulate_grad_batches": 1, "batch_size": 2, "data_horizon": 8, "num_workers": 0, "sampler_seed": 42, "schema": "xr1-doosan-fixed-horizon-replay-v2", "world_size": 1}, "replay_offset": 6, "step": 3, "timestamp": "2026-11-01T13:35:58.944678+00:00", "torch_version": "2.6.0+cu124", "trainable_parameter_count": 2, "workers": 0}
+/home/horus/anaconda3/lib/python3.12/site-packages/lightning/pytorch/loops/training_epoch_loop.py:221: You're resuming from a checkpoint that ended before the epoch ended and your dataloader is not resumable. This can cause unreliable results if further training is done. Consider using an end-of-epoch checkpoint or make your dataloader resumable by implementing the `state_dict` / `load_state_dict` interface.
+CLAIX {"batch_tensor_bytes": 312, "event": "tensor_ipc_budget", "free_bytes": null, "required_bytes": 0, "step": 3, "timestamp": "2026-11-01T13:35:58.947433+00:00"}
+CLAIX {"cpu_rss_bytes": 774410240, "elapsed_seconds": 0.01406978800014258, "end_to_end_examples_per_second": 142.14855262778178, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.01625, "loss": 0.0159800685942173, "packed_tokens": 20, "pipeline_wait_seconds": 0.004421994000040286, "remaining_seconds": 0.056279152000570314, "retained_examples": 2, "safe_stop_in_seconds": 3599.926558971405, "samples_consumed": 8, "step": 4, "step_seconds": 0.01406978800014258, "timestamp": "2026-11-01T13:35:58.957475+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 774422528, "elapsed_seconds": 0.022518173000207753, "end_to_end_examples_per_second": 177.6343045220896, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.0125, "loss": 0.002975040813907981, "packed_tokens": 20, "pipeline_wait_seconds": 0.0027538999997887004, "remaining_seconds": 0.03377725950031163, "retained_examples": 2, "safe_stop_in_seconds": 3599.9181158542633, "samples_consumed": 10, "step": 5, "step_seconds": 0.008448385000065173, "timestamp": "2026-11-01T13:35:58.965850+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 774443008, "elapsed_seconds": 0.03253634000020611, "end_to_end_examples_per_second": 184.40918677275906, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.00875, "loss": 0.0011586803011596203, "packed_tokens": 20, "pipeline_wait_seconds": 0.004249357999924541, "remaining_seconds": 0.02169089333347074, "retained_examples": 2, "safe_stop_in_seconds": 3599.908095598221, "samples_consumed": 12, "step": 6, "step_seconds": 0.010018166999998357, "timestamp": "2026-11-01T13:35:58.975887+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 774443008, "elapsed_seconds": 0.04058223500032909, "end_to_end_examples_per_second": 197.1305917462438, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.00600480947161671, "loss": 0.010884996503591537, "packed_tokens": 20, "pipeline_wait_seconds": 0.002608521999718505, "remaining_seconds": 0.010145558750082273, "retained_examples": 2, "safe_stop_in_seconds": 3599.9000532627106, "samples_consumed": 14, "step": 7, "step_seconds": 0.008045895000122982, "timestamp": "2026-11-01T13:35:58.983904+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+CLAIX {"cpu_rss_bytes": 774451200, "elapsed_seconds": 0.049159749999944324, "end_to_end_examples_per_second": 203.41844700209674, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 0.005, "loss": 0.012262409552931786, "packed_tokens": 20, "pipeline_wait_seconds": 0.0023684979996687616, "remaining_seconds": 0.0, "retained_examples": 2, "safe_stop_in_seconds": 3599.89147400856, "samples_consumed": 16, "step": 8, "step_seconds": 0.008577514999615232, "timestamp": "2026-11-01T13:35:58.992526+00:00", "trainable_fp32": true, "views": 4, "worker_rss_bytes": 0}
+XR1_COMPACT_REPLAY_SAVED=PASS global_step=8 offset=16
+CLAIX {"bytes": 18188, "duration_seconds": 0.024893221999718662, "event": "checkpoint", "path": "/tmp/tmpc6lxp29p/logged/step-000008.ckpt", "reason": "natural_finish", "step": 8, "timestamp": "2026-11-01T13:35:59.017772+00:00", "verified": true}
+`Trainer.fit` stopped: `max_steps=8` reached.
+CLAIX {"end_to_end_examples_per_second": 114.57784063859187, "end_to_end_seconds": 0.08727130300030694, "event": "fit_end", "final_checkpoint_verified": true, "step": 8, "timestamp": "2026-11-01T13:35:59.030277+00:00"}
+ok
+test_release_hash_and_resume_source_binding_reject_changes (test_claix_metrics_release.MetricsReleaseTest.test_release_hash_and_resume_source_binding_reject_changes) ... ok
+test_scientific_configuration_is_unchanged (test_claix_metrics_release.MetricsReleaseTest.test_scientific_configuration_is_unchanged) ... ok
+test_launcher_closes_monitor_on_success_and_child_failure (test_claix_metrics_release.MonitorReleaseTest.test_launcher_closes_monitor_on_success_and_child_failure) ... {
+  "safety_margin_seconds": 1800,
+  "mode": "production",
+  "workers_measured": [
+    4
+  ],
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/tmp/tmpcjcj3wtv",
+    "overrides": [
+      "data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]",
+      "model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt",
+      "model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml",
+      "trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact"
+    ]
+  },
+  "source_tree_sha256": "cdcef6f3ff7a63657ec19c512e80ff81aa0fe95b6ee4eb38ba72f9b6ac6ba3d3"
+}
+COMMAND=/home/horus/anaconda3/bin/python -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/b24_metrics_release/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]' model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact 'trainer.default_root_dir="/tmp/tmpcjcj3wtv"' data.params.train_datasets.num_workers=4 'hydra.run.dir="/tmp/tmpcjcj3wtv/hydra/production-1793540159832524789"' hydra.job.chdir=false
+PERSISTENT_STDOUT=/tmp/tmpcjcj3wtv/launch-1793540159844083374.out PERSISTENT_STDERR=/tmp/tmpcjcj3wtv/launch-1793540159844083374.err
+{
+  "safety_margin_seconds": 1800,
+  "mode": "production",
+  "workers_measured": [
+    4
+  ],
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/tmp/tmp9vt74px7",
+    "overrides": [
+      "data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]",
+      "model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt",
+      "model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml",
+      "trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact"
+    ]
+  },
+  "source_tree_sha256": "cdcef6f3ff7a63657ec19c512e80ff81aa0fe95b6ee4eb38ba72f9b6ac6ba3d3"
+}
+COMMAND=/home/horus/anaconda3/bin/python -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/b24_metrics_release/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]' model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact 'trainer.default_root_dir="/tmp/tmp9vt74px7"' data.params.train_datasets.num_workers=4 'hydra.run.dir="/tmp/tmp9vt74px7/hydra/production-1793540159847520095"' hydra.job.chdir=false
+PERSISTENT_STDOUT=/tmp/tmp9vt74px7/launch-1793540159859850063.out PERSISTENT_STDERR=/tmp/tmp9vt74px7/launch-1793540159859850063.err
+ok
+test_missing_binary_timeout_driver_and_log_errors_only_disable_monitor (test_claix_metrics_release.MonitorReleaseTest.test_missing_binary_timeout_driver_and_log_errors_only_disable_monitor) ... ok
+test_provenance_records_exact_commit_source_files_and_release (test_claix_metrics_release.MonitorReleaseTest.test_provenance_records_exact_commit_source_files_and_release) ... ok
+test_sampler_records_devices_and_stops_without_changing_signals (test_claix_metrics_release.MonitorReleaseTest.test_sampler_records_devices_and_stops_without_changing_signals) ... ok
+test_corrupt_recovery_candidate_cannot_displace_a_verified_checkpoint (test_claix_metrics_release.RetentionReleaseTest.test_corrupt_recovery_candidate_cannot_displace_a_verified_checkpoint) ... ok
+test_invalid_latest_or_stop_pointer_prevents_all_deletion (test_claix_metrics_release.RetentionReleaseTest.test_invalid_latest_or_stop_pointer_prevents_all_deletion) ... ok
+test_latest_milestone_counts_as_one_of_two_recovery_checkpoints (test_claix_metrics_release.RetentionReleaseTest.test_latest_milestone_counts_as_one_of_two_recovery_checkpoints) ... ok
+test_milestones_two_recovery_stop_and_all_receipts (test_claix_metrics_release.RetentionReleaseTest.test_milestones_two_recovery_stop_and_all_receipts) ... ok
+test_unverified_unrelated_corrupt_and_symlink_files_are_preserved (test_claix_metrics_release.RetentionReleaseTest.test_unverified_unrelated_corrupt_and_symlink_files_are_preserved) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 3.831s
+
+OK

@@ -26,6 +26,7 @@ data:
       deterministic_replay: true
 
 trainer:
+  log_every_n_steps: 1
   devices: 1
   max_steps: 48284
   scheduler:

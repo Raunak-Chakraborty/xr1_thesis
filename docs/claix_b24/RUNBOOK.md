@@ -1,5 +1,12 @@
 # CLAIX batch-24 qualification and recovery
 
+For the production metrics/retention release based on reviewed commit
+`02bd6c54d883b21f8ea039995038dc2c0da68124`, use
+[METRICS_RELEASE.md](METRICS_RELEASE.md). It records the operator-reported PASS
+results from H100 job **5357168**, the precise new source delta, evidence paths,
+storage preflight and remaining release requirements. Those hardware results
+apply to the reviewed parent; they were not rerun on this modified tree.
+
 ## Current targeted follow-up: one combined H100 job
 
 Use [COMBINED_QUALIFICATION.md](COMBINED_QUALIFICATION.md) for the current single-job
@@ -293,8 +300,11 @@ with an atomic no-clobber hard link on the same filesystem. A checksum receipt i
 published atomically, then `latest.json`. Directory metadata is fsynced. Verify
 real checkpoint size, I/O time and filesystem guarantees on CLAIX.
 
-Keep newest two committed checkpoints plus step 2000 forever. Rotation happens
-after new publication. A filename alone is insufficient; a matching
+Keep newest two usable verified checkpoints plus steps 2000, 5000, 10000, 20000,
+30000 and 40000, and the latest verified safe-stop/final checkpoint pinned by
+`safe-stop.json`. Keep all receipts, including those for pruned payloads. See
+[METRICS_RELEASE.md](METRICS_RELEASE.md) for capacity estimates and deletion
+safeguards. Rotation happens after new publication. A filename alone is insufficient; a matching
 `.verified.json` receipt, file size, SHA256 and successful contract validation are
 mandatory. The receipt configuration fingerprint must match the payload. At
 fit end the callback revalidates the last boundary checkpoint and emits

@@ -1,0 +1,82 @@
+{
+  "base_source_tree_sha256": "ef0f197650425d9f153b2f0054cf7ea76195a11a266846c2e2ccf42aaeaf9af4",
+  "commands": {
+    "baseline": "/home/horus/anaconda3/bin/python xr1/tests/run_claix_cpu_tests.py (before edits)",
+    "complete": "/home/horus/anaconda3/bin/python xr1/tests/run_claix_cpu_tests.py",
+    "dry_run": "/home/horus/anaconda3/bin/python scripts/claix_b24_launch.py --mode production --run-root /tmp/b24-production-dry-plan",
+    "focused": "/home/horus/anaconda3/bin/python -c 'import sys,unittest; sys.path.insert(0,\"xr1/tests\"); import run_claix_cpu_tests as harness; harness.bootstrap(); result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromName(\"test_claix_metrics_release\")); sys.exit(not result.wasSuccessful())'",
+    "static": [
+      "git diff --check",
+      "/home/horus/anaconda3/bin/python -m py_compile scripts/claix_b24_launch.py xr1/mibot/utils/claix_checkpoint.py xr1/mibot/utils/claix_runtime.py xr1/tests/test_claix_launch.py xr1/tests/test_claix_runtime.py xr1/tests/test_claix_metrics_release.py",
+      "bash -n scripts/claix_b24_production.sbatch"
+    ]
+  },
+  "commits_created": false,
+  "committed": false,
+  "config_delta": "trainer.log_every_n_steps=1 only",
+  "current_head": "02bd6c54d883b21f8ea039995038dc2c0da68124",
+  "git_push": false,
+  "gpu_training_run": false,
+  "hardware_evidence": {
+    "examples_per_second": 14.44,
+    "job": "5357168",
+    "peak_reserved_gib": 67.03,
+    "provenance": "operator supplied; not rerun or fetched",
+    "qualification_phases": 9,
+    "source": "02bd6c54d883b21f8ea039995038dc2c0da68124",
+    "steps": 251
+  },
+  "modified_tree_h100_qualified": false,
+  "reviewed_base": "02bd6c54d883b21f8ea039995038dc2c0da68124",
+  "slurm_jobs_submitted": false,
+  "source_delta": {
+    "scripts/claix_b24_launch.py": "e4bf81ae798e9c82c2203c0a876250cdb2a29a6f479c4f3fb796bf97fb220926",
+    "xr1/configs/claix_b24_production.yaml": "35c1d0598bd2d353fe2eda2be149e17804e46b895fd4e0a63c2c6782ce7c2438",
+    "xr1/mibot/utils/claix_checkpoint.py": "5e524d18c6e959ad70cd1a3bab777f9ae9efa28933b56c864e4296d888c0a21e",
+    "xr1/mibot/utils/claix_runtime.py": "578bff7a0b48b783db70c29e3be75b8ef09047f8b1dbad647691dabdd3f9b1c6",
+    "xr1/tests/test_claix_launch.py": "a19c62b1eac5e1c29ec14152d29be432d0b0addb7ade6c1c7088d119b78137e6",
+    "xr1/tests/test_claix_metrics_release.py": "62ddf49be4874b703847497eb6f72e3d38a982f4eb4c228b8a21d459554ed1f2",
+    "xr1/tests/test_claix_runtime.py": "ac0894cb5a737a391f7a39a8feeb26dcb39c2191dfbcef10d9eb86a7e7075c10"
+  },
+  "source_patch": {
+    "path": "docs/claix_b24/evidence/metrics_release_source.patch",
+    "sha256": "adff845fd5954b8a301614fd0ed8dfc6b3e16823d1d7b77d7690612a5f79779d"
+  },
+  "source_tree_sha256": "cdcef6f3ff7a63657ec19c512e80ff81aa0fe95b6ee4eb38ba72f9b6ac6ba3d3",
+  "static_checks": "PASS",
+  "tests": {
+    "baseline": {
+      "evidence": "docs/claix_b24/evidence/metrics_release_baseline_cpu_tests.txt",
+      "failed": 0,
+      "passed": 86,
+      "seconds": 22.037,
+      "sha256": "61c2eb2eeaf1819babd8afd0b51b381154f3babf3033940051fc1201c5c8bf95"
+    },
+    "complete": {
+      "evidence": "docs/claix_b24/evidence/metrics_release_cpu_tests.txt",
+      "failed": 0,
+      "passed": 98,
+      "seconds": 23.325,
+      "sha256": "b715346102a84cf62cb8ea0abbb47b1d9964fc20572687442cabc3e7d094d685"
+    },
+    "dry_run": {
+      "evidence": "docs/claix_b24/evidence/metrics_release_dry_plan.txt",
+      "sha256": "15fdde7bc03b6a1e6723f3b411c961d74a27629f2089991a6b99362e05b7c3d0"
+    },
+    "focused": {
+      "evidence": "docs/claix_b24/evidence/metrics_release_focused_tests.txt",
+      "failed": 0,
+      "passed": 12,
+      "seconds": 3.831,
+      "sha256": "7de5c7f762b08fdde32275109cc994fff4cff7ea353aa536a4376cf1c0067414"
+    }
+  },
+  "unchanged_checks": [
+    "release/source gate and allocation validation AST",
+    "checkpoint validation/publication/load AST",
+    "full runner/model/loss/gradient guard files",
+    "full data/model/trainer inherited configs and dataset code",
+    "optimizer and scheduler implementation",
+    "production Slurm script and combined qualification scripts"
+  ]
+}

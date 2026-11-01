@@ -150,8 +150,12 @@ class ProductionRuntime(Callback):
         trainer.save_checkpoint(str(path), weights_only=False)
         trainer.strategy.barrier('verified_checkpoint')
         if trainer.is_global_zero:
-            from mibot.utils.claix_checkpoint import load_verified
+            from mibot.utils.claix_checkpoint import atomic_json, load_verified
             load_verified(path, pl_module._replay_contract, resumable=False)
+            if reason != 'interval':
+                # Small receipt pointer only; compact payload format is unchanged.
+                atomic_json(self.directory / 'safe-stop.json',
+                            json.loads(path.with_suffix('.verified.json').read_text()))
             self.emit(trainer, 'checkpoint', path=str(path), bytes=path.stat().st_size,
                       duration_seconds=time.perf_counter() - start, verified=True, reason=reason)
             rotate_checkpoints(self.directory)

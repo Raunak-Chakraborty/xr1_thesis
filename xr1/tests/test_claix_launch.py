@@ -17,6 +17,13 @@ launch=importlib.util.module_from_spec(spec);spec.loader.exec_module(launch)
 
 
 class LaunchTest(unittest.TestCase):
+    def setUp(self):
+        # Launcher child mocks must not intercept the new read-only git probes.
+        identity = patch.object(launch, 'checkout_identity',
+                                return_value=dict(git_commit='synthetic', git_status=''))
+        identity.start()
+        self.addCleanup(identity.stop)
+
     def test_plan_does_not_launch_or_require_slurm(self):
         from mibot.utils.claix_contract import engineering_source_digest
         self.assertEqual(launch.tree_digest(),engineering_source_digest())

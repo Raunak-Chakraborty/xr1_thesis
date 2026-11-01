@@ -60,7 +60,8 @@ class TinyRunner(DoosanCompactRunner):
                                                source_commit='synthetic',last_n=1)
 
 
-def tiny_run(directory, *, workers, max_steps=8, stop_after=None, resume=None, deadline=None):
+def tiny_run(directory, *, workers, max_steps=8, stop_after=None, resume=None, deadline=None,
+             logger=False, log_every_n_steps=50):
     params=Config(dict(max_steps=8,train_datasets=dict(batch_size=2,num_workers=workers,
                   prefetch_factor=2,persistent_workers=bool(workers),pin_memory=False,
                   deterministic_replay=True,sampler_seed=42,resume_step=resume[1] if resume else 0)))
@@ -79,7 +80,8 @@ def tiny_run(directory, *, workers, max_steps=8, stop_after=None, resume=None, d
                               interval=250,stop_after_step=stop_after)
     trainer=Trainer(accelerator='cpu',devices=1,max_steps=max_steps,max_epochs=1,
                     strategy=SingleDeviceStrategy(device='cpu',checkpoint_io=VerifiedCheckpointIO()),
-                    callbacks=[runtime],logger=False,enable_checkpointing=False,enable_progress_bar=False,
+                    callbacks=[runtime],logger=logger,log_every_n_steps=log_every_n_steps,
+                    enable_checkpointing=False,enable_progress_bar=False,
                     enable_model_summary=False,use_distributed_sampler=False,num_sanity_val_steps=0)
     trainer.fit(model,datamodule=dm,ckpt_path=str(resume[0]) if resume else None)
     return model,trainer

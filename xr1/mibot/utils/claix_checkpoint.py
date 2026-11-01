@@ -169,18 +169,65 @@ def load_verified(path, contract, *, expected_config=None, resumable=True):
     return ck
 
 
+HISTORICAL_STEPS = frozenset((2000, 5000, 10000, 20000, 30000, 40000))
+
+
 def rotate_checkpoints(directory, keep=2):
-    """Keep newest two verified checkpoints and durable optimizer step 2000."""
+    """Prune only verified owned payloads; keep all receipts as audit evidence.
+
+    Publication and rotation require the launcher's exclusive run-root lock.
+    Invalid/orphan/unrelated files are never deletion candidates.
+    """
     if keep < 2:
         raise ValueError('Keep at least two recovery checkpoints')
+    directory = Path(directory)
+    latest = json.loads((directory / 'latest.json').read_text())
     rows = []
-    for path in Path(directory).glob('step-*.verified.json'):
-        row = json.loads(path.read_text())
-        rows.append((int(row['global_step']), path, path.parent / row['path']))
-    rows.sort(reverse=True)
-    for step, receipt, payload in rows[keep:]:
-        if step == 2000:
+    for path in directory.glob('step-*.verified.json'):
+        try:
+            if path.is_symlink():
+                continue
+            row = json.loads(path.read_text())
+            step = row['global_step']
+            name = f'step-{step:06d}.ckpt'
+            payload = directory / name
+            if (type(step) is not int or step <= 0 or row.get('path') != name
+                    or path.name != f'step-{step:06d}.verified.json'
+                    or row.get('schema') != 'claix-b24-verified-v1'
+                    or row.get('config_sha256') != latest.get('config_sha256')
+                    or payload.is_symlink() or not payload.is_file()
+                    or row.get('bytes') != payload.stat().st_size):
+                continue
+            rows.append((step, payload, row))
+        except (OSError, ValueError, KeyError, TypeError):
             continue
-        payload.unlink()
-        receipt.unlink()
+    rows.sort(key=lambda item: item[0], reverse=True)
+    # Fail closed before any deletion if publication's pointer is inconsistent.
+    if not rows or latest != rows[0][2] or latest['sha256'] != file_sha256(rows[0][1]):
+        raise RuntimeError('latest.json does not identify the newest verified checkpoint')
+    protected = set(HISTORICAL_STEPS)
+    stop_path = directory / 'safe-stop.json'
+    if stop_path.exists():
+        stop = json.loads(stop_path.read_text())
+        matches = [step for step, _, row in rows if row == stop]
+        if not matches:
+            raise RuntimeError('safe-stop.json does not identify a retained checkpoint')
+        protected.update(matches)
+    # Validate recovery candidates before counting them; a damaged payload must
+    # never displace the previous two usable checkpoints.
+    recovery = 0
+    for step, payload, row in rows:
+        if step in protected and recovery >= keep:
+            continue
+        try:
+            ck = torch.load(payload, map_location='cpu', weights_only=False, mmap=True)
+            load_verified(payload, ck['xr1_replay_contract'],
+                          expected_config=latest['config_sha256'], resumable=False)
+            del ck
+        except Exception:
+            # Corrupt/unverified payloads remain available for investigation.
+            continue
+        recovery += 1
+        if recovery > keep and step not in protected:
+            payload.unlink()
     fsync_directory(directory)

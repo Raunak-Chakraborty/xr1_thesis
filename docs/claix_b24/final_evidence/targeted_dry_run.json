@@ -1,0 +1,22 @@
+{
+  "source_tree_sha256": "a6154eeef8bff0668d8c8c9e7d5693f5018d2805b1ddc0b529dd905a8af53280",
+  "first_command": [
+    "/home/horus/anaconda3/bin/python",
+    "/home/horus/robotics_thesis/xr1_claix/worktrees/b24_final_release/scripts/claix_b24_launch.py",
+    "--mode",
+    "h100-qualification",
+    "--python",
+    "/home/horus/anaconda3/bin/python",
+    "--workers",
+    "4",
+    "--run-root",
+    "/hpcwork/zk443626/robotics_thesis/runs/REVIEW_ONLY_final_verify",
+    "--overrides",
+    "/home/horus/robotics_thesis/xr1_claix/worktrees/b24_final_release/.claix_b24_reference/configs/hydra_overrides.json",
+    "--qualification-max-steps",
+    "260",
+    "--qualification-gpu-monitor"
+  ],
+  "signal_at_completed_step": 250,
+  "resume_to": 260
+}

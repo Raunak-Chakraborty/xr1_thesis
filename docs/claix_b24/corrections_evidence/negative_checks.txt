@@ -1,0 +1,4 @@
+UNVERIFIED read-only current-source release draft: rejected as required
+RuntimeError: Unqualified production gate: frozen_splits
+Read-only invalid-filesystem preflight: rejected; no run root created
+{"abort_reasons": ["Directory must be under an approved CLAIX persistent root"], "reason": "Directory must be under an approved CLAIX persistent root", "stage": "submission", "status": "UNVERIFIED"}

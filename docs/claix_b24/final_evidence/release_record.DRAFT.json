@@ -1,0 +1,107 @@
+{
+  "checkout": {
+    "git_commit": "4339a0fcd7a9c18c81356d371360bbf629656c0c",
+    "git_status": " M docs/claix_b24/release_record.template.json\n M scripts/claix_b24_launch.py\n M scripts/claix_b24_production.sbatch\n M xr1/mibot/utils/claix_checkpoint.py\n M xr1/mibot/utils/claix_runtime.py\n M xr1/tests/test_claix_launch.py\n M xr1/tests/test_claix_metrics_release.py\n?? docs/claix_b24/FINAL_RELEASE.md\n?? docs/claix_b24/final_evidence/\n?? scripts/claix_b24_environment.sh\n?? scripts/claix_b24_release.py\n?? scripts/claix_b24_retention_benchmark.py\n?? scripts/claix_b24_storage_preflight.py\n?? scripts/claix_b24_targeted_h100.py\n?? scripts/claix_b24_targeted_h100.sbatch\n?? xr1/tests/test_claix_final_release.py\n"
+  },
+  "gates": {
+    "end_to_end_throughput": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "frozen_splits": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "h100_b24_memory": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "held_out_validation": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "lr_and_horizon_approval": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "real_compact_resume": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "safe_stop_and_storage": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "tokens_24_examples_48_views": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    },
+    "workers_0_4_8": {
+      "applicability_rationale": "",
+      "applicability_reviewed_by": "",
+      "evidence": "",
+      "sha256": "",
+      "status": "UNVERIFIED"
+    }
+  },
+  "plan": {
+    "batch_size": 24,
+    "data_horizon": 48284,
+    "max_length": 12288,
+    "overrides": [
+      "data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]",
+      "model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt",
+      "model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml",
+      "trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact"
+    ],
+    "run_root": "/hpcwork/zk443626/robotics_thesis/runs/REVIEW_ONLY_b24_final",
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1
+  },
+  "reviewed_at": "",
+  "reviewed_by": "",
+  "schema": "claix-b24-release-v2",
+  "scientific_approved_by": "",
+  "scientific_parameters": {
+    "batch_size": 24,
+    "cameras": 2,
+    "checkpoint_interval": 250,
+    "compute": "BF16",
+    "horizon": 48284,
+    "last_n": 1,
+    "max_lr": 2e-05,
+    "min_lr": 5e-06,
+    "optimizer": "AdamW",
+    "trainable_weights": "FP32",
+    "warmup_lr_start": 5e-07,
+    "warmup_steps": 500,
+    "workers": 4
+  },
+  "source_tree_sha256": "a6154eeef8bff0668d8c8c9e7d5693f5018d2805b1ddc0b529dd905a8af53280"
+}

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/b24_final_release/scripts/claix_b24_release.py", line 111, in <module>
+    main()
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/b24_final_release/scripts/claix_b24_release.py", line 95, in main
+    check_release(args.check, plan, require_immutable=True)
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/b24_final_release/scripts/claix_b24_launch.py", line 119, in check_release
+    raise RuntimeError('Unqualified production gate: ' + gate)
+RuntimeError: Unqualified production gate: frozen_splits

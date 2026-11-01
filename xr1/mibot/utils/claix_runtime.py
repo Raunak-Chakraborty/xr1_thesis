@@ -56,8 +56,7 @@ class VerifiedCheckpointIO(CheckpointIO):
     def load_checkpoint(self, path, map_location=None):
         # Entrypoint and module validate full receipt/config before this load.
         from mibot.utils.claix_checkpoint import load_verified
-        ck = torch.load(path, map_location='cpu', weights_only=False)
-        return load_verified(path, ck['xr1_replay_contract'])
+        return load_verified(path)
 
     def remove_checkpoint(self, path):
         raise RuntimeError('Use explicit verified checkpoint retention policy')
@@ -150,15 +149,15 @@ class ProductionRuntime(Callback):
         trainer.save_checkpoint(str(path), weights_only=False)
         trainer.strategy.barrier('verified_checkpoint')
         if trainer.is_global_zero:
-            from mibot.utils.claix_checkpoint import atomic_json, load_verified
-            load_verified(path, pl_module._replay_contract, resumable=False)
+            from mibot.utils.claix_checkpoint import atomic_json
             if reason != 'interval':
                 # Small receipt pointer only; compact payload format is unchanged.
                 atomic_json(self.directory / 'safe-stop.json',
                             json.loads(path.with_suffix('.verified.json').read_text()))
+            rotation = rotate_checkpoints(self.directory, expected_config=pl_module._compact_cfg['config_sha256'])
             self.emit(trainer, 'checkpoint', path=str(path), bytes=path.stat().st_size,
+                      rotation=rotation,
                       duration_seconds=time.perf_counter() - start, verified=True, reason=reason)
-            rotate_checkpoints(self.directory)
         self.last_saved = step
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):

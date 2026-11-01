@@ -1,0 +1,36 @@
+{
+  "source_tree_sha256": "533f8071446d89585d862400929aa9ddadea03ea37c2630c338e3b2436abbc39",
+  "run_root": "/hpcwork/zk443626/robotics_thesis/runs/REVIEW_ONLY_b24_targeted_corrections",
+  "phases": [
+    {
+      "run": "exact-restart/uninterrupted",
+      "maximum": 6
+    },
+    {
+      "run": "exact-restart/restarted",
+      "maximum": 6,
+      "stop_after": 3
+    },
+    {
+      "run": "exact-restart/restarted",
+      "maximum": 6,
+      "resume_step": 3
+    },
+    {
+      "run": "logging-retention",
+      "maximum": 260,
+      "signal_at_completed_step": 250
+    },
+    {
+      "run": "logging-retention",
+      "maximum": 260,
+      "resume": "verified signal checkpoint"
+    }
+  ],
+  "total_optimizer_steps": 272,
+  "workers": 4,
+  "allocations": 1,
+  "allocation_max_minutes": 45,
+  "safe_stop_margin_seconds": 600,
+  "runtime_guarantee": "UNVERIFIED; abort on insufficient measured allocation budget"
+}

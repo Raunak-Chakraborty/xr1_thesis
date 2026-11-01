@@ -1,0 +1,62 @@
+{
+  "cache_policy": "No cache flush: report warm OS cache; run on target filesystem",
+  "candidate_verifications": 3,
+  "checkpoint_sha256_reads": 3,
+  "filesystem": "/tmp/b24-final-io-reviewed",
+  "kind": "cpu",
+  "publications": [
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.0653539639997689,
+      "step": 2000
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.06455710899990663,
+      "step": 5000
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.0701826450003864,
+      "step": 10000
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.05567555600009655,
+      "step": 20000
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.06635375399946497,
+      "step": 30000
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.059907169999860344,
+      "step": 40000
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.06430399000055331,
+      "step": 40250
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.05580631500015443,
+      "step": 40500
+    },
+    {
+      "bytes": 8405132,
+      "publication_seconds": 0.05748523900001601,
+      "step": 40750
+    }
+  ],
+  "rotation": {
+    "deleted": 1,
+    "verified": 3
+  },
+  "rotation_seconds": 0.11146403300062957,
+  "source_tree_sha256": "a6154eeef8bff0668d8c8c9e7d5693f5018d2805b1ddc0b529dd905a8af53280",
+  "synthetic": true,
+  "torch_load_calls": 3
+}

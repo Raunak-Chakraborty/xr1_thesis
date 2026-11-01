@@ -2,14 +2,95 @@
   "source_tree_sha256": "COPY_FROM_PRODUCTION_DRY_RUN",
   "plan": null,
   "gates": {
-    "frozen_splits": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "tokens_24_examples_48_views": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "workers_0_4_8": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "h100_b24_memory": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "end_to_end_throughput": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "real_compact_resume": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "safe_stop_and_storage": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "held_out_validation": {"status": "UNVERIFIED", "evidence": "", "sha256": ""},
-    "lr_and_horizon_approval": {"status": "UNVERIFIED", "evidence": "", "sha256": ""}
+    "frozen_splits": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "tokens_24_examples_48_views": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "workers_0_4_8": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "h100_b24_memory": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "end_to_end_throughput": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "real_compact_resume": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "safe_stop_and_storage": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "held_out_validation": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    },
+    "lr_and_horizon_approval": {
+      "status": "UNVERIFIED",
+      "evidence": "",
+      "sha256": "",
+      "applicability_reviewed_by": "",
+      "applicability_rationale": ""
+    }
+  },
+  "schema": "claix-b24-release-v2",
+  "reviewed_by": "",
+  "reviewed_at": "",
+  "scientific_approved_by": "",
+  "scientific_parameters": {
+    "max_lr": 2e-05,
+    "min_lr": 5e-06,
+    "warmup_lr_start": 5e-07,
+    "warmup_steps": 500,
+    "horizon": 48284,
+    "batch_size": 24,
+    "workers": 4,
+    "last_n": 1,
+    "cameras": 2,
+    "optimizer": "AdamW",
+    "compute": "BF16",
+    "trainable_weights": "FP32",
+    "checkpoint_interval": 250
+  },
+  "storage_preflight": {
+    "report": "",
+    "report_sha256": "",
+    "quota_review": "",
+    "quota_review_sha256": "",
+    "filesystem_source": "",
+    "project_id": null
   }
 }

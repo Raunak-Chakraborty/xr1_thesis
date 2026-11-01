@@ -1,0 +1,25 @@
+{
+  "safety_margin_seconds": 1800,
+  "mode": "production",
+  "workers_measured": [
+    4
+  ],
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/hpcwork/zk443626/robotics_thesis/runs/REVIEW_ONLY_b24_final",
+    "overrides": [
+      "data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]",
+      "model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt",
+      "model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml",
+      "trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact"
+    ]
+  },
+  "source_tree_sha256": "a6154eeef8bff0668d8c8c9e7d5693f5018d2805b1ddc0b529dd905a8af53280"
+}
+COMMAND=/home/horus/anaconda3/bin/python -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/b24_final_release/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=[/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/dataset_v2/splits/train]' model.params.pretrained=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/pretrained/Xiaomi-Robotics-1-5B/model_states.pt model.params.language_policy_path=/hpcwork/zk443626/robotics_thesis/transfer/xr1_claix_transfer_v1/language/doosan_assembly_language_v2.yaml trainer.default_root_dir=/hpcwork/zk443626/robotics_thesis/runs/claix_fp32_compact 'trainer.default_root_dir="/hpcwork/zk443626/robotics_thesis/runs/REVIEW_ONLY_b24_final"' data.params.train_datasets.num_workers=4 'hydra.run.dir="/hpcwork/zk443626/robotics_thesis/runs/REVIEW_ONLY_b24_final/hydra/production-1793545625486219943"' hydra.job.chdir=false

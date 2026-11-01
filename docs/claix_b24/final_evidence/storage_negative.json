@@ -1,0 +1,55 @@
+{
+  "available_bytes": 570770677760,
+  "available_inodes": 58736515,
+  "budget": {
+    "compact_bytes": 2147483648,
+    "logs_and_temporary_reserve_bytes": 4294967296,
+    "new_publications": 1,
+    "required_free_bytes": 32212254720,
+    "required_free_inodes": 10000,
+    "retained_payloads": 9
+  },
+  "checks": {
+    "filesystem_headroom": true,
+    "inodes": true,
+    "persistent_filesystem": false
+  },
+  "existing_parent": "/tmp",
+  "filesystem": {
+    "fstype": "ext4",
+    "source": "/dev/nvme0n1p4[/tmp]",
+    "target": "/tmp"
+  },
+  "operator_review": "Review actual user AND project quota, grace/soft/hard limits, existing retention and orphan usage; GID is not a project ID.",
+  "quota_queries": [
+    {
+      "command": [
+        "lfs",
+        "quota",
+        "-u",
+        "1000",
+        "/tmp"
+      ],
+      "error": "[Errno 2] No such file or directory: 'lfs'"
+    },
+    {
+      "reason": "Project ID not supplied; GID is not a project ID",
+      "status": "UNVERIFIED"
+    },
+    {
+      "command": [
+        "quota",
+        "-s",
+        "-u",
+        "1000"
+      ],
+      "error": "[Errno 2] No such file or directory: 'quota'"
+    }
+  ],
+  "quota_query_sha256": "51e2e72cd6cb41fcce040e254274773e86d97add41cc41b097e51a9854785110",
+  "quota_status": "UNVERIFIED",
+  "quota_verification": "UNVERIFIED",
+  "run_root": "/tmp/b24-read-only-never-created",
+  "status": "FAIL",
+  "timestamp": "2026-11-01T15:07:18.028336+00:00"
+}

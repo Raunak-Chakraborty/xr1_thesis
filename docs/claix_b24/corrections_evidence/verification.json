@@ -1,0 +1,23 @@
+{
+  "allocation_45_minute_completion": "UNVERIFIED",
+  "checkpoint_rotation_counts": "unchanged; exercised by complete CPU harness",
+  "cpu_tests": {
+    "passed": 134,
+    "scope": "complete offline CPU harness",
+    "seconds": 24.284
+  },
+  "final_source_h100": "UNVERIFIED",
+  "gpu_training": false,
+  "negative_release": "EXPECTED_REJECTION",
+  "negative_storage": "EXPECTED_REJECTION_NO_WRITES",
+  "production_dry_run": "PASS",
+  "slurm_submission": false,
+  "source_commit": "4339a0fcd7a9c18c81356d371360bbf629656c0c",
+  "source_tree_sha256": "533f8071446d89585d862400929aa9ddadea03ea37c2630c338e3b2436abbc39",
+  "syntax_science": {
+    "bash_syntax": "PASS",
+    "python_syntax_files": 74,
+    "scientific_source_unchanged": true
+  },
+  "targeted_dry_run": "PASS"
+}

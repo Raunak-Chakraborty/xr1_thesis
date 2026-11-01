@@ -121,21 +121,21 @@ class LaunchTest(unittest.TestCase):
 
     def test_production_checks_every_gate_and_evidence_checksum(self):
         with tempfile.TemporaryDirectory() as folder:
-            evidence=Path(folder)/'evidence.txt'; evidence.write_text('synthetic gate fixture only')
+            from test_claix_final_release import reviewed_fixture
+            release=reviewed_fixture(Path(folder))
             record=Path(folder)/'release.json'
-            row=dict(status='PASS',evidence=str(evidence),sha256=launch.hashlib.sha256(evidence.read_bytes()).hexdigest())
-            release=dict(source_tree_sha256=launch.tree_digest(),plan={'fixture':True},
-                         gates={key:dict(row) for key in launch.GATES})
             record.write_text(json.dumps(release))
-            launch.check_release(record,{'fixture':True})
+            plan=release['plan']
+            launch.check_release(record,plan)
             for gate in launch.GATES:
                 release['gates'][gate]['status']='UNVERIFIED'; record.write_text(json.dumps(release))
                 with self.subTest(gate=gate), self.assertRaisesRegex(RuntimeError,'Unqualified'):
-                    launch.check_release(record,{'fixture':True})
+                    launch.check_release(record,plan)
                 release['gates'][gate]['status']='PASS'
-            record.write_text(json.dumps(release)); evidence.write_text('changed')
+            record.write_text(json.dumps(release))
+            Path(release['gates']['frozen_splits']['evidence']).write_text('changed')
             with self.assertRaisesRegex(RuntimeError,'checksum'):
-                launch.check_release(record,{'fixture':True})
+                launch.check_release(record,plan)
 
     def test_duplicate_run_lock(self):
         with tempfile.TemporaryDirectory() as folder, contextlib.redirect_stdout(io.StringIO()):

@@ -1,0 +1,43 @@
+{
+  "all_cpu_tests": 119,
+  "all_cpu_tests_status": "PASS",
+  "baseline_note": "Initial baseline ran 98 tests and failed because this new worktree lacked the staged overrides; final rerun passed after an unchanged local reference copy.",
+  "bash_checks": "PASS",
+  "claix_storage_quota": "UNVERIFIED",
+  "existing_cpu_tests": 98,
+  "existing_cpu_tests_status": "PASS",
+  "final_h100_verification": "Prepared, not submitted; required for final-source hardware-sensitive gates",
+  "gpu_training": "NOT_RUN",
+  "historical_h100": {
+    "job_id": "5357168",
+    "measured_examples_per_second": 14.44,
+    "qualifies_current_source": false,
+    "source": "Earlier source revision; exact original artifact provenance required before release use"
+  },
+  "io_benchmark": "Synthetic 8 MiB CPU smoke only; not CLAIX performance evidence",
+  "kind": "cpu",
+  "launcher_dry_run": "PASS",
+  "lightning": "2.5.1.post0",
+  "negative_paths": "PASS (expected rejection)",
+  "production_gates": {
+    "end_to_end_throughput": "UNVERIFIED",
+    "frozen_splits": "UNVERIFIED",
+    "h100_b24_memory": "UNVERIFIED",
+    "held_out_validation": "UNVERIFIED",
+    "lr_and_horizon_approval": "UNVERIFIED",
+    "real_compact_resume": "UNVERIFIED",
+    "safe_stop_and_storage": "UNVERIFIED",
+    "tokens_24_examples_48_views": "UNVERIFIED",
+    "workers_0_4_8": "UNVERIFIED"
+  },
+  "python": "3.12.7 | packaged by Anaconda, Inc. | (main, Oct  4 2024, 13:27:36) [GCC 11.2.0]",
+  "reviewed_base": "4339a0fcd7a9c18c81356d371360bbf629656c0c",
+  "scientific_sources_unchanged": true,
+  "slurm_submission": "NOT_RUN",
+  "source_commit": "4339a0fcd7a9c18c81356d371360bbf629656c0c",
+  "source_tree_sha256": "a6154eeef8bff0668d8c8c9e7d5693f5018d2805b1ddc0b529dd905a8af53280",
+  "syntax_checks": "PASS",
+  "targeted_dry_run": "PASS",
+  "timestamp": "2026-11-01T15:08:23.789843+00:00",
+  "torch": "2.6.0+cu124"
+}

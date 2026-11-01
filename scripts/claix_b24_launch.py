@@ -108,8 +108,9 @@ def tree_digest():
     return h.hexdigest()
 
 
-def check_release(path, plan):
-    record = json.loads(Path(path).read_text())
+def check_release(path, plan, *, require_immutable=False):
+    raw = Path(path).read_bytes()
+    record = json.loads(raw)
     if record.get('source_tree_sha256') != tree_digest() or record.get('plan') != plan:
         raise RuntimeError('Release record does not bind this source tree and production plan')
     for gate in GATES:
@@ -119,6 +120,59 @@ def check_release(path, plan):
         evidence = Path(row['evidence'])
         if hashlib.sha256(evidence.read_bytes()).hexdigest() != row.get('sha256'):
             raise RuntimeError('Gate evidence checksum mismatch: ' + gate)
+    # Also used when imported through the offline test harness.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('claix_b24_release_review', ROOT / 'scripts/claix_b24_release.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.validate_review(record)
+    if require_immutable and (Path(path).is_symlink() or Path(path).stat().st_mode & 0o222):
+        raise RuntimeError('Production requires a read-only immutable reviewed release record')
+    return hashlib.sha256(raw).hexdigest()
+
+
+def check_resume_directory(target, resume):
+    """Reject rollback/foreign resumes that would append repeated training steps.
+
+    Payload integrity/configuration is still checked by the training entrypoint.
+    This metadata-only guard runs under the run-root lock, before model startup.
+    """
+    target, resume = Path(target).resolve(strict=True), Path(resume).resolve(strict=True)
+    if resume.parent != target:
+        raise RuntimeError('Existing run must resume its own latest checkpoint; use a new root for a fork')
+    def receipt(path):
+        if path.is_symlink() or not path.is_file():
+            raise RuntimeError('Resume pointer/receipt must be a regular non-symlink file')
+        with path.open('rb') as stream:
+            raw = stream.read(16385)
+        if len(raw) > 16384:
+            raise RuntimeError('Oversized resume pointer/receipt')
+        return json.loads(raw)
+    latest = receipt(target/'latest.json')
+    selected = receipt(resume.with_suffix('.verified.json'))
+    step = latest.get('global_step')
+    if (latest != selected or type(step) is not int or step <= 0
+            or latest.get('path') != resume.name or resume.name != f'step-{step:06d}.ckpt'):
+        raise RuntimeError('Existing run must resume its latest verified checkpoint')
+    cursor = None
+    with (target/'telemetry.jsonl').open() as stream:
+        while True:
+            line = stream.readline(65537)
+            if not line:
+                break
+            if len(line) > 65536 or not line.endswith('\n'):
+                raise RuntimeError('Incomplete/oversized telemetry; preserve run and recover into a new root')
+            row = json.loads(line)
+            if row['event'] == 'train_start':
+                if cursor is not None and row['step'] != cursor:
+                    raise RuntimeError('Prior resume cursor does not match telemetry')
+                cursor = row['step']
+            elif row['event'] == 'step':
+                if cursor is None or row['step'] != cursor+1:
+                    raise RuntimeError('Missing/repeated optimizer steps in existing telemetry')
+                cursor = row['step']
+    if cursor != step:
+        raise RuntimeError('Telemetry extends beyond or does not reach checkpoint; preserve run and recover into a new root')
 
 
 # Qualification requests are deliberately independent of the production lease.
@@ -129,7 +183,7 @@ PROFILES = {
 }
 
 
-def allocation_deadline(mode='production'):
+def allocation_deadline(mode='production', *, max_seconds=None):
     profile = PROFILES[mode]
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('--execute requires a compute-node Slurm allocation')
@@ -145,7 +199,8 @@ def allocation_deadline(mode='production'):
         duration = int(days)*86400 + hours*3600 + minutes*60 + seconds
     except ValueError as error:
         raise RuntimeError('Cannot establish finite allocation TimeLimit') from error
-    if not profile['margin'] < duration <= profile['max_seconds']:
+    maximum = profile['max_seconds'] if max_seconds is None else min(max_seconds, profile['max_seconds'])
+    if not profile['margin'] < duration <= maximum:
         raise RuntimeError('Allocation TimeLimit is outside the reviewed mode budget')
     tres = dict(part.split('=', 1) for part in fields.get('AllocTRES', '').split(',') if '=' in part)
     gpu_count = int(tres.get('gres/gpu', sum(int(v) for k, v in tres.items() if k.startswith('gres/gpu:'))))
@@ -188,6 +243,8 @@ def main(argv=None):
                    help='H100 qualification only: bounded trainer limit, 6..300 (default 6)')
     p.add_argument('--qualification-deadline-epoch', type=float,
                    help='H100 qualification only: shorten, never extend, allocation safe deadline')
+    p.add_argument('--qualification-gpu-monitor', action='store_true',
+                   help='Opt in to the production monitor in H100 qualification only')
     p.add_argument('--release-record')
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
@@ -197,6 +254,10 @@ def main(argv=None):
     if args.mode != 'h100-qualification' and (args.qualification_max_steps is not None
                                             or args.qualification_deadline_epoch is not None):
         p.error('qualification bounds are H100 qualification only')
+    if args.qualification_gpu_monitor and args.mode != 'h100-qualification':
+        p.error('qualification GPU monitor requires H100 qualification')
+    if args.mode == 'production' and args.workers != 4:
+        p.error('Production requires the approved four workers')
     qualification_steps = args.qualification_max_steps if args.qualification_max_steps is not None else 6
     if not 6 <= qualification_steps <= 300:
         p.error('qualification-max-steps must be between 6 and 300')
@@ -238,10 +299,11 @@ def main(argv=None):
     print('COMMAND=' + shlex.join(cmd), flush=True)
     if not args.execute:
         return 0
+    release_hash = None
     if args.mode == 'production':
         if not args.release_record:
             raise RuntimeError('Production requires completed qualification release record')
-        check_release(args.release_record, plan)
+        release_hash = check_release(args.release_record, plan, require_immutable=True)
     deadline = allocation_deadline(args.mode)
     if args.qualification_deadline_epoch is not None:
         deadline = min(deadline, args.qualification_deadline_epoch)
@@ -259,8 +321,32 @@ def main(argv=None):
             target = run_root / 'workers.json'
         if target.is_file() or (target.exists() and any(target.iterdir()) and not args.resume):
             raise RuntimeError('Run directory already contains state; explicitly resume or use a new root')
+        if args.resume and target.exists() and any(target.iterdir()):
+            check_resume_directory(target, args.resume)
         log_prefix = run_root / f'launch-{time.time_ns()}'
+        if args.mode == 'production':
+            # Use a script-path import even under the isolated offline harness.
+            sys.path.insert(0, str(ROOT / 'scripts'))
+            from claix_b24_storage_preflight import allocation_recheck
+            try:
+                storage_result = allocation_recheck(json.loads(Path(args.release_record).read_text()))
+            except Exception as error:
+                storage_result = dict(status='UNVERIFIED', stage='allocation',
+                                      abort_reasons=[str(error)])
+            # Retain JSON in persistent Slurm stdout even if the run filesystem
+            # cannot write its report (e.g. the very quota failure being checked).
+            print('ALLOCATION_STORAGE=' + json.dumps(storage_result, sort_keys=True), flush=True)
+            storage_path = Path(str(log_prefix) + '.storage.json')
+            with storage_path.open('x') as stream:
+                json.dump(storage_result, stream, indent=2, sort_keys=True)
+                stream.write('\n')
+            if storage_result['status'] != 'PASS':
+                raise RuntimeError('Allocation storage preflight aborted before model loading: '
+                                   + json.dumps(storage_result.get('abort_reasons', []))
+                                   + '; report=' + str(storage_path))
         write_provenance(log_prefix, plan, args.release_record)
+        if release_hash is not None and hashlib.sha256(Path(args.release_record).read_bytes()).hexdigest() != release_hash:
+            raise RuntimeError('Release record changed after review validation')
         env = dict(os.environ, MAX_LENGTH='12288', CUBLAS_WORKSPACE_CONFIG=':4096:8',
                    HF_DATASETS_OFFLINE='1', WANDB_MODE='disabled', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', TOKENIZERS_PARALLELISM='false',
                    PYTHONUNBUFFERED='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1',
@@ -287,7 +373,8 @@ def main(argv=None):
         child = None
         child_finished = False
         monitor = (NvidiaSmiMonitor(str(log_prefix) + '.gpu.jsonl')
-                   if args.mode == 'production' and os.environ.get('XR1_NVIDIA_SMI_MONITOR', '1') != '0'
+                   if ((args.mode == 'production' and os.environ.get('XR1_NVIDIA_SMI_MONITOR', '1') != '0')
+                       or args.qualification_gpu_monitor)
                    else None)
         try:
             if monitor is not None:

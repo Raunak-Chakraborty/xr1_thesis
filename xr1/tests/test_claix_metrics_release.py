@@ -270,18 +270,21 @@ class MonitorReleaseTest(unittest.TestCase):
         for failure in (False, True):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as folder, \
                  patch.object(launch, 'allocation_deadline', return_value=10000000000), \
-                 patch.object(launch, 'check_release'), patch.object(launch, 'write_provenance'), \
+                 patch.object(launch, 'check_release', return_value=None), patch.object(launch, 'write_provenance'), \
+                 patch('claix_b24_storage_preflight.allocation_recheck', return_value=dict(status='PASS')), \
                  patch.object(launch, 'NvidiaSmiMonitor') as monitor, \
                  patch.object(launch.subprocess, 'Popen') as child, \
                  patch.dict(launch.os.environ, XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic', XR1_NVIDIA_SMI_MONITOR='1'):
+                release_path = Path(folder)/'release.json'
+                release_path.write_text('{}')
                 if failure:
                     child.side_effect = OSError('synthetic child failure')
                     with self.assertRaises(OSError):
-                        launch.main(['--execute', '--mode', 'production', '--run-root', folder, '--release-record', 'fixture'])
+                        launch.main(['--execute', '--mode', 'production', '--run-root', folder, '--release-record', str(release_path)])
                 else:
                     child.return_value.wait.return_value = 0
                     self.assertEqual(launch.main(['--execute', '--mode', 'production', '--run-root', folder,
-                                                  '--release-record', 'fixture']), 0)
+                                                  '--release-record', str(release_path)]), 0)
                 monitor.return_value.start.assert_called_once()
                 monitor.return_value.close.assert_called_once()
 

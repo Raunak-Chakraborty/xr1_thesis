@@ -1,0 +1,37 @@
+{
+  "scope": "LOCAL SYNTHETIC CPU / STATIC ONLY; NEW H100 QUALIFICATION UNVERIFIED",
+  "reviewed_commit": "5e2dbb8d184899901ba4162d5e6bbb208d281a8c",
+  "branch": "thesis/claix-b24-combined-qualification-v1",
+  "source_tree_sha256": "ef0f197650425d9f153b2f0054cf7ea76195a11a266846c2e2ccf42aaeaf9af4",
+  "python": "3.11.15 (main, Mar 11 2026, 17:20:07) [GCC 14.3.0]",
+  "torch": "2.7.1+cu128",
+  "lightning": "2.5.1.post0",
+  "command": "PYTHONPATH=/tmp/claix-b24-test-packages USE_TF=0 CUDA_VISIBLE_DEVICES='' /home/horus/anaconda3/envs/forcevla_thesis_env/bin/python -B xr1/tests/run_claix_cpu_tests.py",
+  "tests": {
+    "passed": 86,
+    "seconds": 18.786,
+    "exit_code": 0,
+    "previous_68_regressions_preserved": true
+  },
+  "static_commands": {
+    "count": 13,
+    "failures": 0,
+    "evidence": "combined_static_commands.json"
+  },
+  "unchanged_training_contract_files": {
+    "xr1/configs/claix_b24_production.yaml": "d7b067ec942200af1939c5aa4a150032d98d58348f61800a20bcf9f3aae67003",
+    "xr1/tools/train_doosan_compact.py": "6a201d1f1cd89dc56932648922489e014980a85a15bac81462996b0e33bb8ebf",
+    "xr1/mibot/utils/doosan_replay.py": "102636f3e02bfe9ebbcd69a9a5fb8a526b6f3dceff2c4bad441a4902859487ae",
+    "xr1/mibot/utils/claix_checkpoint.py": "3f087ebb06930c0e1e2eb6a1351b13c6158df0614a1d755ef86a03ff0820f848"
+  },
+  "reference_files_unchanged": true,
+  "jobs_submitted": 0,
+  "gpu_training_executed": false,
+  "network_downloads": false,
+  "commits_attempted": false,
+  "evidence_sha256": {
+    "combined_static_commands.json": "51e98b9e2bfc9fc276ae9e706ef815cb6f2dd1f2c02d5d482978ca2dc35805be",
+    "combined_cpu_tests.txt": "1147a203d23b51893ff325e5fc4524bf6993fda78dfc42f285d654caaa8e5ab2",
+    "combined_dry_runs.txt": "c76a0d25e1d83a306dd2eed57c8979ac1922837641776150e6ea86eea5edf513"
+  }
+}

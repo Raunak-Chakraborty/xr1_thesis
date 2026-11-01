@@ -183,3 +183,97 @@ class LaunchTest(unittest.TestCase):
             finally:
                 for sig,handler in old.items():
                     signal.signal(sig,handler)
+
+    def test_qualification_step_bounds_and_alias_preserve_horizons(self):
+        from hydra import compose, initialize_config_dir
+        for maximum in (6, 260, 300):
+            for mode in ('h100-qualification', 'qualification'):
+                output=io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    launch.main(['--mode',mode,'--run-root','/tmp/bounded qualification',
+                                 '--qualification-max-steps',str(maximum),'--stop-after-step',str(maximum)])
+                cmd=shlex.split(output.getvalue().split('COMMAND=')[1])
+                with initialize_config_dir(config_dir=str(ROOT/'xr1/configs'),version_base=None):
+                    cfg=compose(config_name='claix_b24_production',overrides=cmd[7:])
+                self.assertEqual(cfg.trainer.max_steps,maximum)
+                self.assertEqual(cfg.data.params.max_steps,48284)
+                self.assertEqual(cfg.trainer.scheduler.params.num_training_steps,48284)
+                self.assertEqual(cfg.trainer.scheduler.params.num_warmup_steps,500)
+                self.assertEqual(cfg.data.params.train_datasets.batch_size,24)
+                self.assertEqual(cfg.trainer.accumulate_grad_batches,1)
+                self.assertEqual(cfg.model.params.last_n,1)
+                self.assertEqual(cfg.trainer.precision,'bf16-mixed')
+
+    def test_new_qualification_arguments_rejected_outside_contract(self):
+        invalid=[['--qualification-max-steps',str(n)] for n in (-1,0,5,301)]
+        invalid += [['--qualification-max-steps','6.5'], ['--qualification-max-steps','260','--stop-after-step','261']]
+        invalid += [['--qualification-deadline-epoch',v] for v in ('nan','inf','-1','0')]
+        for mode in ('production','cpu-qualification'):
+            invalid += [['--mode',mode,'--qualification-max-steps','6'],
+                        ['--mode',mode,'--qualification-deadline-epoch','10000']]
+        with contextlib.redirect_stderr(io.StringIO()),contextlib.redirect_stdout(io.StringIO()):
+            for args in invalid:
+                with self.subTest(args=args), self.assertRaises(SystemExit):
+                    launch.main(['--run-root','/tmp/no-run',*args])
+        # Normal production still needs the full release and unchanged exact lease.
+        with patch.dict(os.environ,{},clear=True),contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(RuntimeError,'release record'):
+                launch.main(['--execute','--mode','production','--run-root','/tmp/no-run'])
+
+    def test_qualification_deadline_can_only_shorten_and_controller_clock_requests_stop(self):
+        for requested,expected in ((200.,200.),(2000.,1000.)):
+            with tempfile.TemporaryDirectory() as folder,contextlib.redirect_stdout(io.StringIO()):
+                clock=[100.]
+                environment={}
+                class Child:
+                    pid=1234567
+                    calls=0
+                    def wait(self,timeout):
+                        self.calls+=1
+                        if self.calls==1:
+                            clock[0]=expected+1
+                            raise launch.subprocess.TimeoutExpired('synthetic',timeout)
+                        request=json.loads(Path(environment['XR1_STOP_REQUEST_FILE']).read_text())
+                        if request != {'reason':'safe_deadline'}:
+                            raise AssertionError(request)
+                        return 0
+                def start(command,**kwargs):
+                    environment.update(kwargs['env'])
+                    return Child()
+                with patch.object(launch,'allocation_deadline',return_value=1000.), \
+                     patch.object(launch.time,'time',side_effect=lambda:clock[0]), \
+                     patch.object(launch.subprocess,'Popen',side_effect=start), \
+                     patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic/cache'):
+                    self.assertEqual(launch.main(['--execute','--run-root',folder,
+                        '--qualification-deadline-epoch',str(requested)]),0)
+                self.assertEqual(float(environment['XR1_SAFE_STOP_EPOCH']),expected)
+                row=json.loads(next(Path(folder).glob('launch-*.stop.json')).read_text())
+                self.assertEqual(row['reason'],'safe_deadline')
+                self.assertFalse(list(Path(folder).glob('.stop-request*')))
+        with contextlib.redirect_stdout(io.StringIO()),patch.object(launch,'allocation_deadline',return_value=1000.), \
+             patch.object(launch.time,'time',return_value=300.):
+            with self.assertRaisesRegex(RuntimeError,'already passed'):
+                launch.main(['--execute','--run-root','/tmp/no-run','--qualification-deadline-epoch','200'])
+
+    def test_qualification_hung_child_is_bounded_and_only_owned_group_is_terminated(self):
+        with tempfile.TemporaryDirectory() as folder,contextlib.redirect_stdout(io.StringIO()):
+            clock=[100.]
+            class Child:
+                pid=1234567
+                calls=0
+                def wait(self,timeout):
+                    self.calls+=1
+                    if self.calls==1:
+                        clock[0]=300.
+                        raise launch.subprocess.TimeoutExpired('synthetic',timeout)
+                    return -15
+            old=signal.getsignal(signal.SIGUSR1)
+            with patch.object(launch,'allocation_deadline',return_value=200.), \
+                 patch.object(launch.time,'time',side_effect=lambda:clock[0]), \
+                 patch.object(launch.subprocess,'Popen',return_value=Child()), \
+                 patch.object(launch.os,'killpg') as kill, \
+                 patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic/cache'):
+                with self.assertRaisesRegex(RuntimeError,'bounded shutdown'):
+                    launch.main(['--execute','--run-root',folder])
+                kill.assert_called_once_with(1234567,signal.SIGTERM)
+            self.assertEqual(signal.getsignal(signal.SIGUSR1),old)

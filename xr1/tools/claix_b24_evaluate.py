@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 
-def main():
+def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--overrides',required=True)
     p.add_argument('--checkpoint',required=True)
@@ -13,7 +13,9 @@ def main():
     p.add_argument('--test-root',required=True,help='Identity/leakage inventory only; no test inference')
     p.add_argument('--output',required=True)
     p.add_argument('--limit',type=int,default=0,help='Smoke subset only; 0 evaluates all validation frames')
-    args=p.parse_args()
+    args=p.parse_args(argv)
+    if args.limit < 0:
+        p.error('limit must be nonnegative')
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('Real XR1 evaluation requires an allocated CLAIX compute node')
     os.environ.update(MAX_LENGTH='12288',WORLD_SIZE='1',HF_HUB_OFFLINE='1',TRANSFORMERS_OFFLINE='1')
@@ -51,6 +53,7 @@ def main():
     if ck['xr1_compact_fp32']!=runner._compact_meta:
         raise RuntimeError('Compact model selection/base provenance mismatch')
     runner.load_state_dict(ck['state_dict'])
+    del ck
     model=runner.model.eval().to('cuda')
     conf.data.params.train_datasets.paths=[args.validation_root]
     dataset=DoosanValidationDataset(conf.data.params)
@@ -62,11 +65,16 @@ def main():
         for i in range(limit):
             sample=dataset.samples[i]
             yield str(Path(sample['file']).relative_to(args.validation_root)),sample['frame_index'],dataset[i]
+    # Preserve small-smoke outputs; full validation remains aggregated to avoid
+    # keeping an entire held-out prediction set in host memory.
+    generated=[] if args.limit else None
     with torch.autocast('cuda',dtype=torch.bfloat16):
-        metrics=evaluate_items(model,items(),processor,torch.tensor(data.std),device='cuda')
+        metrics=evaluate_items(model,items(),processor,torch.tensor(dataset.std),device='cuda',evidence=generated)
     output=Path(args.output);output.parent.mkdir(parents=True,exist_ok=True)
     atomic_json(output,dict(schema='claix-b24-validation-v1',checkpoint_sha256=file_sha256(args.checkpoint),
+        config_sha256=fingerprint,train_sha256=train['sha256'],
         validation_sha256=val['sha256'],test_identity_sha256=test['sha256'],metrics=metrics,
+        processor_model_compatible=True,generated_frames=generated,
         scope='FULL_VALIDATION' if limit==len(dataset) else 'SMOKE_SUBSET_NOT_A_VALIDATION_RESULT'))
 
 

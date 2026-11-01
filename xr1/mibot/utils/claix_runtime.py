@@ -32,7 +32,9 @@ class StopRequest:
     def due(self, now=None):
         request_file = os.environ.get('XR1_STOP_REQUEST_FILE')
         if request_file and Path(request_file).is_file():
-            self.reason = 'launcher_signal'
+            request = json.loads(Path(request_file).read_text())
+            self.reason = ('launcher_signal:' + str(request['signal']) if 'signal' in request
+                           else request.get('reason', 'launcher_request'))
         return self.reason is not None or (time.time() if now is None else now) >= self.deadline
 
     def install(self):
@@ -109,7 +111,9 @@ class ProductionRuntime(Callback):
         self.emit(trainer, 'train_start', deadline_epoch=self.stop.deadline,
                   workers=loader.num_workers, batch_size=loader.batch_size,
                   torch_version=torch.__version__, lightning_version=__import__('lightning').__version__,
-                  prefetch_factor=loader.prefetch_factor, persistent_workers=loader.persistent_workers)
+                  prefetch_factor=loader.prefetch_factor, persistent_workers=loader.persistent_workers,
+                  replay_offset=sampler.offset, replay_contract=contract,
+                  trainable_parameter_count=pl_module._compact_meta['trainable_parameter_count'])
 
     def on_train_batch_start(self, trainer, pl_module, batch, batch_idx):
         self.batch_started = time.perf_counter()
@@ -161,11 +165,17 @@ class ProductionRuntime(Callback):
             torch.cuda.synchronize()
         now = time.perf_counter()
         elapsed = now - self.started
+        trainable = [p for p in pl_module.parameters() if p.requires_grad]
+        if (any(p.dtype != torch.float32 for p in trainable)
+                or any(p.dtype != torch.bfloat16 for p in pl_module.parameters() if not p.requires_grad)):
+            raise RuntimeError('Trainable FP32 / frozen BF16 storage invariant failed')
         rate = (step - self.initial_step) * self.retained * trainer.world_size / elapsed
         loss = outputs.get('loss') if isinstance(outputs, dict) else outputs
         fields = dict(samples_consumed=step * self.retained * trainer.world_size,
                       retained_examples=self.retained, views=self.views, packed_tokens=self.tokens,
                       pipeline_wait_seconds=self.data_pipeline_seconds,
+                      elapsed_seconds=elapsed, step_seconds=now-self.previous_end,
+                      trainable_fp32=True, frozen_bf16=True,
                       # Includes loader wait, transfers, callbacks and earlier checkpoint I/O.
                       end_to_end_examples_per_second=rate,
                       loss=float(loss.detach()) if loss is not None else None,
@@ -180,11 +190,12 @@ class ProductionRuntime(Callback):
         except (ImportError, OSError):
             fields['cpu_rss_bytes'] = fields['worker_rss_bytes'] = None
         fields.update(gpu_utilization_percent=None, gpu_allocated_bytes=None,
-                      gpu_reserved_bytes=None, gpu_peak_allocated_bytes=None)
+                      gpu_reserved_bytes=None, gpu_peak_allocated_bytes=None, gpu_peak_reserved_bytes=None)
         if torch.cuda.is_available():
             fields.update(gpu_allocated_bytes=torch.cuda.memory_allocated(),
                           gpu_reserved_bytes=torch.cuda.memory_reserved(),
-                          gpu_peak_allocated_bytes=torch.cuda.max_memory_allocated())
+                          gpu_peak_allocated_bytes=torch.cuda.max_memory_allocated(),
+                          gpu_peak_reserved_bytes=torch.cuda.max_memory_reserved())
             try:
                 fields['gpu_utilization_percent'] = torch.cuda.utilization()
             except Exception as error:

@@ -1,5 +1,35 @@
 # File-level engineering changes
 
+## Combined one-allocation qualification (2026-10-31)
+
+- Extend `claix_b24_launch.py` with H100-only `--qualification-max-steps` (6..300)
+  and a shorten-only `--qualification-deadline-epoch`. Bound stop-after-step by
+  that maximum, keep production release/lease checks, publish stop requests
+  atomically, retain controller reason/PID evidence and bound hung-child cleanup.
+- Add `claix_b24_combined_qualification.py` and standalone `.sbatch`: fresh
+  independent roots, ordered restart/performance/signal/evaluation gates,
+  zero-tolerance FP32 model/AdamW/scheduler/cursor/identity comparisons, finite
+  complete telemetry checks, persistent subprocess logs/exit evidence, SHA256
+  manifests and final machine-readable PASS/FAIL/UNVERIFIED phase report.
+- Extend runtime telemetry with replay start offset/count, elapsed/step time,
+  peak reserved CUDA memory and FP32/BF16 invariants. Retain signal/clock reason
+  from the actual launcher request. All saves remain in completed-step callbacks.
+- Extend evaluator smoke evidence with per-frame generated action hashes/semantic
+  channels/metrics and train/config provenance. Reject negative limits and
+  nonfinite generated outputs; use dataset-validated training normalization.
+  Existing fingerprint/receipt validation and training semantics remain intact.
+- Add launcher bounds/deadline tests, orchestration gates/sequence/process/failure
+  tests, numerical mismatch fixtures and evaluator/runtime evidence coverage.
+  Final run: **86 tests pass (18.786 s)** plus 13 static/dry-run commands; all
+  previous 68 regression tests are retained. Local results are CPU/synthetic,
+  distinct from unexecuted new H100 qualification.
+
+See [COMBINED_QUALIFICATION.md](COMBINED_QUALIFICATION.md) for the operator-supplied
+actual prior job results, required inputs, exact future command and evidence
+contract. Production YAML, training entrypoint, replay/checkpoint validators and
+all transferred reference files are unchanged.
+
+
 All source edits are in the isolated production worktree. Baseline source commit
 and transferred reference files are preserved. New code is opt-in through the new
 production Hydra configuration and launchers, except stricter generic replay

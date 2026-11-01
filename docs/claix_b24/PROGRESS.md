@@ -1,5 +1,66 @@
 # CLAIX batch-24 engineering progress
 
+## Combined qualification follow-up (2026-10-31)
+
+Reviewed starting commit: `5e2dbb8d184899901ba4162d5e6bbb208d281a8c`; isolated
+branch `thesis/claix-b24-combined-qualification-v1`. This is a targeted follow-up,
+not a repeat of the original broad audit. No original experiment was modified.
+
+Operator-reported actual CLAIX evidence now supersedes earlier UNVERIFIED claims
+about the initial smoke: CPU **5350462** COMPLETED/0, workers 0/4/8, matching real
+batch hashes, four-worker CPU rate **28.53 examples/s**; H100 **5350463**
+COMPLETED/0, XR1 5.1B, b24 / 48 views / six steps, torch 2.8.0+cu128 / Lightning
+2.5.3, **141255168** FP32 trainable parameters, approximately **64.91 GiB** peak
+reserved memory, verified step 6, checkpoint about **8.43 s**. Cluster artifacts
+were not independently fetched during this local development session. The original
+step-6 payload/receipt are historical evidence only and remain untouched.
+
+Implemented: qualification-only trainer bound 6..300; frozen replay/LR horizons
+48284; separate six-step uninterrupted / stopped-at-3 / restart experiments;
+zero-tolerance numerical comparison with per-tensor differences; real 260-step
+maximum run with verified step 250 then owned-controller SIGUSR1; strict new-final
+checkpoint/shutdown gates; bounded deadline cleanup; additional GPU peak-reserved,
+CPU/worker and precision telemetry; standalone validation smoke output evidence;
+source/reference/experiment SHA256 manifests and fail-closed final JSON report.
+Production release checks and exact 23:45:00 lease are retained. No training
+recipe, optimizer/LR horizon, split, last_n or Doosan semantics were changed.
+
+The new single job is `scripts/claix_b24_combined_qualification.sbatch` (thes2452,
+c23g, generic `--gres=gpu:1`, 12 CPU, 96 GiB, 02:00:00, 600 s margin).
+[Combined qualification](COMBINED_QUALIFICATION.md) describes commands, required
+existing frozen-split identity input and all expected evidence. Initial hardware
+smokes are demonstrated; **new real H100 restart, sustained 250-step, controller
+signal and validation inference qualification remain UNVERIFIED**. The CPU clock
+probe/local synthetic controller tests do not claim allocation-expiry results.
+
+Final local verification: **86 tests passed in 18.786 s**, exit 0, retaining all
+previous 68 regressions and adding 18 focused tests. Python 3.11 / torch
+2.7.1+cu128 / Lightning 2.5.1.post0; CUDA hidden. Cached Lightning/Hydra wheels
+were extracted under `/tmp/claix-b24-test-packages`, without network downloads or
+changes to the installed environment. Tests cover bounds/mode isolation, Hydra
+horizons, controller clock/cleanup, exact mismatch reports, real tiny checkpoint
+receipts, sustained telemetry gates, a mocked complete phase sequence, real owned
+CPU subprocess exit/abort handling, and a mocked evaluator entrypoint. All these
+are local synthetic/CPU evidence, not real data or exact-stack H100 results.
+
+Executed final test command:
+
+```bash
+PYTHONPATH=/tmp/claix-b24-test-packages USE_TF=0 CUDA_VISIBLE_DEVICES='' \
+/home/horus/anaconda3/envs/forcevla_thesis_env/bin/python -B xr1/tests/run_claix_cpu_tests.py
+```
+
+**13 static/dry-run commands passed**: compileall, bash syntax for all four Slurm
+scripts, the three existing mode dry-runs, bounded H100 limits 6/260/300, combined
+orchestrator dry-run, and `git diff --check`. No dry-run root was created.
+Evidence: `evidence/combined_cpu_tests.txt`, `evidence/combined_dry_runs.txt`,
+`evidence/combined_static_commands.json`, `evidence/combined_verification.json`.
+An initial expanded run had 82/83 passing: a test fixture omitted SLURM_JOB_ID;
+that fixture was corrected. Subsequent 84-, 85- and final 86-test runs passed.
+No Slurm submissions/calls, GPU training, downloads, external checkpoint/dataset
+writes, Git commits/pushes or source edits outside this isolated worktree were performed.
+
+
 Baseline: `52676ccfa3b52f05de51d3d7407f33855159ac95`, branch
 `thesis/claix-b24-production-v1`. No AGENTS.md exists in this worktree or its
 ancestor directories. The complete brief and all 18 transferred reference files

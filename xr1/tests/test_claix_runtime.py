@@ -167,6 +167,17 @@ class RuntimeTest(unittest.TestCase):
         self.assertTrue(request.due())
         self.assertEqual(request.reason,f'signal:{signal.SIGUSR1}')
 
+    def test_controller_stop_file_preserves_signal_and_clock_reason(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'request.json'
+            with patch.dict(os.environ,XR1_STOP_REQUEST_FILE=str(path)):
+                for value,expected in (({'signal':int(signal.SIGUSR1)},f'launcher_signal:{signal.SIGUSR1}'),
+                                       ({'reason':'safe_deadline'},'safe_deadline')):
+                    path.write_text(json.dumps(value))
+                    stop=StopRequest(time.time()+100)
+                    self.assertTrue(stop.due())
+                    self.assertEqual(stop.reason,expected)
+
     def test_nonfinite_gradient_rejected(self):
         module=TinyRunner.__new__(TinyRunner)
         torch.nn.Module.__init__(module)

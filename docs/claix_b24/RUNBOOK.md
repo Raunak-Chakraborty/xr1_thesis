@@ -1,5 +1,40 @@
 # CLAIX batch-24 qualification and recovery
 
+## Current targeted follow-up: one combined H100 job
+
+Use [COMBINED_QUALIFICATION.md](COMBINED_QUALIFICATION.md) for the current single-job
+procedure and exact proposed command. It supersedes the earlier manual multi-job
+qualification sequence below. No job was submitted during development.
+
+Operator-supplied initial smokes are already demonstrated: CPU job **5350462**
+(workers 0/4/8, deterministic hashes, four workers 28.53 CPU examples/s) and H100
+job **5350463** (six b24 steps, 48 views, 141255168 FP32 trainables, approximately
+64.91 GiB peak reserved, verified step 6 / about 8.43 s checkpoint). Old sections
+saying those initial tests are unverified describe earlier sessions. New actual
+restart equivalence, sustained performance, controlled signal stop and validation
+inference remain unverified until the combined job runs.
+
+The standalone script is `scripts/claix_b24_combined_qualification.sbatch`:
+`thes2452`, `c23g`, `--gres=gpu:1`, 12 CPUs, 96 GiB, **02:00:00**, 600 s safety
+margin. It never submits another allocation. Set `XR1_WORKTREE`, `XR1_PYTHON`,
+`XR1_RUN_ROOT` (must not exist), approved `XR1_DOOSAN_ZIP_CACHE_ROOT` and
+`XR1_SPLIT_IDENTITIES` (existing reviewed train/validation/test inventory hashes).
+Use the reference staged model/data paths and existing offline environment.
+
+The H100 launcher now supports `--qualification-max-steps 6..300`, default 6,
+and a shorten-only `--qualification-deadline-epoch`. Replay and scheduler remain
+48284. Both new options are forbidden in production and CPU mode. Production
+still needs every release gate and exactly 23:45:00; the combined qualification
+report does not replace that release record. Preserve the original job 5350463
+checkpoint/receipt; its old fingerprint need not match a modified source tree.
+
+Local development checks: **86 CPU tests passed**, including the earlier 68;
+13 compile/shell/static/dry-run commands passed. Exact commands/results are in
+`evidence/combined_verification.json` and `evidence/combined_static_commands.json`;
+raw test output is `evidence/combined_cpu_tests.txt`. These use local torch 2.7.1 /
+Lightning 2.5.1.post0 and synthetic fixtures, not CLAIX real-data qualification.
+
+
 This is an engineering handoff, **not a production-ready declaration**. Nothing
 here has been submitted to Slurm or run on a GPU. Use the isolated engineered
 worktree on CLAIX; do not overwrite the pinned original checkout. Preserve the

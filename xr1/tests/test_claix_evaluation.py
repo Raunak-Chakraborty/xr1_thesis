@@ -64,6 +64,23 @@ class EvaluationTest(unittest.TestCase):
         self.assertAlmostEqual(result['micro_mae']['translation_m'],0.25*(1+ACTION_EPS))
         self.assertAlmostEqual(result['episode_macro_mae']['translation_m'],0.5*(1+ACTION_EPS))
 
+    def test_generated_smoke_evidence_and_nonfinite_output(self):
+        evidence=[]
+        evaluate_items(ModelFixture(), [('validation-only',2,eval_item(0.,3))], ProcessorFixture(),
+                       torch.ones(30,60), evidence=evidence)
+        row=evidence[0]
+        self.assertEqual(row['episode'],'validation-only')
+        self.assertEqual(row['frame'],2)
+        self.assertEqual(row['shape'],[30,60])
+        self.assertEqual(len(row['prediction_sha256']),64)
+        self.assertEqual(len(row['generated_action']),30)
+        self.assertEqual(row['masked_metrics']['translation_m']['count'],9)
+        class BadModel(ModelFixture):
+            def generate(self,batch):
+                return torch.full((1,30,60),float('nan'))
+        with self.assertRaisesRegex(ValueError,'Nonfinite generated'):
+            evaluate_items(BadModel(), [('validation-only',2,eval_item())], ProcessorFixture(), torch.ones(30,60))
+
     def test_split_counts_leakage_and_inventory_changes(self):
         with tempfile.TemporaryDirectory() as folder:
             roots=[Path(folder)/name for name in ('train','val','test')]
@@ -95,3 +112,65 @@ class EvaluationTest(unittest.TestCase):
         self.assertEqual(original,resume_fingerprint(allowed,{'sha256':'a'*64},12288))
         changed=copy.deepcopy(cfg);changed['trainer']['scheduler']['params']['num_warmup_steps']=501
         self.assertNotEqual(original,resume_fingerprint(changed,{'sha256':'a'*64},12288))
+
+    def test_evaluator_entrypoint_integration_with_mock_model_and_held_out_data(self):
+        import contextlib
+        import importlib.util
+        import io
+        import os
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from test_claix_checkpoint import checkpoint_fixture
+        path=Path(__file__).resolve().parents[1]/'tools/claix_b24_evaluate.py'
+        spec=importlib.util.spec_from_file_location('claix_evaluator_entry',path)
+        entry=importlib.util.module_from_spec(spec);spec.loader.exec_module(entry)
+        with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+            entry.main(['--overrides','unused','--checkpoint','unused','--validation-root','unused',
+                        '--test-root','unused','--output','unused','--limit','-1'])
+        ck=checkpoint_fixture(step=6,horizon=48284)
+        class Runner:
+            def __init__(self,params):
+                self._compact_meta=ck['xr1_compact_fp32'];self.model=ModelFixture()
+                self.params=params
+            def configure_model(self): pass
+            def load_state_dict(self,state):
+                if set(state)!=set(ck['state_dict']): raise AssertionError('wrong checkpoint')
+        class Dataset:
+            def __init__(self,params):
+                # Entry must point inference only at held-out validation data.
+                assert params.train_datasets.paths==[validation]
+                self.samples=[dict(file=str(Path(validation)/'episode.json'),frame_index=i) for i in range(3)]
+                self.std=torch.ones(30,60).numpy()
+            def __len__(self): return len(self.samples)
+            def __getitem__(self,index): return eval_item(0.,3)
+        def cpu_evaluate(model,items,processor,std,**kwargs):
+            return evaluate_items(model,items,processor,std,device='cpu',evidence=kwargs['evidence'])
+        def checksum(path):
+            if str(path).endswith('model_states.pt'):
+                return '94d55a79122050a654b379664b644e874ff90d64ccd30a6a633f816555bcecf7'
+            if str(path).endswith('.yaml'):
+                return '21d8ffbdbfec2f9833339faaf0c5818c85cd5a135dcf474fe2d3f76cda1cf34d'
+            return 'd'*64
+        with tempfile.TemporaryDirectory() as folder:
+            validation=str(Path(folder)/'validation')
+            output=Path(folder)/'result.json'
+            with patch.dict(os.environ,SLURM_JOB_ID='synthetic'), \
+                 patch('mibot.utils.claix_contract.audit_splits',return_value=[{'sha256':v*64} for v in 'abc']) as audit, \
+                 patch('mibot.utils.claix_contract.resume_fingerprint',return_value='a'*64), \
+                 patch('mibot.utils.claix_checkpoint.load_verified',return_value=ck) as verified, \
+                 patch('mibot.utils.claix_checkpoint.file_sha256',side_effect=checksum), \
+                 patch('mibot.models.runner.doosan_compact_runner.DoosanCompactRunner',Runner), \
+                 patch('mibot.data.datasets.doosan_json_dataset.DoosanValidationDataset',Dataset), \
+                 patch('mibot.data.collate.custom_collate.CustomCollate',return_value=SimpleNamespace(processor=ProcessorFixture())), \
+                 patch('mibot.utils.claix_evaluation.evaluate_items',side_effect=cpu_evaluate), \
+                 patch('torch.autocast',return_value=contextlib.nullcontext()):
+                entry.main(['--overrides',str(Path(__file__).resolve().parents[2]/'.claix_b24_reference/configs/hydra_overrides.json'),
+                            '--checkpoint',str(Path(folder)/'mock.ckpt'),'--validation-root',validation,
+                            '--test-root','IDENTITY_ONLY_NEVER_INFER','--output',str(output),'--limit','1'])
+            self.assertEqual(audit.call_args.args[2],'IDENTITY_ONLY_NEVER_INFER')
+            self.assertEqual(verified.call_args.kwargs,dict(expected_config='a'*64,resumable=False))
+            result=json.loads(output.read_text())
+            self.assertEqual(result['scope'],'SMOKE_SUBSET_NOT_A_VALIDATION_RESULT')
+            self.assertEqual(result['metrics']['frames'],1)
+            self.assertEqual(result['generated_frames'][0]['episode'],'episode.json')
+            self.assertTrue(result['processor_model_compatible'])

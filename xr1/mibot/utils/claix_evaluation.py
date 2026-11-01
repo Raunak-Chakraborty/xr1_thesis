@@ -60,7 +60,7 @@ def action_errors(prediction, target, mask, std):
     return result
 
 
-def evaluate_items(model, items, processor, std, *, device='cpu', seed=73000):
+def evaluate_items(model, items, processor, std, *, device='cpu', seed=73000, evidence=None):
     """No-grad, generated-action evaluation with per-frame deterministic seeds.
 
     `items` yields (episode_id, frame_index, dataset_item) in frozen order.
@@ -81,7 +81,14 @@ def evaluate_items(model, items, processor, std, *, device='cpu', seed=73000):
                 batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v
                          for k, v in inference_payload(item, processor).items()}
                 prediction = model.generate(batch).float().cpu().squeeze(0)
+                if not torch.isfinite(prediction).all():
+                    raise ValueError('Nonfinite generated-action output')
                 metrics = action_errors(prediction, item['action'], item['action_mask'], std)
+                if evidence is not None:
+                    evidence.append(dict(episode=episode, frame=int(frame), shape=list(prediction.shape),
+                                         prediction_sha256=hashlib.sha256(prediction.contiguous().numpy().tobytes()).hexdigest(),
+                                         all_finite=True, masked_metrics=metrics,
+                                         generated_action=prediction[:, :7].tolist()))
                 for group, row in metrics.items():
                     for aggregate in (totals, episodes.setdefault(episode, {})):
                         acc = aggregate.setdefault(group, [0., 0])

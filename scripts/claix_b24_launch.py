@@ -107,15 +107,28 @@ def main(argv=None):
     p.add_argument('--run-root', required=True)
     p.add_argument('--resume')
     p.add_argument('--stop-after-step', type=int)
+    p.add_argument('--qualification-max-steps', type=int,
+                   help='H100 qualification only: bounded trainer limit, 6..300 (default 6)')
+    p.add_argument('--qualification-deadline-epoch', type=float,
+                   help='H100 qualification only: shorten, never extend, allocation safe deadline')
     p.add_argument('--release-record')
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
     # Retain the old CLI spelling as an explicit short H100 qualification alias.
     if args.mode == 'qualification':
         args.mode = 'h100-qualification'
+    if args.mode != 'h100-qualification' and (args.qualification_max_steps is not None
+                                            or args.qualification_deadline_epoch is not None):
+        p.error('qualification bounds are H100 qualification only')
+    qualification_steps = args.qualification_max_steps if args.qualification_max_steps is not None else 6
+    if not 6 <= qualification_steps <= 300:
+        p.error('qualification-max-steps must be between 6 and 300')
+    if args.qualification_deadline_epoch is not None and (
+            not math.isfinite(args.qualification_deadline_epoch) or args.qualification_deadline_epoch <= 0):
+        p.error('qualification deadline must be a positive finite epoch')
     if args.mode == 'cpu-qualification' and (args.resume or args.stop_after_step is not None):
         p.error('CPU qualification always measures all workers; resume/stop-after-step are GPU options')
-    if args.stop_after_step is not None and not 1 <= args.stop_after_step <= (6 if args.mode == 'h100-qualification' else 48284):
+    if args.stop_after_step is not None and not 1 <= args.stop_after_step <= (qualification_steps if args.mode == 'h100-qualification' else 48284):
         p.error('stop-after-step is outside this mode step budget')
     base = json.loads(Path(args.overrides).read_text())
     allowed = {'data.params.train_datasets.paths', 'model.params.pretrained',
@@ -129,7 +142,7 @@ def main(argv=None):
     overrides = base + ['trainer.default_root_dir=' + json.dumps(plan['run_root']),
                         f'data.params.train_datasets.num_workers={args.workers}']
     if args.mode == 'h100-qualification':
-        overrides += ['trainer.max_steps=6', 'trainer.exp_name=qualification_b24_w' + str(args.workers)]
+        overrides += [f'trainer.max_steps={qualification_steps}', 'trainer.exp_name=qualification_b24_w' + str(args.workers)]
     overrides += ['hydra.run.dir=' + json.dumps(str(Path(plan['run_root']) / 'hydra' / f'{args.mode}-{time.time_ns()}')),
                   'hydra.job.chdir=false']
     if args.resume:
@@ -153,6 +166,10 @@ def main(argv=None):
             raise RuntimeError('Production requires completed qualification release record')
         check_release(args.release_record, plan)
     deadline = allocation_deadline(args.mode)
+    if args.qualification_deadline_epoch is not None:
+        deadline = min(deadline, args.qualification_deadline_epoch)
+        if deadline <= time.time():
+            raise RuntimeError('Qualification deadline already passed')
     run_root = Path(plan['run_root'])
     run_root.mkdir(parents=True, exist_ok=True)
     # One lock across qualification/production sharing the run root. Held by
@@ -189,22 +206,48 @@ def main(argv=None):
         print(f'PERSISTENT_STDOUT={stdout.name} PERSISTENT_STDERR={stderr.name}', flush=True)
         # Never forward USR1 to torchrun: its agent need not handle that signal.
         # Handlers set flags; ordinary controller code requests a worker stop.
+        child = None
+        child_finished = False
         try:
             child = subprocess.Popen(cmd, cwd=ROOT / 'xr1', env=env, pass_fds=(lock.fileno(),),
                                      stdout=stdout, stderr=stderr, start_new_session=True)
+            from datetime import datetime, timezone
             while True:
                 if time.time() >= deadline:
                     pending.setdefault('reason', 'safe_deadline')
                 if pending and not stop_file.exists():
-                    with stop_file.open('x') as stream:
+                    temporary_request = stop_file.with_suffix('.tmp')
+                    with temporary_request.open('x') as stream:
                         json.dump(pending, stream)
                         stream.flush()
                         os.fsync(stream.fileno())
+                    os.replace(temporary_request, stop_file)
+                    # Preserve controller evidence after the transient request is removed.
+                    evidence = dict(pending, controller_pid=os.getpid(), child_pid=getattr(child, 'pid', None),
+                                    requested_epoch=time.time(), safe_stop_epoch=deadline,
+                                    timestamp=datetime.now(timezone.utc).isoformat())
+                    Path(str(log_prefix) + '.stop.json').write_text(json.dumps(evidence, indent=2) + '\n')
+                if args.mode == 'h100-qualification' and time.time() >= deadline + 90:
+                    raise RuntimeError('Qualification child exceeded bounded shutdown grace')
                 try:
-                    return child.wait(timeout=0.5)
+                    result = child.wait(timeout=0.5)
+                    child_finished = True
+                    return result
                 except subprocess.TimeoutExpired:
                     continue
         finally:
+            # Only our new-session child group; never signal a Slurm daemon or job group.
+            # A stuck qualification must not leave training running behind the controller.
+            if args.mode == 'h100-qualification' and child is not None and not child_finished:
+                try:
+                    os.killpg(child.pid, signal.SIGTERM)
+                    try:
+                        child.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(child.pid, signal.SIGKILL)
+                        child.wait(timeout=10)
+                except ProcessLookupError:
+                    child.wait(timeout=10)
             for sig, handler in old_handlers.items():
                 signal.signal(sig, handler)
             stdout.close()

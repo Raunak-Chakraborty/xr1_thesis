@@ -11,7 +11,7 @@ from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from common import digest, sha, source_check, write_new, module
+from common import COMMIT, SOURCE, digest, sha, source_check, write_new, module
 from recover import copy_exact, telemetry_summary
 from stage_cache import seal, load_index, stage, verify, check_stage
 from observe import observe
@@ -19,7 +19,24 @@ from observe import observe
 
 class ControlTests(unittest.TestCase):
     def test_source_fingerprint_is_authoritative(self):
-        source_check()
+        launch = source_check()
+        self.assertEqual(launch.tree_digest(), SOURCE)
+        self.assertNotEqual(launch.checkout_identity()['git_commit'], COMMIT)
+        self.assertEqual(launch.checkout_identity()['git_status'], '')
+
+    def test_foreign_git_ancestry_rejected(self):
+        with patch('common.subprocess.run') as check:
+            check.return_value.returncode = 1
+            with self.assertRaisesRegex(RuntimeError, 'ancestor'):
+                source_check()
+
+    def test_dirty_checkout_rejected(self):
+        launch = module('claix_b24_launch')
+        with patch.object(launch, 'checkout_identity', return_value={
+                'git_commit': 'a' * 40, 'git_status': '?? untracked.txt'}):
+            with patch('common.module', return_value=launch):
+                with self.assertRaisesRegex(RuntimeError, 'Uncommitted'):
+                    source_check()
 
     def test_source_fingerprint_detects_added_training_test_but_separates_tools(self):
         launch = module('claix_b24_launch')

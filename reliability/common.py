@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -92,9 +93,20 @@ def tools_identity():
 
 
 def source_check():
+    """Keep the engineering bytes frozen; identify reliability checkout truthfully.
+
+    Deployment is allowed only from a clean committed descendant. Separate
+    lineage and reviewed tool hashes are checked by the recovery checker.
+    """
     launch = module('claix_b24_launch')
     require(launch.tree_digest() == SOURCE, 'Engineering source fingerprint changed')
-    require(launch.checkout_identity()['git_commit'] == COMMIT, 'Wrong authoritative base commit')
+    checkout = launch.checkout_identity()
+    require(checkout['git_status'] == '', 'Uncommitted or untracked reliability checkout')
+    ancestor = subprocess.run(
+        ['git', 'merge-base', '--is-ancestor', COMMIT, checkout['git_commit']],
+        cwd=ROOT, env={**os.environ, 'GIT_NO_REPLACE_OBJECTS': '1'},
+        capture_output=True, check=False)
+    require(ancestor.returncode == 0, 'Original engineering commit is not an ancestor')
     return launch
 
 

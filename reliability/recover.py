@@ -214,6 +214,8 @@ def check(args):
     require(sha(audit/'recovery.json') == args.lineage_sha256, 'Recovery lineage changed since review')
     record = read_json(audit/'recovery.json')
     require(record['schema'] == 'xr1-5363645-recovery-v1' and record['new_run'] == str(root), 'Wrong recovery root')
+    require(record.get('checkout') == launch.checkout_identity(),
+            'Reliability checkout differs from the prepared and reviewed recovery')
     require(record['tools'] == tools_identity() and record['tools']['sha256'] == args.tools_sha256,
             'Recovery tools changed since review')
     require(not (root / TARGET).exists(), 'First recovery launch requires absent target; use a new reviewed continuation procedure')

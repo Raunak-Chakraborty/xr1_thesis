@@ -47,9 +47,11 @@ allows an external verified checkpoint when the new training target is absent.
 It deliberately refuses original telemetry ending at 8758 against checkpoint
 8750. The output root and checkpoint path are excluded from the resume config
 digest. Original dataset/model path strings and all scientific parameters must
-stay identical. The original engineering commit check also remains strict;
-the tools are delivered as a reviewed additive bundle on that base, not relabeled
-as part of its original release.
+stay identical. The original engineering **tree digest** check remains strict. A deployment
+checkout must be clean and descended from the frozen engineering commit; its
+current HEAD is recorded truthfully, not rewritten as the original commit.
+The reliability files have a separate reviewed content hash and recovery-lineage
+binding. The original H100 evidence is not relabeled as new qualification.
 
 ## Recovery transaction and scientific accounting
 
@@ -231,9 +233,10 @@ evidence, not a new job run by this investigation.
 
 ## Transfer, release gates and next allocation blockers
 
-Transfer only the additive `reliability/` directory and these documents/evidence
-through the established file-transfer process, into a **separate** CLAIX checkout
-at the authoritative commit. Do not overwrite the original run or its checkout.
+Deploy the **clean, independently reviewed reliability Git commit** to an
+isolated CLAIX checkout descended from the frozen engineering commit. Do not
+paste untracked tools onto the original base: deployment now requires a clean
+committed checkout. Do not overwrite the original run or its checkout.
 Hash a local review tarball, verify that hash after transfer, then run `identity`
 on both sides and compare. The tarball must not contain original checkpoints or
 modified release records. No commit or push is needed to review this additive

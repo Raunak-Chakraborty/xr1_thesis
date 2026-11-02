@@ -1,0 +1,13 @@
+test_passive_observer_pre_timeout_capture_and_pid_exit (test_control.ControlTests.test_passive_observer_pre_timeout_capture_and_pid_exit) ... ok
+test_source_fingerprint_detects_added_training_test_but_separates_tools (test_control.ControlTests.test_source_fingerprint_detects_added_training_test_but_separates_tools) ... ok
+test_source_fingerprint_is_authoritative (test_control.ControlTests.test_source_fingerprint_is_authoritative) ... ok
+test_telemetry_tail_preserved_and_duplicate_rejected (test_control.ControlTests.test_telemetry_tail_preserved_and_duplicate_rejected) ... ok
+test_corruption_missing_files_and_sidecar_rejected (test_control.StagingTests.test_corruption_missing_files_and_sidecar_rejected) ... ok
+test_manifest_seal_and_space_fail_closed (test_control.StagingTests.test_manifest_seal_and_space_fail_closed) ... ok
+test_stage_roundtrip_identity_ready_and_no_clobber (test_control.StagingTests.test_stage_roundtrip_identity_ready_and_no_clobber) ... ok
+test_symlink_and_incomplete_ready_rejected (test_control.StagingTests.test_symlink_and_incomplete_ready_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 14.778s
+
+OK

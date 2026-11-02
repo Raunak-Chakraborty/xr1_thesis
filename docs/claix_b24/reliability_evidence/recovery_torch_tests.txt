@@ -1,0 +1,25 @@
+TEST_MOCK=mmengine.Config/Registry (dependency unavailable)
+TEST_MOCK=XR1 backbone import; existing flow-loss methods extracted verbatim via AST
+CPU_ENV torch=2.6.0+cu124; lightning=2.5.1.post0
+test_actual_config_recomposes_and_run_root_is_excluded_only (__main__.IncidentContractTests.test_actual_config_recomposes_and_run_root_is_excluded_only) ... ok
+test_reconstructed_batches_match_actual_sampler_and_frame_table (__main__.IncidentContractTests.test_reconstructed_batches_match_actual_sampler_and_frame_table) ... ok
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/horus/anaconda3/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:425: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=15` in the `DataLoader` to improve performance.
+/home/horus/anaconda3/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:369: You have overridden `on_before_batch_transfer` in `LightningModule` but have passed in a `LightningDataModule`. It will use the implementation from `LightningModule` instance.
+test_corrupt_incomplete_config_and_foreign_metadata_rejected (__main__.RecoveryTests.test_corrupt_incomplete_config_and_foreign_metadata_rejected) ... ok
+test_fatal_tail_recovery_exact_weights_moments_scheduler_and_cursor (__main__.RecoveryTests.test_fatal_tail_recovery_exact_weights_moments_scheduler_and_cursor) ... GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+Restoring states from the checkpoint path at /tmp/tmpdui8dde8/recovery/seed/step-008750.ckpt
+Restored all states from the checkpoint at /tmp/tmpdui8dde8/recovery/seed/step-008750.ckpt
+/home/horus/anaconda3/lib/python3.12/site-packages/lightning/pytorch/loops/training_epoch_loop.py:221: You're resuming from a checkpoint that ended before the epoch ended and your dataloader is not resumable. This can cause unreliable results if further training is done. Consider using an end-of-epoch checkpoint or make your dataloader resumable by implementing the `state_dict` / `load_state_dict` interface.
+`Trainer.fit` stopped: `max_epochs=1` reached.
+ok
+test_saved_cpu_rng_restores_exactly (__main__.RecoveryTests.test_saved_cpu_rng_restores_exactly) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 36.520s
+
+OK

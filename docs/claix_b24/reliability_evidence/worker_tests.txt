@@ -1,0 +1,7 @@
+test_hanging_worker_has_pid_status_and_python_stack_before_timeout (test_worker.WorkerTests.test_hanging_worker_has_pid_status_and_python_stack_before_timeout) ... ok
+test_real_four_worker_ordered_delivery (test_worker.WorkerTests.test_real_four_worker_ordered_delivery) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 20.242s
+
+OK

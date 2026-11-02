@@ -1,0 +1,24 @@
+{
+  "manifest_sha256": "aabf3cae952aaf36fca827bf9d85c3df8430bbfc2aa8348b2feada797ddcff25",
+  "receipt": {
+    "bytes": 1695132435,
+    "config_sha256": "87ec83b0200ec9f8ab9e3cafa75079dd0d7881dcea0913c0d03ca0a1571687ea",
+    "global_step": 8750,
+    "path": "step-008750.ckpt",
+    "schema": "claix-b24-verified-v1",
+    "sha256": "a7476e50eee739b2acf6823125dda0f41fc25596a02a98d056eee9fe131c2c11"
+  },
+  "telemetry": {
+    "fatal": [
+      {
+        "error": "DataLoader timed out after 180 seconds",
+        "error_type": "RuntimeError",
+        "event": "fatal",
+        "step": 8758,
+        "timestamp": "2026-11-02T00:21:40.856982+00:00"
+      }
+    ],
+    "last_checkpoint": 8750,
+    "last_completed": 8758
+  }
+}

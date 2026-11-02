@@ -25,10 +25,27 @@ class ControlTests(unittest.TestCase):
         self.assertEqual(launch.checkout_identity()['git_status'], '')
 
     def test_foreign_git_ancestry_rejected(self):
-        with patch('common.subprocess.run') as check:
-            check.return_value.returncode = 1
-            with self.assertRaisesRegex(RuntimeError, 'ancestor'):
-                source_check()
+        # Mock checkout identity separately: subprocess.check_output
+        # internally calls subprocess.run, which is mocked below.
+        with patch('common.module') as module_loader:
+            launch = module_loader.return_value
+            launch.tree_digest.return_value = SOURCE
+            launch.checkout_identity.return_value = {
+                'git_commit': 'f' * 40,
+                'git_status': '',
+            }
+
+            with patch('common.subprocess.run') as git:
+                git.return_value.returncode = 1
+
+                with self.assertRaisesRegex(RuntimeError, 'ancestor'):
+                    source_check()
+
+                git.assert_called_once()
+                self.assertEqual(
+                    git.call_args.args[0][:3],
+                    ['git', 'merge-base', '--is-ancestor']
+                )
 
     def test_dirty_checkout_rejected(self):
         launch = module('claix_b24_launch')

@@ -105,11 +105,16 @@ def stage(source, destination, index, *, reserve_bytes=8 * 1024**3, report_path=
             writer.flush()
             os.fsync(writer.fileno())
         dst.chmod(0o444)
+    copied_at = time.monotonic()
     verify(destination, index)
+    verified_at = time.monotonic()
     result = dict(schema='xr1-cache-stage-v1', cache_seal_digest=digest(index),
                   source=str(source), destination=str(destination.resolve()),
                   copied_bytes=index['total_bytes'], available_bytes_before=free,
                   reserve_bytes=reserve, seconds=time.monotonic()-started,
+                  copy_fsync_seconds=copied_at-started,
+                  destination_verify_seconds=verified_at-copied_at,
+                  copy_bytes_per_second=index['total_bytes']/max(copied_at-started, 1e-9),
                   slurm_job_id=os.environ.get('SLURM_JOB_ID'))
     if report_path is not None:
         result.update(persistent_report=str(Path(report_path).resolve()), filesystem=filesystem)
@@ -117,6 +122,37 @@ def stage(source, destination, index, *, reserve_bytes=8 * 1024**3, report_path=
         write_new(report_path, result)
     write_new(destination / 'STAGING_READY.json', result)
     return result
+
+
+def allocation_scratch(destination, *, scratch_root=None, beeond=False, allow_tmpfs=False):
+    """Validate an existing allocation-owned root; never create/mount BeeOND.
+
+    The caller/operator supplies allocation ownership. A beegfs filesystem alone
+    is not proof of BeeOND; require an explicitly selected root as well.
+    """
+    root_value = scratch_root or os.environ.get('SLURM_TMPDIR')
+    require(root_value, 'Specify --scratch-root or an allocation SLURM_TMPDIR')
+    root = Path(root_value).resolve(strict=True)
+    dest = Path(destination).absolute()
+    require(not dest.is_symlink() and dest.parent.resolve(strict=True).is_relative_to(root),
+            'Destination must be beneath the allocation scratch root')
+    require(not str(root).startswith(('/hpcwork/', '/rwthfs/', '/work/', '/home/')),
+            'Scratch root must not be persistent home/project storage')
+    fs = json.loads(subprocess.check_output(['findmnt', '--json', '--target', str(root),
+                     '--output', 'SOURCE,TARGET,FSTYPE'], text=True, timeout=10))['filesystems']
+    require(len(fs) == 1, 'Ambiguous scratch mount')
+    kind = fs[0]['fstype']
+    if beeond:
+        require(scratch_root and kind == 'beegfs', 'Explicit BeeOND requires an existing beegfs scratch root')
+    else:
+        require(kind in (('ext4', 'xfs', 'tmpfs') if allow_tmpfs else ('ext4', 'xfs')),
+                'Ordinary scratch requires ext4/xfs; BeeOND and RAM-backed tmpfs need explicit opt-in')
+    # Check the destination mount too: an interior mount may differ from root.
+    target_fs = json.loads(subprocess.check_output(['findmnt', '--json', '--target', str(dest.parent),
+                     '--output', 'SOURCE,TARGET,FSTYPE'], text=True, timeout=10))['filesystems']
+    require(target_fs == fs, 'Destination crosses an interior scratch mount')
+    return dict(**fs[0], allocation_root=str(root), beeond_explicit=beeond,
+                storage_kind='beeond' if beeond else 'ram' if kind == 'tmpfs' else 'local_disk')
 
 
 def check_stage(cache, index, *, persistent_report=False):
@@ -148,6 +184,9 @@ def main():
         if action == 'stage':
             s.add_argument('--destination', required=True)
             s.add_argument('--report', required=True, help='Persistent HPCWORK audit copy')
+            s.add_argument('--scratch-root', help='Existing allocation-owned root; defaults to SLURM_TMPDIR')
+            s.add_argument('--beeond', action='store_true', help='Explicit existing allocation BeeOND, never mounted by this tool')
+            s.add_argument('--allow-tmpfs', action='store_true', help='Explicit RAM-backed scratch; not SSD capacity')
     args = p.parse_args()
     if args.action == 'seal':
         write_new(args.output, seal(args.cache, args.manifest_sha256))
@@ -164,12 +203,10 @@ def main():
     dest = Path(args.destination).resolve()
     require(not str(dest).startswith(('/hpcwork/', '/rwthfs/', '/work/', '/home/')),
             'Destination must be allocation scratch, not persistent storage')
-    fs = json.loads(subprocess.check_output(['findmnt', '--json', '--target', str(dest.parent),
-                     '--output', 'SOURCE,TARGET,FSTYPE'], text=True, timeout=10))['filesystems']
-    require(len(fs) == 1 and fs[0]['fstype'] in ('beegfs', 'ext4', 'xfs', 'tmpfs'),
-            'Unrecognized local/BeeOND staging mount')
+    fs = allocation_scratch(dest, scratch_root=args.scratch_root,
+                            beeond=args.beeond, allow_tmpfs=args.allow_tmpfs)
     # Record mount identity; operator must establish allocation ownership of scratch.
-    result = stage(args.cache, dest, index, report_path=args.report, filesystem=fs[0])
+    result = stage(args.cache, dest, index, report_path=args.report, filesystem=fs)
     print(json.dumps(result, sort_keys=True))
 
 

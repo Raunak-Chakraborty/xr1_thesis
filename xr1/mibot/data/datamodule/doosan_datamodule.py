@@ -30,6 +30,7 @@ from mibot.data.datasets.doosan_json_dataset import (
     DoosanJsonDataset,
 )
 from mibot.utils.doosan_replay import RankOffsetSampler, seed_worker
+from mibot.utils.loader_diagnostics import DiagnosticLoaderMixin
 
 
 def shared_memory_budget(batch_bytes=0, *, workers, prefetch_factor):
@@ -55,9 +56,11 @@ def shutdown_loader(loader, iterator):
         iterator._shutdown_workers()
     if loader is not None:
         loader._iterator = None
+        if hasattr(loader, 'close_diagnostics'):
+            loader.close_diagnostics()
 
 
-class ReplayDataLoader(DataLoader):
+class ReplayDataLoader(DiagnosticLoaderMixin, DataLoader):
     """Report the original epoch budget to Lightning's restored batch counters.
 
     Iteration yields only the remaining suffix. Lightning 2.5 restores absolute
@@ -111,6 +114,12 @@ class DoosanDataModule(BaseDataModule):
         )
 
         self.deterministic_replay = bool(data.get("deterministic_replay", False))
+        # None preserves the platform/production default; spawn is explicit only.
+        self.multiprocessing_context = data.get('multiprocessing_context', None)
+        if self.multiprocessing_context not in (None, 'fork', 'spawn'):
+            raise ValueError('multiprocessing_context must be null, fork, or spawn')
+        if self.multiprocessing_context is not None and self.num_workers == 0:
+            raise ValueError('multiprocessing_context requires worker processes')
         self.resume_step = int(data.get("resume_step", 0))
         if self.resume_step < 0:
             raise ValueError("Negative resume step")
@@ -214,6 +223,8 @@ class DoosanDataModule(BaseDataModule):
             raise RuntimeError("Worker replay requires DataLoader with explicit in_order support")
 
         if self.num_workers > 0:
+            if self.multiprocessing_context is not None:
+                kwargs['multiprocessing_context'] = self.multiprocessing_context
             if self.deterministic_replay:
                 shared_memory_budget(workers=self.num_workers, prefetch_factor=self.prefetch_factor)
             kwargs[
@@ -226,5 +237,6 @@ class DoosanDataModule(BaseDataModule):
             kwargs["timeout"] = int(self.params.train_datasets.get("worker_timeout", 180))
 
         return ReplayDataLoader(
+            diagnostics=self.params.train_datasets.get('diagnostics'),
             **kwargs
         )

@@ -183,6 +183,12 @@ generated_predictions.jsonl
 predictions_score.json
 hostfile.txt
 
+# Local reliability fixtures/environment artifacts; reports stay reviewable.
+.loader_evidence/
+reliability/evidence/tmp/
+reliability/evidence/pip-cache/
+reliability/evidence/matplotlib/
+
 # Sphinx
 docs/_build/
 

@@ -40,6 +40,7 @@ from functools import lru_cache
 import numpy as np
 import torch
 from mibot.utils.doosan_replay import stable_sample_seed
+from mibot.utils.loader_trace import stage, traced, mark
 
 from mibot.data.datasets.json_dataset import JsonDataset
 from mibot.utils.doosan import (
@@ -88,6 +89,7 @@ class DoosanJsonDataset(JsonDataset):
     # JSON trajectories can be large. Each worker owns a bounded, independent cache.
     @staticmethod
     @lru_cache(maxsize=2)
+    @traced('json_load')
     def _read_json(path):
         import json
         with open(path) as stream:
@@ -114,6 +116,12 @@ class DoosanJsonDataset(JsonDataset):
         )
 
     def __getitem__(self, index):
+        sample = self.samples[index]
+        with stage('sample', dataset_index=int(index), episode=str(sample['file']),
+                   frame=int(sample['frame_index'])):
+            return self._getitem_seeded(index)
+
+    def _getitem_seeded(self, index):
         if not self.deterministic_replay:
             return self._getitem_unseeded(index)
         sample = self.samples[index]
@@ -126,12 +134,13 @@ class DoosanJsonDataset(JsonDataset):
         finally:
             random.setstate(saved)
 
+    @traced('sample_construct')
     def _getitem_unseeded(self, index):
         sample = self.samples[index]
 
-        traj = self._read_json(
-            sample["file"]
-        )
+        with stage('json_lookup'):
+            traj = self._read_json(sample["file"])
+            mark('json_cache', **self._read_json.cache_info()._asdict())
 
         frame = sample["frame_index"]
 
@@ -382,6 +391,10 @@ class DoosanJsonDataset(JsonDataset):
         )
 
     # XR1_DOOSAN_OFFLINE_OPTIN_V1: fail-closed PNG cache.
+    @traced('augmentation')
+    def _augment(self, images):
+        return super()._augment(images)
+
     @staticmethod
     def _images(traj, keys, frame):
         import os

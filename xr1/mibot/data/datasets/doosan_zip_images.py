@@ -16,6 +16,7 @@ from pathlib import Path
 from PIL import Image
 
 from mibot.utils.io import get_value
+from mibot.utils.loader_trace import stage, traced, mark, TracedPayload
 
 _SCHEMA = "doosan-xr1-rgb-png-zip-v1"
 _CAMERAS = frozenset(("external_camera_2", "tcp_camera"))
@@ -25,6 +26,7 @@ _handles = OrderedDict()
 
 
 @lru_cache(maxsize=2)
+@traced('zip_manifest_load')
 def _manifest(root_string: str):
     path = Path(root_string) / "media_manifest.jsonl"
     if not path.is_file():
@@ -48,6 +50,7 @@ def _manifest(root_string: str):
     return by_source
 
 
+@traced('zip_archive_lookup')
 def _get_archive(root: Path, row):
     """Open a ZIP once per worker/process, verify its header and sidecar."""
     global _pid, _handles
@@ -60,6 +63,7 @@ def _get_archive(root: Path, row):
     archive_path = root / row["archive"]
     key = str(archive_path)
     if key in _handles:
+        mark('zip_archive_cache', hit=True)
         _handles.move_to_end(key)
         return _handles[key]
     if not archive_path.is_file():
@@ -67,14 +71,17 @@ def _get_archive(root: Path, row):
     sidecar = archive_path.with_suffix(".metadata.json")
     if not sidecar.is_file():
         raise FileNotFoundError(f"Missing ZIP provenance sidecar: {sidecar}")
-    meta = json.loads(sidecar.read_text(encoding="utf-8"))
+    mark('zip_archive_cache', hit=False)
+    with stage('zip_sidecar_load'):
+        meta = json.loads(sidecar.read_text(encoding="utf-8"))
     if (meta.get("schema") != _SCHEMA
             or meta.get("original_source_path") != row["original_source_path"]
             or meta.get("frames") != int(row["frames"])
             or meta.get("crop_bbox") != row.get("crop_bbox")
             or meta.get("archive_bytes") != archive_path.stat().st_size):
         raise RuntimeError(f"ZIP metadata mismatch: {archive_path}")
-    archive = zipfile.ZipFile(archive_path, mode="r", allowZip64=True)
+    with stage('zip_archive_open'):
+        archive = zipfile.ZipFile(archive_path, mode="r", allowZip64=True)
     try:
         if len(archive.infolist()) != int(row["frames"]):
             raise RuntimeError(f"ZIP frame count mismatch: {archive_path}")
@@ -121,8 +128,13 @@ def decode_images(traj, keys, frame):
             idx = index + int(info.get("start", 0))
             if idx < 0 or idx >= int(row["frames"]):
                 raise IndexError(f"Frame {idx} out of range for {source}")
-            zipped = _get_archive(root, row)
-            with zipped.open(f"frame_{idx:09d}.png", "r") as payload:
-                with Image.open(payload) as image:
-                    images.append(image.convert("RGB"))
+            with stage('zip_camera', archive=str(root / row['archive']), camera=camera,
+                       source=source, member=f'frame_{idx:09d}.png', camera_frame=idx):
+                zipped = _get_archive(root, row)
+                with stage('zip_member_open'):
+                    payload = zipped.open(f"frame_{idx:09d}.png", "r")
+                with payload:
+                    with stage('png_decode'):
+                        with Image.open(TracedPayload(payload)) as image:
+                            images.append(image.convert("RGB"))
     return images

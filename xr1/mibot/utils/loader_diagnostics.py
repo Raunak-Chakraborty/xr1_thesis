@@ -261,23 +261,44 @@ class DiagnosticSession:
 
     def close(self):
         global _active_session
-        if self.closed:
+
+        if self.closed and _active_session is not self:
             return
+
         self.closed = True
         self.shared.stop.value = 1
-        # Bounded grace for final evidence; no training thread waits on disk.
-        self.process.join(timeout=1.0)
-        if self.process.is_alive():
-            self.process.terminate()
-            self.process.join(timeout=.2)
-        if not self.process.is_alive():
+
+        try:
+            # The watchdog may be writing a process snapshot.
+            self.process.join(timeout=2.0)
+
+            if self.process.is_alive():
+                self.process.terminate()
+                self.process.join(timeout=2.0)
+
+            if self.process.is_alive():
+                self.process.kill()
+                self.process.join(timeout=2.0)
+
+            if self.process.is_alive():
+                raise RuntimeError(
+                    'Diagnostic watchdog could not be reaped; '
+                    'session remains active'
+                )
+
+            # Release these resources only after watchdog exit.
             self.shared.registry[2] = 0
+
             faulthandler.unregister(signal.SIGUSR2)
+
             for stream in (*self.readers, *self.writers):
                 stream.close()
-            _active_session = None
-        # If watchdog is stuck in uninterruptible I/O keep handler/FDs valid.
-        bind(None)
+
+            if _active_session is self:
+                _active_session = None
+
+        finally:
+            bind(None)
 
 
 class DiagnosticIterator(dl._MultiProcessingDataLoaderIter):

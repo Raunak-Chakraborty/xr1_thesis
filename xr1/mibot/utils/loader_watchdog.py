@@ -58,26 +58,107 @@ def process_snapshot(pid, ticks):
     return result
 
 
-def request_stack(pid, ticks):
-    """Use a pidfd to avoid signalling a reused PID. Never use SIGUSR1."""
-    # Some Conda Python builds omit os.pidfd_open despite a supporting kernel.
+def _pidfd_syscall(number, *args):
+    """x86_64 Linux syscall fallback when libc lacks pidfd wrappers."""
+    import errno
+    import platform
+
+    if platform.machine() != 'x86_64':
+        raise OSError(
+            errno.ENOSYS,
+            'No qualified pidfd syscall number on this architecture'
+        )
+
     libc = ctypes.CDLL(None, use_errno=True)
-    if not hasattr(libc, 'pidfd_open') or not hasattr(libc, 'pidfd_send_signal'):
-        return 'unavailable:libc_pidfd'
+    syscall = libc.syscall
+    syscall.restype = ctypes.c_long
+
+    value = syscall(ctypes.c_long(number), *args)
+
+    if value == -1:
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code))
+
+    return int(value)
+
+
+def _open_pidfd(pid):
+    if hasattr(os, 'pidfd_open'):
+        return os.pidfd_open(pid, 0)
+
+    libc = ctypes.CDLL(None, use_errno=True)
+
+    if hasattr(libc, 'pidfd_open'):
+        func = libc.pidfd_open
+        func.argtypes = [ctypes.c_int, ctypes.c_uint]
+        func.restype = ctypes.c_int
+
+        fd = func(pid, 0)
+
+        if fd == -1:
+            code = ctypes.get_errno()
+            raise OSError(code, os.strerror(code))
+
+        return fd
+
+    return _pidfd_syscall(
+        434,
+        ctypes.c_int(pid),
+        ctypes.c_uint(0)
+    )
+
+
+def _send_pidfd(fd, signo):
+    if hasattr(signal, 'pidfd_send_signal'):
+        return signal.pidfd_send_signal(fd, signo, None, 0)
+
+    libc = ctypes.CDLL(None, use_errno=True)
+
+    if hasattr(libc, 'pidfd_send_signal'):
+        func = libc.pidfd_send_signal
+        func.argtypes = [
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            ctypes.c_uint,
+        ]
+        func.restype = ctypes.c_int
+
+        if func(fd, signo, None, 0) == -1:
+            code = ctypes.get_errno()
+            raise OSError(code, os.strerror(code))
+
+        return
+
+    return _pidfd_syscall(
+        424,
+        ctypes.c_int(fd),
+        ctypes.c_int(signo),
+        ctypes.c_void_p(0),
+        ctypes.c_uint(0)
+    )
+
+
+def request_stack(pid, ticks):
+    """Signal only a pidfd-verified process, never a bare PID."""
     try:
-        fd = libc.pidfd_open(pid, 0)
-        if fd < 0:
-            return 'unavailable:pidfd_open_errno_' + str(ctypes.get_errno())
+        fd = _open_pidfd(pid)
+
         try:
             if identity(pid) != (pid, ticks):
                 return 'exited_or_reused'
-            if libc.pidfd_send_signal(fd, signal.SIGUSR2, None, 0) < 0:
-                return 'unavailable:pidfd_send_errno_' + str(ctypes.get_errno())
+
+            _send_pidfd(fd, signal.SIGUSR2)
             return 'requested'
+
         finally:
             os.close(fd)
+
     except OSError as error:
-        return 'unavailable:' + type(error).__name__
+        return (
+            f'unavailable:{type(error).__name__}:'
+            f'errno={error.errno}'
+        )
 
 
 def export(local, persistent):

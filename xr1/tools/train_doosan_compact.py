@@ -110,10 +110,18 @@ def main(cfg: DictConfig):
           str(os.environ.get('RANK')), flush=True)
     conf.model.params.pop('language_policy_path')
     ckpt_path = conf.trainer.pop('ckpt_path', None)
+    bridge_record = None
     step = 0
     if ckpt_path:
         if production:
-            ck = load_verified(ckpt_path, contract, expected_config=fingerprint)
+            from mibot.utils.claix_resume_bridge import authorize_original_resume
+            bridge_record = authorize_original_resume(
+                ckpt_path, fingerprint, inventory, contract
+            )
+            accepted_fingerprint = (
+                bridge_record['original_config_sha256'] if bridge_record else fingerprint
+            )
+            ck = load_verified(ckpt_path, contract, expected_config=accepted_fingerprint)
             step = int(ck['global_step'])
             del ck
         else:
@@ -133,6 +141,10 @@ def main(cfg: DictConfig):
     }
     if production:
         conf.model.params.compact_fp32['config_sha256'] = fingerprint
+        if bridge_record is not None:
+            conf.model.params.compact_fp32['resume_input_config_sha256'] = (
+                bridge_record['original_config_sha256']
+            )
     conf.model.params.pop('last_n', None)
     conf.model.params.optimizer = conf.trainer.pop('optimizer')
     conf.model.params.scheduler = conf.trainer.pop('scheduler')
@@ -145,6 +157,12 @@ def main(cfg: DictConfig):
         atomic_json(target / f'resolved-{time.time_ns()}.json', source_config)
         atomic_json(target / 'training_inventory.json', inventory)
         atomic_json(target / 'resume_contract.json', {'config_sha256': fingerprint, 'replay': contract})
+        if bridge_record is not None:
+            atomic_json(target / 'resume_bridge.json', bridge_record, exclusive=True)
+            print('XR1_OPTION_B_CHECKPOINT_BRIDGE=PASS ' + json.dumps(
+                {'from_step': step, 'original_config_sha256': bridge_record['original_config_sha256'],
+                 'new_config_sha256': fingerprint, 'candidate_commit': bridge_record['candidate_commit']},
+                sort_keys=True), flush=True)
     with (target / 'resolved_compact_config.json').open('w') as f:
         json.dump(conf.to_dict(), f, indent=2, default=str)
     interval = int(conf.trainer.pop('save_interval', 1000))

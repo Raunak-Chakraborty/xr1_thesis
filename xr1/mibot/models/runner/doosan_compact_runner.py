@@ -121,6 +121,8 @@ class DoosanCompactRunner(BaseRunner):
         if 'config_sha256' in self._compact_cfg:
             from mibot.utils.claix_checkpoint import validate_production_checkpoint
             validate_production_checkpoint(checkpoint, self._replay_contract,
-                                           expected_config=self._compact_cfg['config_sha256'])
+                                           expected_config=self._compact_cfg.get(
+                                               'resume_input_config_sha256',
+                                               self._compact_cfg['config_sha256']))
             self._pending_rng = checkpoint['xr1_production']['rng_by_rank']
         print('XR1_COMPACT_REPLAY_RESTORED=PASS global_step=' + str(step), flush=True)

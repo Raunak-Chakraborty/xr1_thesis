@@ -266,6 +266,8 @@ def main(argv=None):
         p.error('qualification deadline must be a positive finite epoch')
     if args.mode == 'cpu-qualification' and (args.resume or args.stop_after_step is not None):
         p.error('CPU qualification always measures all workers; resume/stop-after-step are GPU options')
+    if args.mode == 'h100-qualification' and args.resume and args.stop_after_step is not None:
+        p.error('Resume qualification derives its stop step from the verified checkpoint')
     if args.stop_after_step is not None and not 1 <= args.stop_after_step <= (qualification_steps if args.mode == 'h100-qualification' else 48284):
         p.error('stop-after-step is outside this mode step budget')
     base = json.loads(Path(args.overrides).read_text())
@@ -280,7 +282,26 @@ def main(argv=None):
     overrides = base + ['trainer.default_root_dir=' + json.dumps(plan['run_root']),
                         f'data.params.train_datasets.num_workers={args.workers}']
     if args.mode == 'h100-qualification':
-        overrides += [f'trainer.max_steps={qualification_steps}', 'trainer.exp_name=qualification_b24_w' + str(args.workers)]
+        if args.resume:
+            receipt_path = Path(args.resume).with_suffix('.verified.json')
+            if receipt_path.is_symlink() or not receipt_path.is_file() or receipt_path.stat().st_size > 16384:
+                raise RuntimeError('Missing or invalid verified source checkpoint receipt')
+            receipt = json.loads(receipt_path.read_text())
+            if (receipt.get('schema') != 'claix-b24-verified-v1' or
+                receipt.get('path') != Path(args.resume).name or
+                receipt.get('global_step') != 21500 or
+                receipt.get('sha256') != '48fae2e1881e85ef8d760b30780ea21aa146053b1702b1084c56fb6644d64813'):
+                raise RuntimeError('Resume qualification requires the verified step-21500 checkpoint')
+            qualified_stop = receipt['global_step'] + qualification_steps
+            if qualified_stop > 48284:
+                raise RuntimeError('Resume qualification exceeds approved training horizon')
+            overrides += [f'trainer.max_steps=48284',
+                          'trainer.exp_name=qualification_b24_w' + str(args.workers),
+                          f'production.stop_after_step={qualified_stop}']
+            print(f'XR1_RESUME_QUALIFICATION=start:{receipt["global_step"]} stop:{qualified_stop}', flush=True)
+        else:
+            overrides += [f'trainer.max_steps={qualification_steps}',
+                          'trainer.exp_name=qualification_b24_w' + str(args.workers)]
     overrides += ['hydra.run.dir=' + json.dumps(str(Path(plan['run_root']) / 'hydra' / f'{args.mode}-{time.time_ns()}')),
                   'hydra.job.chdir=false']
     if args.resume:

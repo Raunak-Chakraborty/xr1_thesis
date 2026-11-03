@@ -236,7 +236,64 @@ class DoosanDataModule(BaseDataModule):
             ] = self.persistent_workers
             kwargs["timeout"] = int(self.params.train_datasets.get("worker_timeout", 180))
 
+        diagnostics = self.params.train_datasets.get('diagnostics')
+        diagnostic_config = os.environ.get('XR1_LOADER_DIAGNOSTICS_JSON')
+
+        if diagnostic_config:
+            import json
+            from pathlib import Path
+
+            if diagnostics is not None:
+                raise RuntimeError(
+                    'Diagnostics configured in both training config '
+                    'and runtime environment'
+                )
+
+            config_file = Path(diagnostic_config)
+
+            if (config_file.is_symlink()
+                    or not config_file.is_file()
+                    or config_file.stat().st_size > 8192):
+                raise RuntimeError(
+                    'Invalid runtime diagnostic configuration file'
+                )
+
+            diagnostics = json.loads(config_file.read_text())
+
+            required = {
+                'local_dir',
+                'persistent_dir',
+                'thresholds',
+                'poll_seconds',
+                'reserve_sigusr2',
+            }
+
+            if not isinstance(diagnostics, dict):
+                raise RuntimeError('Diagnostic options must be an object')
+
+            if set(diagnostics) != required:
+                raise RuntimeError(
+                    'Unexpected runtime diagnostic option fields'
+                )
+
+            if diagnostics['reserve_sigusr2'] is not True:
+                raise RuntimeError('SIGUSR2 reservation is required')
+
+            print(
+                'XR1_LOADER_DIAGNOSTICS_CONFIGURED '
+                + json.dumps({
+                    'rank': os.environ.get('RANK'),
+                    'slurm_job_id': os.environ.get('SLURM_JOB_ID'),
+                    'local_dir': diagnostics['local_dir'],
+                    'persistent_dir': diagnostics['persistent_dir'],
+                    'thresholds': diagnostics['thresholds'],
+                    'poll_seconds': diagnostics['poll_seconds'],
+                    'config_file': str(config_file),
+                }, sort_keys=True),
+                flush=True,
+            )
+
         return ReplayDataLoader(
-            diagnostics=self.params.train_datasets.get('diagnostics'),
+            diagnostics=diagnostics,
             **kwargs
         )

@@ -8,6 +8,7 @@ from __future__ import annotations
 import faulthandler
 import functools
 import inspect
+import json
 import multiprocessing as mp
 import multiprocessing.queues as queues
 import os
@@ -364,7 +365,33 @@ class DiagnosticLoaderMixin:
             self.collate_fn = ObservedCollate(original_collate)
             worker._worker_loop = observed_worker_loop
             pin_memory._pin_memory_loop = functools.partial(observed_pin_loop, session.shared)
-            return DiagnosticIterator(self)
+            iterator = DiagnosticIterator(self)
+
+            if not session.process.is_alive():
+                raise RuntimeError(
+                    'Diagnostic watchdog exited during loader startup'
+                )
+
+            print(
+                'XR1_LOADER_DIAGNOSTICS_ACTIVE '
+                + json.dumps({
+                    'parent_pid': os.getpid(),
+                    'watchdog_pid': session.process.pid,
+                    'worker_pids': [
+                        process.pid for process in iterator._workers
+                    ],
+                    'slurm_job_id': os.environ.get('SLURM_JOB_ID'),
+                    'local_spool': str(session.local),
+                    'torch_version': torch.__version__,
+                    'num_workers': self.num_workers,
+                    'sampler_offset': getattr(
+                        self.sampler, 'offset', None
+                    ),
+                }, sort_keys=True),
+                flush=True,
+            )
+
+            return iterator
         except BaseException:
             if self._diagnostic_session is not None:
                 self._diagnostic_session.close()

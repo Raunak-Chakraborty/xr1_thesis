@@ -219,8 +219,20 @@ def watchdog(shared, readers, local, persistent, thresholds, interval, parent_id
         # Save stages before asking for stacks: sending a signal may wake a syscall.
         rows = [shared.read(lane) for lane in range(shared.lanes)]
         processes = [process_snapshot(pid, ticks) for _, pid, ticks, _ in registered]
-        requests = {str(index): request_stack(pid, ticks) if ready else 'handler_not_ready'
-                    for index, pid, ticks, ready in registered}
+        # Never signal the parent: its SIGUSR2 handler may be gone during teardown.
+        # Also never signal workers after shutdown begins; they may be exiting.
+        stopping = (reason == 'shutdown_or_parent_exit' or bool(shared.stop.value)
+                    or identity(parent_identity[0]) != parent_identity)
+        requests = {}
+        for index, pid, ticks, ready in registered:
+            if stopping or bool(shared.stop.value):
+                requests[str(index)] = 'suppressed_during_shutdown'
+            elif index == 0:
+                requests[str(index)] = 'parent_signal_disabled_for_safety'
+            elif ready:
+                requests[str(index)] = request_stack(pid, ticks)
+            else:
+                requests[str(index)] = 'handler_not_ready'
         deadline = time.monotonic() + .1
         while time.monotonic() < deadline:
             drain()

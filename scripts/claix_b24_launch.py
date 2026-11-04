@@ -191,8 +191,8 @@ def allocation_deadline(mode='production', *, max_seconds=None):
                             check=True, capture_output=True, text=True)
     fields = dict(pair.split('=', 1) for pair in result.stdout.split() if '=' in pair)
     limit = fields.get('TimeLimit', '')
-    if mode == 'production' and limit != '23:45:00':
-        raise RuntimeError('Production requires exactly 23:45:00 allocation')
+    if mode == 'production' and limit != '20:00:00':
+        raise RuntimeError('Production requires exactly 20:00:00 allocation')
     try:
         days, clock = limit.split('-') if '-' in limit else ('0', limit)
         hours, minutes, seconds = map(int, clock.split(':'))

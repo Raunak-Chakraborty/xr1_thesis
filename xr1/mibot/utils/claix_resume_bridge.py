@@ -31,6 +31,7 @@ APPROVED_PROTECTED_FILES = frozenset({
     'xr1/mibot/models/runner/doosan_compact_runner.py',
     'xr1/tools/train_doosan_compact.py',
     'scripts/claix_b24_launch.py',
+    'scripts/claix_b24_production.sbatch',
 })
 
 

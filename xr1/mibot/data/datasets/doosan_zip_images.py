@@ -6,23 +6,23 @@ Caching is strictly process-local so DataLoader workers never share ZIP handles.
 """
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import zipfile
+import resource
+import sys
 from collections import OrderedDict
 from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image
 
-from mibot.utils.io import get_value
-from mibot.utils.loader_trace import stage, traced, mark, TracedPayload
+from mibot.utils.doosan_io_cache import CacheMetrics, object_bytes
+from mibot.utils.loader_trace import stage, traced, TracedPayload
 
 _SCHEMA = "doosan-xr1-rgb-png-zip-v1"
 _CAMERAS = frozenset(("external_camera_2", "tcp_camera"))
-_MAX_OPEN = 12
-_pid = None
-_handles = OrderedDict()
 
 
 @lru_cache(maxsize=2)
@@ -50,51 +50,217 @@ def _manifest(root_string: str):
     return by_source
 
 
+def _signature(stat):
+    # Size alone misses same-length rewrites and atomic replacements.
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+
+
+def _row_identity(row):
+    return (row['original_source_path'], row['camera'], int(row['frames']),
+            tuple(row['crop_bbox']) if row.get('crop_bbox') is not None else None)
+
+
+def _directory_bytes(archive):
+    # ZipInfo uses slots, not __dict__. Include all retained fields; count
+    # aliases repeatedly for a conservative estimate, plus fixed handle costs.
+    return (4096 + sys.getsizeof(archive.filelist) + sys.getsizeof(archive.NameToInfo)
+            + sum(sys.getsizeof(info) + sum(object_bytes(getattr(info, slot, None))
+                  for slot in zipfile.ZipInfo.__slots__) for info in archive.filelist))
+
+
+class ZipArchiveCache:
+    """Single-threaded worker-owned LRU; identity checks precede every reuse.
+
+    Two path stats per lookup are intentional: immediate replacement detection
+    needs freshness I/O. No exists/is_file/resolve calls on the hot path. Cached
+    metadata skips sidecar opens/parsing, never the file identity checks. ZIPs
+    still parse their directory on reopen; live handles avoid that work.
+    """
+    def __init__(self, max_open=32, max_bytes=128 * 1024**2,
+                 metadata_entries=1024, metadata_bytes=8 * 1024**2, report_every=0):
+        if max_open < 1 or min(max_bytes, metadata_entries, metadata_bytes, report_every) < 0:
+            raise ValueError('Invalid ZIP cache bounds')
+        self.policy = (max_open, max_bytes, metadata_entries, metadata_bytes, report_every)
+        self.handles = OrderedDict()
+        self.metadata = OrderedDict()
+        self.pid = None
+        self._local()
+
+    def _local(self):
+        if self.pid == os.getpid():
+            return
+        self.close()
+        self.pid = os.getpid()
+        soft, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+        # Leave at least 64 descriptors, and at least half the limit, for
+        # tensors, worker queues, diagnostics and other libraries.
+        self.max_open = self.policy[0] if soft == resource.RLIM_INFINITY else min(
+            self.policy[0], max(0, min(soft // 2, soft - 64)))
+        if self.max_open < 1:
+            raise RuntimeError('RLIMIT_NOFILE leaves no safe ZIP cache capacity')
+        self.metrics = CacheMetrics(('hits', 'misses', 'opens', 'reopens', 'sidecar_reads',
+                                     'metadata_hits', 'evictions', 'metadata_evictions',
+                                     'invalidations', 'oversized'), self.policy[4])
+
+    def __getstate__(self):
+        return {'policy': self.policy}
+
+    def __setstate__(self, state):
+        self.__init__(*state['policy'])
+
+    def close(self):
+        for archive, _, _ in self.handles.values():
+            archive.close()
+        self.handles.clear()
+        self.metadata.clear()
+        self.bytes = self.meta_bytes = 0
+
+    def _evict(self, key):
+        archive, _, size = self.handles.pop(key)
+        self.bytes -= size
+        archive.close()
+        self.metrics.add('evictions')
+
+    def _forget_metadata(self, key):
+        cached = self.metadata.pop(key, None)
+        if cached is not None:
+            self.meta_bytes -= cached[1]
+            self.metrics.add('metadata_evictions')
+
+    def snapshot(self):
+        self._local()
+        return dict(self.metrics.counts, pid=self.pid, handles=len(self.handles),
+                    metadata_entries=len(self.metadata), estimated_bytes=self.bytes,
+                    metadata_estimated_bytes=self.meta_bytes, max_open=self.max_open)
+
+    def release(self, archive):
+        # Oversized directories are usable for this read but never retained.
+        if not any(entry[0] is archive for entry in self.handles.values()):
+            archive.close()
+
+    def get(self, root, row):
+        self._local()
+        archive_path = root / row['archive']
+        sidecar = archive_path.with_suffix('.metadata.json')
+        key = os.fspath(archive_path)
+        try:
+            signature = (_signature(archive_path.stat()), _signature(sidecar.stat()), _row_identity(row))
+        except OSError:
+            if key in self.handles:
+                self._evict(key)
+            self._forget_metadata(key)
+            raise
+        held = self.handles.get(key)
+        if held is not None and held[1] == signature:
+            self.metrics.add('hits')
+            self.handles.move_to_end(key)
+            self.metrics.report('zip', handles=len(self.handles), estimated_bytes=self.bytes)
+            return held[0]
+        self.metrics.add('misses')
+        if held is not None:
+            self._evict(key)
+        previous = self.metadata.get(key)
+        if previous is not None and previous[0] != signature:
+            self.metrics.add('invalidations')
+            self._forget_metadata(key)
+            previous = None
+        if previous is None:
+            self.metrics.add('sidecar_reads')
+            with stage('zip_sidecar_load'):
+                with sidecar.open('rb') as stream:
+                    # Provenance files are small; never parse an unbounded file.
+                    raw = stream.read(65537)
+                    if len(raw) > 65536 or _signature(os.fstat(stream.fileno())) != signature[1]:
+                        raise RuntimeError(f'ZIP sidecar changed/oversized: {sidecar}')
+                meta = json.loads(raw)
+            if (not isinstance(meta, dict) or meta.get('schema') != _SCHEMA
+                    or meta.get('original_source_path') != row['original_source_path']
+                    or meta.get('frames') != int(row['frames'])
+                    or meta.get('crop_bbox') != row.get('crop_bbox')
+                    or meta.get('archive_bytes') != signature[0][2]):
+                raise RuntimeError(f'ZIP metadata mismatch: {archive_path}')
+        else:
+            self.metrics.add('metadata_hits')
+            self.metadata.move_to_end(key)
+        # Evict BEFORE opening to respect the descriptor cap even on misses.
+        while len(self.handles) >= self.max_open:
+            self._evict(next(iter(self.handles)))
+        with stage('zip_archive_open'):
+            archive = zipfile.ZipFile(archive_path, mode='r', allowZip64=True)
+        self.metrics.add('opens')
+        if previous is not None:
+            # Reopens counted within the bounded validated-metadata history.
+            self.metrics.add('reopens')
+        try:
+            if _signature(os.fstat(archive.fp.fileno())) != signature[0]:
+                raise RuntimeError(f'ZIP changed while opening: {archive_path}')
+            count = int(row['frames'])
+            if count < 1 or len(archive.infolist()) != count or (previous is None and any(
+                    f'frame_{i:09d}.png' not in archive.NameToInfo for i in range(count))):
+                raise RuntimeError(f'ZIP frame directory mismatch: {archive_path}')
+            # Reject replacement during validation; no stale successful record.
+            if previous is None and (
+                    _signature(archive_path.stat()), _signature(sidecar.stat())) != signature[:2]:
+                raise RuntimeError(f'ZIP/sidecar changed during validation: {archive_path}')
+            size = previous[2] if previous is not None else _directory_bytes(archive)
+            if previous is None:
+                meta_size = object_bytes(key) + object_bytes(signature)
+                if self.policy[2] and meta_size <= self.policy[3]:
+                    while self.metadata and (len(self.metadata) >= self.policy[2]
+                                             or self.meta_bytes + meta_size > self.policy[3]):
+                        self._forget_metadata(next(iter(self.metadata)))
+                    self.metadata[key] = (signature, meta_size, size)
+                    self.meta_bytes += meta_size
+            if size <= self.policy[1]:
+                while self.handles and self.bytes + size > self.policy[1]:
+                    self._evict(next(iter(self.handles)))
+                self.handles[key] = (archive, signature, size)
+                self.bytes += size
+            else:
+                self.metrics.add('oversized')
+            self.metrics.report('zip', handles=len(self.handles), estimated_bytes=self.bytes)
+            return archive
+        except BaseException:
+            archive.close()
+            self._forget_metadata(key)
+            raise
+
+
+_cache = None
+
+
+def configure_cache(**options):
+    global _cache
+    policy = dict(max_open=32, max_bytes=128 * 1024**2, metadata_entries=1024,
+                  metadata_bytes=8 * 1024**2, report_every=0)
+    policy.update(options)
+    if _cache is None or _cache.policy != tuple(policy.values()):
+        replacement = ZipArchiveCache(**policy)
+        close_cache()
+        _cache = replacement
+    return _cache
+
+
+def close_cache():
+    if _cache is not None:
+        _cache.close()
+
+
+def cache_info():
+    return configure_cache().snapshot() if _cache is None else _cache.snapshot()
+
+
+# Close inherited descriptors immediately after fork, before any child reads.
+# PID checks also protect explicitly constructed caches; spawn pickles policy only.
+if hasattr(os, 'register_at_fork'):
+    os.register_at_fork(after_in_child=close_cache)
+atexit.register(close_cache)
+
+
 @traced('zip_archive_lookup')
 def _get_archive(root: Path, row):
-    """Open a ZIP once per worker/process, verify its header and sidecar."""
-    global _pid, _handles
-    pid = os.getpid()
-    if pid != _pid:
-        for handle in _handles.values():
-            handle.close()
-        _handles = OrderedDict()
-        _pid = pid
-    archive_path = root / row["archive"]
-    key = str(archive_path)
-    if key in _handles:
-        mark('zip_archive_cache', hit=True)
-        _handles.move_to_end(key)
-        return _handles[key]
-    if not archive_path.is_file():
-        raise FileNotFoundError(f"Missing offline ZIP archive, no MP4 fallback: {archive_path}")
-    sidecar = archive_path.with_suffix(".metadata.json")
-    if not sidecar.is_file():
-        raise FileNotFoundError(f"Missing ZIP provenance sidecar: {sidecar}")
-    mark('zip_archive_cache', hit=False)
-    with stage('zip_sidecar_load'):
-        meta = json.loads(sidecar.read_text(encoding="utf-8"))
-    if (meta.get("schema") != _SCHEMA
-            or meta.get("original_source_path") != row["original_source_path"]
-            or meta.get("frames") != int(row["frames"])
-            or meta.get("crop_bbox") != row.get("crop_bbox")
-            or meta.get("archive_bytes") != archive_path.stat().st_size):
-        raise RuntimeError(f"ZIP metadata mismatch: {archive_path}")
-    with stage('zip_archive_open'):
-        archive = zipfile.ZipFile(archive_path, mode="r", allowZip64=True)
-    try:
-        if len(archive.infolist()) != int(row["frames"]):
-            raise RuntimeError(f"ZIP frame count mismatch: {archive_path}")
-        archive.getinfo("frame_000000000.png")
-        archive.getinfo(f'frame_{int(row["frames"])-1:09d}.png')
-    except BaseException:
-        archive.close()
-        raise
-    _handles[key] = archive
-    if len(_handles) > _MAX_OPEN:
-        _, evicted = _handles.popitem(last=False)
-        evicted.close()
-    return archive
+    cache = configure_cache() if _cache is None else _cache
+    return cache.get(root, row)
 
 
 def decode_images(traj, keys, frame):
@@ -104,10 +270,12 @@ def decode_images(traj, keys, frame):
     XR1 pipeline. Caller may subsequently run the original _augment (its
     resize-to-same-size is pixel-preserving; randomized jitter remains online).
     """
+    from mibot.utils.io import get_value
+
     root_value = os.environ.get("XR1_DOOSAN_ZIP_CACHE_ROOT", "")
     if not root_value:
         raise RuntimeError("XR1_DOOSAN_ZIP_CACHE_ROOT must be set")
-    root = Path(root_value).resolve()
+    root = Path(os.path.abspath(root_value))
     manifest = _manifest(str(root))
     index = max(int(frame), 0)
     images = []
@@ -131,10 +299,17 @@ def decode_images(traj, keys, frame):
             with stage('zip_camera', archive=str(root / row['archive']), camera=camera,
                        source=source, member=f'frame_{idx:09d}.png', camera_frame=idx):
                 zipped = _get_archive(root, row)
-                with stage('zip_member_open'):
-                    payload = zipped.open(f"frame_{idx:09d}.png", "r")
-                with payload:
-                    with stage('png_decode'):
-                        with Image.open(TracedPayload(payload)) as image:
-                            images.append(image.convert("RGB"))
+                try:
+                    with stage('zip_member_open'):
+                        payload = zipped.open(f"frame_{idx:09d}.png", "r")
+                    with payload:
+                        with stage('png_decode'):
+                            with Image.open(TracedPayload(payload)) as image:
+                                images.append(image.convert("RGB"))
+                            # PIL may stop before the ZIP member's end. Drain its
+                            # remainder so ZipExtFile always checks the full CRC.
+                            while payload.read(65536):
+                                pass
+                finally:
+                    _cache.release(zipped)
     return images

@@ -35,12 +35,12 @@ import os
 import random
 from array import array
 from bisect import bisect_right
-from functools import lru_cache
 
 import numpy as np
 import torch
 from mibot.utils.doosan_replay import stable_sample_seed
-from mibot.utils.loader_trace import stage, traced, mark
+from mibot.utils.loader_trace import stage, traced
+from mibot.utils.doosan_io_cache import JsonEpisodeCache
 
 from mibot.data.datasets.json_dataset import JsonDataset
 from mibot.utils.doosan import (
@@ -86,21 +86,31 @@ class FrameSampleTable:
 class DoosanJsonDataset(JsonDataset):
     """XR-1 post-training dataset for the Doosan M1013."""
 
-    # JSON trajectories can be large. Each worker owns a bounded, independent cache.
-    @staticmethod
-    @lru_cache(maxsize=2)
-    @traced('json_load')
-    def _read_json(path):
-        import json
-        with open(path) as stream:
-            return json.load(stream)
+    def _read_json(self, path):
+        return self._json_cache.read(path)
 
     def __init__(self, params):
+        data = params['train_datasets']
+        self._json_cache = JsonEpisodeCache(
+            max_entries=int(data.get('json_cache_entries', 16)),
+            max_bytes=int(data.get('json_cache_bytes', 256 * 1024**2)),
+            report_every=int(data.get('cache_report_every', 0)),
+        )
+        self._zip_cache_options = dict(
+            max_open=int(data.get('zip_cache_entries', 32)),
+            max_bytes=int(data.get('zip_cache_bytes', 128 * 1024**2)),
+            metadata_entries=int(data.get('zip_metadata_entries', 1024)),
+            metadata_bytes=int(data.get('zip_metadata_bytes', 8 * 1024**2)),
+            report_every=int(data.get('cache_report_every', 0)),
+        )
         # Base JsonDataset.__init__ calls self._samples(), so set seed first.
         self.sampler_seed = int(params["train_datasets"].get("sampler_seed", 42))
         self.deterministic_replay = bool(params["train_datasets"].get("deterministic_replay", False))
         self._replay_root = str(params["train_datasets"]["paths"][0])
         super().__init__(params)
+        # The parent's enumeration cache is not useful to workers and would
+        # otherwise retain decoded trajectories across fork/serialization.
+        self._json_cache.clear()
 
         data = params["train_datasets"]
 
@@ -140,7 +150,6 @@ class DoosanJsonDataset(JsonDataset):
 
         with stage('json_lookup'):
             traj = self._read_json(sample["file"])
-            mark('json_cache', **self._read_json.cache_info()._asdict())
 
         frame = sample["frame_index"]
 
@@ -395,8 +404,7 @@ class DoosanJsonDataset(JsonDataset):
     def _augment(self, images):
         return super()._augment(images)
 
-    @staticmethod
-    def _images(traj, keys, frame):
+    def _images(self, traj, keys, frame):
         import os
         zip_root = os.environ.get("XR1_DOOSAN_ZIP_CACHE_ROOT")
         png_root = os.environ.get("XR1_DOOSAN_OFFLINE_FRAME_ROOT")
@@ -407,7 +415,8 @@ class DoosanJsonDataset(JsonDataset):
             )
 
         if zip_root:
-            from mibot.data.datasets.doosan_zip_images import decode_images
+            from mibot.data.datasets.doosan_zip_images import configure_cache, decode_images
+            configure_cache(**self._zip_cache_options)
         elif png_root:
             from mibot.data.datasets.doosan_cached_images import decode_images
         else:

@@ -234,7 +234,7 @@ class DoosanDataModule(BaseDataModule):
             kwargs[
                 "persistent_workers"
             ] = self.persistent_workers
-            kwargs["timeout"] = int(self.params.train_datasets.get("worker_timeout", 180))
+            kwargs["timeout"] = int(self.params.train_datasets.get("worker_timeout", 600))
 
         diagnostics = self.params.train_datasets.get('diagnostics')
         diagnostic_config = os.environ.get('XR1_LOADER_DIAGNOSTICS_JSON')
@@ -293,7 +293,14 @@ class DoosanDataModule(BaseDataModule):
                 flush=True,
             )
 
-        return ReplayDataLoader(
+        loader = ReplayDataLoader(
             diagnostics=diagnostics,
             **kwargs
         )
+        print('XR1_LOADER_EFFECTIVE ' + str(dict(
+            timeout=loader.timeout, num_workers=loader.num_workers,
+            prefetch_factor=loader.prefetch_factor,
+            persistent_workers=loader.persistent_workers,
+            in_order=getattr(loader, 'in_order', True),
+        )), flush=True)
+        return loader

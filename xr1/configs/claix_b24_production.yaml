@@ -22,7 +22,15 @@ data:
       prefetch_factor: 2
       persistent_workers: true
       in_order: true
-      worker_timeout: 180
+      worker_timeout: 600
+      # Process-local retention limits, not process RSS limits.
+      json_cache_entries: 16
+      json_cache_bytes: 268435456  # 256 MiB decoded Python objects
+      zip_cache_entries: 32
+      zip_cache_bytes: 134217728  # 128 MiB ZIP central-directory estimate
+      zip_metadata_entries: 1024
+      zip_metadata_bytes: 8388608  # 8 MiB validated identities
+      cache_report_every: 0  # optional bounded trace summary every N lookups
       deterministic_replay: true
 
 trainer:

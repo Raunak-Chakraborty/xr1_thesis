@@ -48,6 +48,11 @@ class StopRequest:
 
 
 class VerifiedCheckpointIO(CheckpointIO):
+    def __init__(self, *, expected_config=None, expected_experiment=None):
+        super().__init__()
+        self.expected_config = expected_config
+        self.expected_experiment = expected_experiment
+
     def save_checkpoint(self, checkpoint, path, storage_options=None):
         if storage_options:
             raise RuntimeError('Only local POSIX checkpoint storage is supported')
@@ -56,7 +61,8 @@ class VerifiedCheckpointIO(CheckpointIO):
     def load_checkpoint(self, path, map_location=None):
         # Entrypoint and module validate full receipt/config before this load.
         from mibot.utils.claix_checkpoint import load_verified
-        return load_verified(path)
+        return load_verified(path, expected_config=self.expected_config,
+                             expected_experiment=self.expected_experiment)
 
     def remove_checkpoint(self, path):
         raise RuntimeError('Use explicit verified checkpoint retention policy')

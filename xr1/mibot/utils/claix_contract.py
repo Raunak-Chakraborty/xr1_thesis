@@ -8,6 +8,7 @@ from pathlib import Path
 from mibot.utils.claix_checkpoint import config_digest, file_sha256
 
 BASELINE = '52676ccfa3b52f05de51d3d7407f33855159ac95'
+FROZEN_TRAIN_SHA256 = '1cb1cfc2491f4ae98942c26a7ece63bff5076fdd28322e98d9b83dcba287a548'
 
 
 def engineering_source_digest():
@@ -60,14 +61,17 @@ def audit_splits(train, validation, test):
     return inventories
 
 
-def resume_fingerprint(conf, inventory, max_length):
+def resume_fingerprint(conf, inventory, max_length, *, experiment=None):
     data = json.loads(json.dumps(conf['data']))
     data['params']['train_datasets'].pop('resume_step', None)
-    return config_digest(dict(data=data, model=conf['model'],
-                              engineering_source_sha256=engineering_source_digest(),
-                              optimizer=conf['trainer']['optimizer'],
-                              scheduler=conf['trainer']['scheduler'],
-                              precision=conf['trainer']['precision'],
-                              devices=conf['trainer']['devices'],
-                              accumulate_grad_batches=conf['trainer']['accumulate_grad_batches'],
-                              max_length=max_length, dataset_sha256=inventory['sha256']))
+    identity = dict(data=data, model=conf['model'],
+                    engineering_source_sha256=engineering_source_digest(),
+                    optimizer=conf['trainer']['optimizer'],
+                    scheduler=conf['trainer']['scheduler'],
+                    precision=conf['trainer']['precision'],
+                    devices=conf['trainer']['devices'],
+                    accumulate_grad_batches=conf['trainer']['accumulate_grad_batches'],
+                    max_length=max_length, dataset_sha256=inventory['sha256'])
+    if experiment is not None:
+        identity['experiment'] = experiment
+    return config_digest(identity)

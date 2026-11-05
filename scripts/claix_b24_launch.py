@@ -16,7 +16,9 @@ import signal
 import subprocess
 import sys
 import threading
+import tempfile
 import time
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 GATES = ('frozen_splits', 'tokens_24_examples_48_views', 'workers_0_4_8',
@@ -84,7 +86,7 @@ def checkout_identity():
         git_status=subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True))
 
 
-def write_provenance(prefix, plan, release_record=None):
+def write_provenance(prefix, plan, release_record=None, *, allocation=None, initial_checkpoint_mode=None):
     """Keep exact checkout identity and source checksums per invocation/resume."""
     files = sorted([*ROOT.joinpath('xr1').rglob('*.py'), *ROOT.joinpath('xr1/configs').rglob('*.yaml'),
                     *ROOT.joinpath('scripts').glob('claix_b24*')])
@@ -95,6 +97,9 @@ def write_provenance(prefix, plan, release_record=None):
         release_record=json.loads(Path(release_record).read_text()) if release_record else None,
         slurm={key: os.environ.get(key) for key in
                ('SLURM_JOB_ID', 'SLURM_SUBMIT_DIR', 'SLURM_JOB_NODELIST')})
+    if plan.get('experimental_unqualified'):
+        record.update(experimental_unqualified=True, allocation=allocation,
+                      initial_checkpoint_mode=initial_checkpoint_mode)
     Path(str(prefix) + '.provenance.json').write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
 
 
@@ -180,10 +185,11 @@ PROFILES = {
     'cpu-qualification': dict(margin=120, max_seconds=7200, gpus=0),
     'h100-qualification': dict(margin=600, max_seconds=7200, gpus=1),
     'production': dict(margin=1800, max_seconds=85500, gpus=1),
+    'experimental': dict(margin=1800, max_seconds=72000, gpus=1),
 }
 
 
-def allocation_deadline(mode='production', *, max_seconds=None):
+def allocation_deadline(mode='production', *, max_seconds=None, allocation_record=None):
     profile = PROFILES[mode]
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('--execute requires a compute-node Slurm allocation')
@@ -191,7 +197,7 @@ def allocation_deadline(mode='production', *, max_seconds=None):
                             check=True, capture_output=True, text=True)
     fields = dict(pair.split('=', 1) for pair in result.stdout.split() if '=' in pair)
     limit = fields.get('TimeLimit', '')
-    if mode == 'production' and limit != '20:00:00':
+    if mode in ('production', 'experimental') and limit != '20:00:00':
         raise RuntimeError('Production requires exactly 20:00:00 allocation')
     try:
         days, clock = limit.split('-') if '-' in limit else ('0', limit)
@@ -216,6 +222,34 @@ def allocation_deadline(mode='production', *, max_seconds=None):
         raise RuntimeError('Cannot establish allocation host memory') from error
     if not math.isfinite(memory_bytes) or memory_bytes < (48 if mode == 'cpu-qualification' else 96) * 1024**3:
         raise RuntimeError('Allocation host memory is below the reviewed request')
+    if mode == 'experimental':
+        required = dict(JobId=os.environ['SLURM_JOB_ID'], JobState='RUNNING', Account='thes2452',
+                        Partition='c23g', NumNodes='1', NumTasks='1', NumCPUs='12', **{'CPUs/Task': '12'})
+        if any(fields.get(key) != value for key, value in required.items()):
+            raise RuntimeError('Experimental allocation requires running thes2452/c23g, one task/node and exactly twelve CPUs')
+        if tres.get('cpu') != '12' or memory_bytes != 96*1024**3:
+            raise RuntimeError('Experimental allocation requires exactly 12 CPUs and 96 GiB')
+        visible = os.environ.get('CUDA_VISIBLE_DEVICES', '')
+        if not visible or ',' in visible:
+            raise RuntimeError('Experimental allocation requires exactly one Slurm-visible H100')
+        gpu = subprocess.check_output(['nvidia-smi', '--id='+visible, '--query-gpu=name',
+                                       '--format=csv,noheader'], text=True).strip().splitlines()
+        if len(gpu) != 1 or 'H100' not in gpu[0]:
+            raise RuntimeError('Experimental allocation requires exactly one H100')
+        # Check the actual saved batch script, not an assumed filesystem path.
+        batch = subprocess.check_output(['scontrol', 'write', 'batch_script',
+                                         os.environ['SLURM_JOB_ID'], '-'], text=True)
+        if batch != (ROOT/'scripts/claix_b24_experimental.sbatch').read_text():
+            raise RuntimeError('Experimental allocation requires the dedicated batch wrapper (USR1@1800)')
+        sys.path.insert(0, str(ROOT/'scripts'))
+        from claix_b24_filesystem import inspect_directory
+        for key in ('StdOut', 'StdErr', 'WorkDir'):
+            path = Path(fields.get(key, ''))
+            inspect_directory(path if key == 'WorkDir' else path.parent)
+        if allocation_record is not None:
+            allocation_record.update(fields=fields, alloc_tres=tres, gpu_name=gpu[0],
+                                     batch_script_sha256=hashlib.sha256(batch.encode()).hexdigest(),
+                                     signal_request='B:USR1@1800')
     end = fields.get('EndTime', '')
     if not end or end in ('Unknown', 'N/A'):
         raise RuntimeError('Cannot establish authoritative allocation end time')
@@ -230,9 +264,75 @@ def allocation_deadline(mode='production', *, max_seconds=None):
     return deadline
 
 
+EXPERIMENT_NAME = 'xr1_doosan_b24_experimental_v1'
+
+
+def read_experiment(run_root):
+    path = Path(run_root)/'experiment.json'
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 65536:
+        raise RuntimeError('Missing/invalid same-run experimental identity')
+    record = json.loads(path.read_text())
+    run_id = record.get('run_id', '')
+    if (record.get('schema') != 'claix-b24-experiment-v1'
+            or record.get('experimental_unqualified') is not True
+            or len(run_id) != 32 or any(c not in '0123456789abcdef' for c in run_id)):
+        raise RuntimeError('Invalid experimental identity')
+    return record
+
+
+def check_experimental_resume(run_root, resume, plan):
+    record = read_experiment(run_root)
+    if (record.get('plan') != plan or record.get('source_tree_sha256') != tree_digest()
+            or record.get('git_commit') != checkout_identity()['git_commit']):
+        raise RuntimeError('Experimental source/configuration/run identity mismatch')
+    raw = Path(resume)
+    if raw.is_symlink():
+        raise RuntimeError('Symlink experimental checkpoint refused')
+    target = Path(run_root)/'project_xr1_doosan'/EXPERIMENT_NAME
+    check_resume_directory(target, resume)
+    receipt = json.loads(raw.with_suffix('.verified.json').read_text())
+    experiment = receipt.get('experiment', {})
+    if (experiment.get('experimental_unqualified') is not True
+            or experiment.get('run_id') != plan['run_id']
+            or experiment.get('run_root') != plan['run_root']):
+        raise RuntimeError('Checkpoint receipt does not belong to this experimental run')
+    return record
+
+
+def experimental_diagnostics(prefix, run_root):
+    """Use the existing isolated watchdog, exporting evidence into this run.
+
+    This is a small diagnostic spool, never dataset/model/checkpoint staging.
+    Preserve explicitly supplied watchdog timing/local-spool options, while
+    binding the authoritative exporter destination to the experiment root.
+    """
+    options = dict(local_dir=tempfile.gettempdir(), persistent_dir=str(run_root/'diagnostics'),
+                   thresholds=[30, 90, 150], poll_seconds=1.0, reserve_sigusr2=True)
+    original = os.environ.get('XR1_LOADER_DIAGNOSTICS_JSON')
+    if original:
+        path = Path(original)
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 8192:
+            raise RuntimeError('Invalid existing loader diagnostic configuration')
+        supplied = json.loads(path.read_text())
+        if not isinstance(supplied, dict) or set(supplied) != set(options) or supplied['reserve_sigusr2'] is not True:
+            raise RuntimeError('Invalid existing loader diagnostic options')
+        options.update(supplied)
+        options['persistent_dir'] = str(run_root/'diagnostics')
+    path = Path(str(prefix)+'.loader-diagnostics.json')
+    with path.open('x') as stream:
+        json.dump(options, stream, indent=2, sort_keys=True)
+        stream.write('\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+    return path
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--mode', choices=('cpu-qualification', 'h100-qualification', 'qualification', 'production'), default='h100-qualification')
+    p.add_argument('--mode', choices=('cpu-qualification', 'h100-qualification', 'qualification', 'production', 'experimental'), default='h100-qualification')
+    p.add_argument('--experimental-unqualified', action='store_true', help='Explicit opt-in; bypass formal release approvals only')
+    p.add_argument('--filesystem-source', help='Experimental: verified persistent Lustre SOURCE')
+    p.add_argument('--project-id', type=int, help='Experimental: actual Lustre project ID')
     p.add_argument('--execute', action='store_true')
     p.add_argument('--python', default=sys.executable)
     p.add_argument('--workers', type=int, choices=(0, 4, 8), default=4)
@@ -248,6 +348,15 @@ def main(argv=None):
     p.add_argument('--release-record')
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
+    experimental = args.mode == 'experimental'
+    if experimental != args.experimental_unqualified:
+        p.error('Experimental mode requires --mode experimental AND --experimental-unqualified')
+    if experimental and (args.release_record or os.environ.get('XR1_OPTION_B_RESUME_BRIDGE')):
+        p.error('Experimental mode rejects release records and the historical resume bridge')
+    if not experimental and (args.filesystem_source or args.project_id is not None):
+        p.error('Independent storage options are experimental only')
+    if experimental and args.execute and (not args.filesystem_source or not args.project_id):
+        p.error('Experimental execution requires --filesystem-source and --project-id')
     # Retain the old CLI spelling as an explicit short H100 qualification alias.
     if args.mode == 'qualification':
         args.mode = 'h100-qualification'
@@ -256,7 +365,7 @@ def main(argv=None):
         p.error('qualification bounds are H100 qualification only')
     if args.qualification_gpu_monitor and args.mode != 'h100-qualification':
         p.error('qualification GPU monitor requires H100 qualification')
-    if args.mode == 'production' and args.workers != 4:
+    if args.mode in ('production', 'experimental') and args.workers != 4:
         p.error('Production requires the approved four workers')
     qualification_steps = args.qualification_max_steps if args.qualification_max_steps is not None else 6
     if not 6 <= qualification_steps <= 300:
@@ -279,8 +388,20 @@ def main(argv=None):
     plan = dict(batch_size=24, max_length=12288, data_horizon=48284, scheduler_steps=48284,
                 warmup_steps=500, workers=args.workers, world_size=1,
                 run_root=str(Path(args.run_root).resolve()), overrides=base)
+    if experimental:
+        if not Path(args.run_root).is_absolute() or Path(args.run_root).is_symlink():
+            raise RuntimeError('Experimental run root must be absolute and non-symlink')
+        run_id = read_experiment(plan['run_root'])['run_id'] if args.resume else uuid.uuid4().hex
+        plan.update(experimental_unqualified=True, run_id=run_id, worker_timeout=600,
+                    prefetch_factor=2, persistent_workers=True, in_order=True,
+                    zip_integrity_policy='immutable', checkpoint_interval=250,
+                    filesystem_source=args.filesystem_source, project_id=args.project_id)
+        if args.resume:
+            check_experimental_resume(plan['run_root'], args.resume, plan)
     overrides = base + ['trainer.default_root_dir=' + json.dumps(plan['run_root']),
                         f'data.params.train_datasets.num_workers={args.workers}']
+    if experimental:
+        overrides += ['production.experimental_run_id=' + json.dumps(run_id), 'trainer.ckpt_path=null']
     if args.mode == 'h100-qualification':
         if args.resume:
             receipt_path = Path(args.resume).with_suffix('.verified.json')
@@ -309,7 +430,8 @@ def main(argv=None):
     if args.stop_after_step is not None:
         overrides += ['production.stop_after_step=' + str(args.stop_after_step)]
     cmd = [args.python, '-m', 'torch.distributed.run', '--standalone', '--nproc_per_node=1',
-           str(ROOT / 'xr1/tools/train_doosan_compact.py'), '--config-name=claix_b24_production', *overrides]
+           str(ROOT / 'xr1/tools/train_doosan_compact.py'),
+           '--config-name=' + ('claix_b24_experimental' if experimental else 'claix_b24_production'), *overrides]
     if args.mode == 'cpu-qualification':
         cmd = [args.python, str(ROOT / 'xr1/tools/claix_b24_worker_qualification.py'),
                '--overrides', str(Path(args.overrides).resolve()),
@@ -325,18 +447,55 @@ def main(argv=None):
         if not args.release_record:
             raise RuntimeError('Production requires completed qualification release record')
         release_hash = check_release(args.release_record, plan, require_immutable=True)
-    deadline = allocation_deadline(args.mode)
+    allocation = {}
+    deadline = (allocation_deadline(args.mode, allocation_record=allocation) if experimental
+                else allocation_deadline(args.mode))
     if args.qualification_deadline_epoch is not None:
         deadline = min(deadline, args.qualification_deadline_epoch)
         if deadline <= time.time():
             raise RuntimeError('Qualification deadline already passed')
     run_root = Path(plan['run_root'])
-    run_root.mkdir(parents=True, exist_ok=True)
+    if experimental:
+        sys.path.insert(0, str(ROOT/'scripts'))
+        from claix_b24_storage_preflight import experimental_evaluate
+        from claix_b24_filesystem import inspect_directory
+        # Do not create state on an unverified filesystem, even for a failed launch.
+        storage_result = experimental_evaluate(run_root, args.filesystem_source, args.project_id)
+        print('ALLOCATION_STORAGE=' + json.dumps(storage_result, sort_keys=True), flush=True)
+        if storage_result['status'] != 'PASS':
+            raise RuntimeError('Experimental storage preflight aborted before model loading: '
+                               + json.dumps(storage_result['abort_reasons']))
+        cache = os.environ.get('XR1_DOOSAN_ZIP_CACHE_ROOT')
+        if not cache or os.environ.get('XR1_DOOSAN_OFFLINE_FRAME_ROOT'):
+            raise RuntimeError('Experimental mode requires the frozen Lustre ZIP cache only')
+        cache_location = inspect_directory(cache)
+        if cache_location['filesystem']['fstype'] != 'lustre':
+            raise RuntimeError('Experimental ZIP cache must remain on persistent Lustre')
+        storage_result['zip_cache_location'] = cache_location
+        if args.resume:
+            if not run_root.is_dir():
+                raise RuntimeError('Experimental recovery requires its existing run root')
+        else:
+            run_root.mkdir(parents=True, exist_ok=False)
+    else:
+        run_root.mkdir(parents=True, exist_ok=True)
     # One lock across qualification/production sharing the run root. Held by
     # controller AND torchrun, so controller death cannot free an active run lock.
     with (run_root / '.production.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if experimental:
+            if args.resume:
+                check_experimental_resume(run_root, args.resume, plan)
+            else:
+                identity = dict(schema='claix-b24-experiment-v1', experimental_unqualified=True,
+                                run_id=run_id, plan=plan, **checkout_identity(), source_tree_sha256=tree_digest())
+                with (run_root/'experiment.json').open('x') as stream:
+                    json.dump(identity, stream, indent=2, sort_keys=True)
+                    stream.write('\n')
+                    stream.flush()
+                    os.fsync(stream.fileno())
         target = run_root / 'project_xr1_doosan' / (
+            EXPERIMENT_NAME if experimental else
             'xr1_doosan_b24_results_v1' if args.mode == 'production' else f'qualification_b24_w{args.workers}')
         if args.mode == 'cpu-qualification':
             target = run_root / 'workers.json'
@@ -345,6 +504,9 @@ def main(argv=None):
         if args.resume and target.exists() and any(target.iterdir()):
             check_resume_directory(target, args.resume)
         log_prefix = run_root / f'launch-{time.time_ns()}'
+        if experimental:
+            with Path(str(log_prefix)+'.storage.json').open('x') as stream:
+                json.dump(storage_result, stream, indent=2, sort_keys=True)
         if args.mode == 'production':
             # Use a script-path import even under the isolated offline harness.
             sys.path.insert(0, str(ROOT / 'scripts'))
@@ -365,7 +527,8 @@ def main(argv=None):
                 raise RuntimeError('Allocation storage preflight aborted before model loading: '
                                    + json.dumps(storage_result.get('abort_reasons', []))
                                    + '; report=' + str(storage_path))
-        write_provenance(log_prefix, plan, args.release_record)
+        write_provenance(log_prefix, plan, args.release_record, allocation=allocation,
+                         initial_checkpoint_mode='same_run_verified_resume' if args.resume else 'original_pretrained_step_zero')
         if release_hash is not None and hashlib.sha256(Path(args.release_record).read_bytes()).hexdigest() != release_hash:
             raise RuntimeError('Release record changed after review validation')
         env = dict(os.environ, MAX_LENGTH='12288', CUBLAS_WORKSPACE_CONFIG=':4096:8',
@@ -373,6 +536,9 @@ def main(argv=None):
                    PYTHONUNBUFFERED='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1',
                    XR1_SAFE_STOP_EPOCH=str(deadline),
                    PYTHONPATH=str(ROOT / 'xr1') + os.pathsep + os.environ.get('PYTHONPATH', ''))
+        if experimental:
+            env['XR1_EXPERIMENTAL_UNQUALIFIED'] = '1'
+            env['XR1_LOADER_DIAGNOSTICS_JSON'] = str(experimental_diagnostics(log_prefix, run_root))
         if args.mode == 'cpu-qualification':
             env['CUDA_VISIBLE_DEVICES'] = ''
         if not env.get('XR1_DOOSAN_ZIP_CACHE_ROOT') or env.get('XR1_DOOSAN_OFFLINE_FRAME_ROOT'):
@@ -394,7 +560,7 @@ def main(argv=None):
         child = None
         child_finished = False
         monitor = (NvidiaSmiMonitor(str(log_prefix) + '.gpu.jsonl')
-                   if ((args.mode == 'production' and os.environ.get('XR1_NVIDIA_SMI_MONITOR', '1') != '0')
+                   if ((args.mode in ('production', 'experimental') and os.environ.get('XR1_NVIDIA_SMI_MONITOR', '1') != '0')
                        or args.qualification_gpu_monitor)
                    else None)
         try:

@@ -72,7 +72,7 @@ def atomic_json(path, value, *, exclusive=False):
             os.unlink(tmp)
 
 
-def validate_production_checkpoint(ck, contract, *, expected_config=None, resumable=True):
+def validate_production_checkpoint(ck, contract, *, expected_config=None, resumable=True, expected_experiment=None):
     if ck.get('xr1_replay_contract') != contract:
         raise RuntimeError('Missing or inconsistent checkpoint replay contract')
     validate_full_compact_resume(ck, contract, resumable=resumable)
@@ -101,6 +101,17 @@ def validate_production_checkpoint(ck, contract, *, expected_config=None, resuma
     runtime = ck.get('xr1_production', {})
     if runtime.get('schema') != 'claix-b24-runtime-v1':
         raise RuntimeError('Missing production checkpoint metadata')
+    experiment = runtime.get('experiment')
+    if expected_experiment is not None and experiment != expected_experiment:
+        raise RuntimeError('Checkpoint does not belong to this experimental run')
+    if experiment is not None:
+        if (not isinstance(experiment, dict)
+                or experiment.get('schema') != 'claix-b24-experimental-checkpoint-v1'
+                or experiment.get('experimental_unqualified') is not True
+                or len(experiment.get('run_id', '')) != 32
+                or len(experiment.get('zip_manifest_sha256', '')) != 64
+                or not Path(experiment.get('run_root', '')).is_absolute()):
+            raise RuntimeError('Incomplete experimental checkpoint identity')
     fingerprint = runtime.get('config_sha256', '')
     if (len(fingerprint) != 64 or any(c not in '0123456789abcdef' for c in fingerprint)
             or (expected_config is not None and fingerprint != expected_config)):
@@ -149,6 +160,8 @@ def publish_checkpoint(ck, path):
         receipt = dict(schema='claix-b24-verified-v1', path=path.name,
                        global_step=int(ck['global_step']), bytes=Path(tmp).stat().st_size,
                        sha256=file_sha256(tmp), config_sha256=ck['xr1_production']['config_sha256'])
+        if ck['xr1_production'].get('experiment') is not None:
+            receipt['experiment'] = dict(ck['xr1_production']['experiment'])
         # Atomic no-clobber publication, even if another writer bypassed flock.
         os.link(tmp, path)
         os.unlink(tmp)
@@ -176,21 +189,26 @@ def _read_receipt(path):
     return json.loads(raw)
 
 
-def load_verified(path, contract=None, *, expected_config=None, resumable=True):
+def load_verified(path, contract=None, *, expected_config=None, resumable=True, expected_experiment=None):
     path = Path(path)
     if path.is_symlink() or path.with_suffix('.verified.json').is_symlink():
         raise RuntimeError('Symlink checkpoint/receipt refused')
     receipt = _read_receipt(path.with_suffix('.verified.json'))
+    if expected_experiment is not None and receipt.get('experiment') != expected_experiment:
+        raise RuntimeError('Checkpoint receipt does not belong to this experimental run')
     if (receipt.get('schema') != 'claix-b24-verified-v1' or receipt.get('path') != path.name
             or receipt.get('bytes') != path.stat().st_size or receipt.get('sha256') != file_sha256(path)):
         raise RuntimeError('Checkpoint receipt or checksum mismatch')
     ck = torch.load(path, map_location='cpu', weights_only=False)
     validate_production_checkpoint(ck, contract if contract is not None else ck['xr1_replay_contract'],
-                                   expected_config=expected_config, resumable=resumable)
+                                   expected_config=expected_config, resumable=resumable,
+                                   expected_experiment=expected_experiment)
     if receipt['global_step'] != ck['global_step']:
         raise RuntimeError('Receipt step mismatch')
     if receipt.get('config_sha256') != ck['xr1_production']['config_sha256']:
         raise RuntimeError('Receipt configuration mismatch')
+    if receipt.get('experiment') != ck['xr1_production'].get('experiment'):
+        raise RuntimeError('Receipt experimental identity mismatch')
     return ck
 
 

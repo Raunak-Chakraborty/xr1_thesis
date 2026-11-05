@@ -50,9 +50,9 @@ class LaunchTest(unittest.TestCase):
     def test_allocation_walltime_and_deadline(self):
         with patch.dict(os.environ,SLURM_JOB_ID='synthetic'), patch.object(launch.subprocess,'run') as run:
             run.return_value.stdout='JobId=1 TimeLimit=24:00:00 EndTime=2026-10-31T18:00:00'
-            with self.assertRaisesRegex(RuntimeError,'23:45:00'):
+            with self.assertRaisesRegex(RuntimeError,'20:00:00'):
                 launch.allocation_deadline()
-            run.return_value.stdout='JobId=1 TimeLimit=23:45:00 EndTime=2026-10-31T18:00:00 AllocTRES=cpu=12,mem=96G,gres/gpu=1,gres/gpu:h100=1'
+            run.return_value.stdout='JobId=1 TimeLimit=20:00:00 EndTime=2026-10-31T18:00:00 AllocTRES=cpu=12,mem=96G,gres/gpu=1,gres/gpu:h100=1'
             with patch.object(launch.subprocess,'check_output',return_value='10000'),patch.object(launch.time,'time',return_value=100):
                 self.assertEqual(launch.allocation_deadline(),8200)
 
@@ -143,7 +143,9 @@ class LaunchTest(unittest.TestCase):
                 fcntl.flock(first,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 with patch.object(launch,'allocation_deadline',return_value=10000), \
                      patch.object(launch,'check_release'):
-                    for mode in launch.PROFILES:
+                    # Experimental initial roots are exclusive-create; its
+                    # recovery lock is covered by test_claix_experimental.
+                    for mode in ('cpu-qualification', 'h100-qualification', 'production'):
                         with self.subTest(mode=mode), self.assertRaises(BlockingIOError):
                             launch.main(['--execute','--mode',mode,'--run-root',folder,'--release-record','synthetic'])
 

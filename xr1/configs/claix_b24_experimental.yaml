@@ -1,0 +1,13 @@
+# @package _global_
+# Explicitly unqualified experiment; scientific recipe is inherited unchanged.
+defaults:
+  - claix_b24_production
+  - _self_
+
+production:
+  experimental_unqualified: true
+  experimental_run_id: null
+
+trainer:
+  exp_name: xr1_doosan_b24_experimental_v1
+  ckpt_path: null

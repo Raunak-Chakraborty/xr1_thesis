@@ -39,6 +39,7 @@ def main(cfg: DictConfig):
     source_config = OmegaConf.to_container(cfg, resolve=True)
     production = conf.pop('production', None)
     fingerprint = None
+    experiment = None
     if production:
         if torch.cuda.device_count() != 1 or 'H100' not in torch.cuda.get_device_name(0):
             raise RuntimeError('CLAIX batch-24 GPU path requires exactly one visible H100')
@@ -60,7 +61,10 @@ def main(cfg: DictConfig):
         inventory = split_inventory(roots[0])
         if inventory['episodes'] != 255 or inventory['frames'] != 289703:
             raise RuntimeError('Production frozen training split count mismatch')
-        fingerprint = resume_fingerprint(conf.to_dict(), inventory, max_length)
+        if production.get('experimental_unqualified') is True:
+            from mibot.utils.claix_experiment import bind_experiment
+            experiment = bind_experiment(conf.to_dict(), production, inventory)
+        fingerprint = resume_fingerprint(conf.to_dict(), inventory, max_length, experiment=experiment)
         import time
         deadline = float(os.environ['XR1_SAFE_STOP_EPOCH'])
         if not time.time() < deadline:
@@ -113,7 +117,12 @@ def main(cfg: DictConfig):
     bridge_record = None
     step = 0
     if ckpt_path:
-        if production:
+        if experiment is not None:
+            from mibot.utils.claix_experiment import load_experimental_resume
+            ck = load_experimental_resume(ckpt_path, contract, fingerprint, experiment)
+            step = int(ck['global_step'])
+            del ck
+        elif production:
             from mibot.utils.claix_resume_bridge import authorize_original_resume
             bridge_record = authorize_original_resume(
                 ckpt_path, fingerprint, inventory, contract
@@ -141,6 +150,8 @@ def main(cfg: DictConfig):
     }
     if production:
         conf.model.params.compact_fp32['config_sha256'] = fingerprint
+        if experiment is not None:
+            conf.model.params.compact_fp32['experiment'] = experiment
         if bridge_record is not None:
             conf.model.params.compact_fp32['resume_input_config_sha256'] = (
                 bridge_record['original_config_sha256']
@@ -157,6 +168,17 @@ def main(cfg: DictConfig):
         atomic_json(target / f'resolved-{time.time_ns()}.json', source_config)
         atomic_json(target / 'training_inventory.json', inventory)
         atomic_json(target / 'resume_contract.json', {'config_sha256': fingerprint, 'replay': contract})
+        if experiment is not None:
+            atomic_json(target / f'experimental-start-{time.time_ns()}.json', dict(
+                experimental_unqualified=True, experiment=experiment,
+                source_config=source_config, config_sha256=fingerprint,
+                dataset_identity=inventory['sha256'],
+                pretrained_identity=dict(path=base_path, sha256=expected_base),
+                language_identity=dict(path=language_path, sha256=expected_language),
+                initial_checkpoint_mode='same_run_verified_resume' if ckpt_path else 'original_pretrained_step_zero',
+                initial_global_step=step, new_optimizer_and_scheduler=not bool(ckpt_path),
+                cache_integrity_policy=source_config['data']['params']['train_datasets']['zip_integrity_policy'],
+                slurm_job_id=os.environ.get('SLURM_JOB_ID')))
         if bridge_record is not None:
             atomic_json(target / 'resume_bridge.json', bridge_record, exclusive=True)
             print('XR1_OPTION_B_CHECKPOINT_BRIDGE=PASS ' + json.dumps(
@@ -174,7 +196,8 @@ def main(cfg: DictConfig):
     if production:
         checkpoint = ProductionRuntime(target, deadline=deadline, interval=interval,
                                        stop_after_step=production.get('stop_after_step'))
-        conf.trainer.plugins = [VerifiedCheckpointIO()]
+        conf.trainer.plugins = [VerifiedCheckpointIO(expected_config=fingerprint if experiment else None,
+                                                     expected_experiment=experiment)]
     conf.trainer.callbacks = [ModelSummary(max_depth=2), checkpoint]
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True

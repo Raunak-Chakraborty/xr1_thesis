@@ -102,6 +102,8 @@ class DoosanCompactRunner(BaseRunner):
                 'config_sha256': self._compact_cfg['config_sha256'],
                 'rng_by_rank': states,
             }
+            if 'experiment' in self._compact_cfg:
+                checkpoint['xr1_production']['experiment'] = dict(self._compact_cfg['experiment'])
         if int(checkpoint.get('global_step', step)) != step:
             raise RuntimeError('Lightning checkpoint step inconsistent with sampler cursor')
         if not checkpoint.get('lr_schedulers') or not checkpoint.get('optimizer_states'):
@@ -123,6 +125,7 @@ class DoosanCompactRunner(BaseRunner):
             validate_production_checkpoint(checkpoint, self._replay_contract,
                                            expected_config=self._compact_cfg.get(
                                                'resume_input_config_sha256',
-                                               self._compact_cfg['config_sha256']))
+                                               self._compact_cfg['config_sha256']),
+                                           expected_experiment=self._compact_cfg.get('experiment'))
             self._pending_rng = checkpoint['xr1_production']['rng_by_rank']
         print('XR1_COMPACT_REPLAY_RESTORED=PASS global_step=' + str(step), flush=True)

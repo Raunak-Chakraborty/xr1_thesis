@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:hopper:1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=96G
-#SBATCH --time=20:00:00
+#SBATCH --time=23:45:00
 #SBATCH --signal=B:USR1@1800
 #SBATCH --output=claix_b24_experimental_%j.out
 #SBATCH --error=claix_b24_experimental_%j.err

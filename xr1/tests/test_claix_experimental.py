@@ -260,7 +260,7 @@ class AllocationTest(unittest.TestCase):
     def fields(self):
         return dict(JobId='123', JobState='RUNNING', Account='thes2452', Partition='c23g',
                     NumNodes='1', NumTasks='1', NumCPUs='12', **{'CPUs/Task': '12'},
-                    TimeLimit='20:00:00', EndTime='future',
+                    TimeLimit='23:45:00', EndTime='future',
                     AllocTRES='cpu=12,mem=96G,gres/gpu=1,gres/gpu:hopper=1',
                     StdOut='/hpcwork/test/log.out', StdErr='/hpcwork/test/log.err', WorkDir='/hpcwork/test')
 
@@ -284,7 +284,7 @@ class AllocationTest(unittest.TestCase):
             launch.allocation_deadline('experimental')
         for key, value in [('JobId','456'), ('JobState','PENDING'), ('Account','other'), ('Partition','other'),
                            ('NumNodes','2'), ('NumTasks','2'), ('NumCPUs','24'), ('CPUs/Task','6'),
-                           ('TimeLimit','23:45:00'), ('TimeLimit','19:00:00'), ('TimeLimit','UNLIMITED'),
+                           ('TimeLimit','20:00:00'), ('TimeLimit','19:00:00'), ('TimeLimit','UNLIMITED'),
                            ('AllocTRES','cpu=24,mem=96G,gres/gpu=1'), ('AllocTRES','cpu=12,mem=97G,gres/gpu=1'),
                            ('AllocTRES','cpu=12,mem=95G,gres/gpu=1'), ('AllocTRES','cpu=12,mem=96G,gres/gpu=2'),
                            ('EndTime','Unknown')]:
@@ -302,7 +302,7 @@ class AllocationTest(unittest.TestCase):
         subprocess.run(['bash', '-n', str(script)], check=True)
         content = script.read_text()
         for directive in ('account=thes2452', 'partition=c23g', 'gres=gpu:hopper:1', 'cpus-per-task=12',
-                          'mem=96G', 'time=20:00:00', 'signal=B:USR1@1800', 'nodes=1', 'ntasks=1'):
+                          'mem=96G', 'time=23:45:00', 'signal=B:USR1@1800', 'nodes=1', 'ntasks=1'):
             self.assertIn('#SBATCH --'+directive+'\n', content)
         self.assertIn('--experimental-unqualified', content)
         self.assertNotIn('--release-record', content)

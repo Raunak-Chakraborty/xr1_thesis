@@ -185,7 +185,7 @@ PROFILES = {
     'cpu-qualification': dict(margin=120, max_seconds=7200, gpus=0),
     'h100-qualification': dict(margin=600, max_seconds=7200, gpus=1),
     'production': dict(margin=1800, max_seconds=85500, gpus=1),
-    'experimental': dict(margin=1800, max_seconds=72000, gpus=1),
+    'experimental': dict(margin=1800, max_seconds=85500, gpus=1),
 }
 
 
@@ -197,8 +197,11 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
                             check=True, capture_output=True, text=True)
     fields = dict(pair.split('=', 1) for pair in result.stdout.split() if '=' in pair)
     limit = fields.get('TimeLimit', '')
-    if mode in ('production', 'experimental') and limit != '20:00:00':
-        raise RuntimeError('Production requires exactly 20:00:00 allocation')
+    required_walltime = {'production': '20:00:00', 'experimental': '23:45:00'}
+    if mode in required_walltime and limit != required_walltime[mode]:
+        raise RuntimeError(
+            f'{mode.capitalize()} requires exactly {required_walltime[mode]} allocation'
+        )
     try:
         days, clock = limit.split('-') if '-' in limit else ('0', limit)
         hours, minutes, seconds = map(int, clock.split(':'))

@@ -1,11 +1,13 @@
 """Synthetic CPU regressions for Lustre I/O policy; never loads a processor."""
 import io
+from contextlib import redirect_stdout
 import json
 import multiprocessing as mp
 import os
 from pathlib import Path
 import pickle
 import random
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -76,6 +78,37 @@ def fork_check(cache, path, root, row, connection):
 
 
 class JsonCacheTest(unittest.TestCase):
+    def test_sizing_matches_legacy_and_limit_never_underestimates_retention(self):
+        def legacy(value):
+            size = sys.getsizeof(value)
+            if isinstance(value, dict):
+                size += sum(legacy(k) + legacy(v) for k, v in value.items())
+            elif isinstance(value, (list, tuple)):
+                size += sum(legacy(v) for v in value)
+            return size
+
+        rng = random.Random(42)
+        def tree(depth):
+            if not depth:
+                return rng.choice([None, True, False, 1 << 80, -1, 0.25, 'ü' * 100])
+            children = [tree(depth - 1) for _ in range(rng.randrange(5))]
+            return {str(i): v for i, v in enumerate(children)} if rng.randrange(2) else children
+
+        for value in [tree(4) for _ in range(30)] + [([1., 2.] * 1000,), {'alias': [None] * 1000}]:
+            exact = legacy(value)
+            self.assertEqual(object_bytes(value), exact)
+            for limit in (0, exact // 2, exact - 1, exact, exact + 1):
+                result = object_bytes(value, limit=limit)
+                if exact <= limit:
+                    self.assertEqual(result, exact)
+                else:
+                    self.assertGreater(result, limit)
+        # Early rejection must avoid traversing a large oversized scalar array.
+        value = [float(i) for i in range(10000)]
+        with patch('mibot.utils.doosan_io_cache.sys.getsizeof', wraps=sys.getsizeof) as sizing:
+            self.assertGreater(object_bytes(value, limit=100), 100)
+            self.assertEqual(sizing.call_count, 1)
+
     def test_exact_content_lru_and_reopen(self):
         with tempfile.TemporaryDirectory() as folder:
             paths = [Path(folder) / f'{i}.json' for i in range(3)]
@@ -135,6 +168,20 @@ class JsonCacheTest(unittest.TestCase):
                     silent.read(path)
                 mark.assert_not_called()
 
+    def test_sizing_preserves_exact_byte_retention_boundary(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'episode.json'
+            path.write_text(json.dumps({'rows': [[float(i)] * 7 for i in range(1000)]}))
+            value = json.loads(path.read_text())
+            size = object_bytes(value) + object_bytes(str(path))
+            for budget in (size - 1, size):
+                with self.subTest(budget=budget):
+                    cache = JsonEpisodeCache(16, budget)
+                    self.assertEqual(cache.read(path), value)
+                    self.assertEqual(cache.snapshot()['entries'], int(budget == size))
+                    self.assertEqual(cache.bytes, size if budget == size else 0)
+                    self.assertLessEqual(cache.bytes, budget)
+
 
 class ZipCacheTest(unittest.TestCase):
     def setUp(self):
@@ -148,6 +195,190 @@ class ZipCacheTest(unittest.TestCase):
         zipped.close_cache()
         zipped._manifest.cache_clear()
         self.tmp.cleanup()
+
+    def test_real_filesystem_operations_initial_hit_and_reopen_for_each_policy(self):
+        for policy in ('strict', 'immutable'):
+            with self.subTest(policy=policy):
+                cache = zipped.ZipArchiveCache(max_open=1, integrity_policy=policy)
+                try:
+                    original_open = Path.open
+                    with patch.object(os, 'stat', wraps=os.stat) as stat, \
+                         patch.object(os, 'fstat', wraps=os.fstat) as fstat, \
+                         patch.object(zipped.zipfile, 'ZipFile', wraps=zipfile.ZipFile) as opens, \
+                         patch.object(Path, 'open', autospec=True, side_effect=original_open) as reads:
+                        first = cache.get(self.root, self.rows[0])
+                        self.assertEqual((stat.call_count, fstat.call_count, opens.call_count,
+                                          reads.call_count), (4, 2, 1, 1))
+                        for mock in (stat, fstat, opens, reads):
+                            mock.reset_mock()
+                        for _ in range(48):
+                            self.assertIs(cache.get(self.root, self.rows[0]), first)
+                        self.assertEqual((stat.call_count, fstat.call_count, opens.call_count,
+                                          reads.call_count), (96 if policy == 'strict' else 0, 0, 0, 0))
+                        cache.get(self.root, self.rows[1])
+                        self.assertIsNone(first.fp)
+                        for mock in (stat, fstat, opens, reads):
+                            mock.reset_mock()
+                        cache.get(self.root, self.rows[0])
+                        self.assertEqual((stat.call_count, fstat.call_count, opens.call_count,
+                                          reads.call_count), (2, 1, 1, 0))
+                    self.assertEqual(cache.snapshot()['hits'], 48)
+                    self.assertEqual(cache.snapshot()['sidecar_reads'], 2)
+                    self.assertEqual(cache.snapshot()['opens'], 3)
+                finally:
+                    cache.close()
+
+    def test_explicit_policy_provenance_pickle_and_reconfiguration(self):
+        with self.assertRaisesRegex(ValueError, 'integrity policy'):
+            zipped.ZipArchiveCache(integrity_policy='automatic')
+        self.assertEqual(self.cache.snapshot()['integrity_policy'], 'strict')
+        output = io.StringIO()
+        with redirect_stdout(output):
+            cache = zipped.configure_cache(integrity_policy='immutable')
+        record = json.loads(output.getvalue().strip().split(' ', 1)[1])
+        self.assertEqual(record['integrity_policy'], 'immutable')
+        self.assertTrue(record['immutable_dataset_required'])
+        self.assertEqual(record['hit_path_stats'], 0)
+        self.assertEqual(record['pid'], os.getpid())
+        archive = cache.get(self.root, self.rows[0])
+        restored = pickle.loads(pickle.dumps(cache))
+        try:
+            self.assertEqual(restored.snapshot()['integrity_policy'], 'immutable')
+            self.assertFalse(restored.handles)
+            strict = zipped.configure_cache(integrity_policy='strict')
+            self.assertIsNone(archive.fp)
+            self.assertEqual(strict.snapshot()['integrity_policy'], 'strict')
+        finally:
+            restored.close()
+
+    def test_replacement_mutation_and_deletion_detection_depends_on_policy(self):
+        for policy in ('strict', 'immutable'):
+            for mutation in ('archive_replace', 'archive_rewrite', 'sidecar_replace',
+                             'sidecar_rewrite', 'archive_delete', 'sidecar_delete'):
+                with self.subTest(policy=policy, mutation=mutation), tempfile.TemporaryDirectory() as folder:
+                    root = Path(folder)
+                    row = make_archive(root, 'first')
+                    other = make_archive(root, 'other')
+                    cache = zipped.ZipArchiveCache(max_open=1, integrity_policy=policy)
+                    try:
+                        held = cache.get(root, row)
+                        path = root / row['archive']
+                        if mutation.startswith('sidecar'):
+                            path = path.with_suffix('.metadata.json')
+                        if mutation.endswith('delete'):
+                            path.unlink()
+                        elif mutation.endswith('replace'):
+                            replacement = root / 'replacement'
+                            replacement.write_bytes(path.read_bytes())
+                            replacement.replace(path)
+                        else:
+                            before = path.stat()
+                            path.write_bytes(path.read_bytes())
+                            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                            self.assertNotEqual(path.stat().st_ctime_ns, before.st_ctime_ns)
+                        if policy == 'immutable':
+                            # This is deliberate deferred detection, not proof
+                            # that a previously verified file stayed unchanged.
+                            self.assertIs(cache.get(root, row), held)
+                            self.assertEqual(cache.snapshot()['invalidations'], 0)
+                            cache.get(root, other)  # Eviction forces revalidation.
+                        if mutation.endswith('delete'):
+                            with self.assertRaises(FileNotFoundError):
+                                cache.get(root, row)
+                        else:
+                            self.assertIsNot(cache.get(root, row), held)
+                            self.assertEqual(cache.snapshot()['invalidations'], 1)
+                            self.assertEqual(cache.snapshot()['sidecar_reads'], 3 if policy == 'immutable' else 2)
+                        self.assertIsNone(held.fp)
+                    finally:
+                        cache.close()
+
+    def test_immutable_hit_still_compares_row_provenance(self):
+        cache = zipped.ZipArchiveCache(integrity_policy='immutable')
+        try:
+            held = cache.get(self.root, self.rows[0])
+            for field, value in [('original_source_path', '/wrong'), ('frames', 999),
+                                 ('crop_bbox', [1, 2, 3, 4])]:
+                with self.subTest(field=field):
+                    with self.assertRaisesRegex(RuntimeError, 'metadata mismatch'):
+                        cache.get(self.root, dict(self.rows[0], **{field: value}))
+                    self.assertIsNone(held.fp)
+                    held = cache.get(self.root, self.rows[0])
+        finally:
+            cache.close()
+
+    def test_immutable_atomic_replacement_can_serve_old_valid_pixels_until_eviction(self):
+        row = self.rows[0]
+        path = self.root / row['archive']
+        cache = zipped.ZipArchiveCache(max_open=1, integrity_policy='immutable')
+        try:
+            held = cache.get(self.root, row)
+            old_png = held.read('frame_000000000.png')
+            replacement = make_archive(self.root, 'new-content', color=91)
+            (self.root / replacement['archive']).replace(path)
+            sidecar = path.with_suffix('.metadata.json')
+            meta = json.loads(sidecar.read_text())
+            sidecar.write_text(json.dumps(dict(meta, archive_bytes=path.stat().st_size)))
+            self.assertEqual(cache.get(self.root, row).read('frame_000000000.png'), old_png)
+            cache.get(self.root, self.rows[1])
+            self.assertNotEqual(cache.get(self.root, row).read('frame_000000000.png'), old_png)
+            self.assertEqual(cache.snapshot()['invalidations'], 1)
+        finally:
+            cache.close()
+
+    def test_both_policies_bound_retention_and_release_all_descriptors(self):
+        before = len(list(Path('/proc/self/fd').iterdir()))
+        for policy in ('strict', 'immutable'):
+            for budget in (1, 20000):
+                with self.subTest(policy=policy, budget=budget):
+                    cache = zipped.ZipArchiveCache(max_open=1, max_bytes=budget,
+                                                   metadata_entries=1, metadata_bytes=1500,
+                                                   integrity_policy=policy)
+                    try:
+                        for _ in range(5):
+                            for row in self.rows:
+                                archive = cache.get(self.root, row)
+                                archive.read('frame_000000000.png')
+                                cache.release(archive)
+                                info = cache.snapshot()
+                                self.assertLessEqual(info['handles'], 1)
+                                self.assertLessEqual(info['estimated_bytes'], budget)
+                                self.assertLessEqual(info['metadata_entries'], 1)
+                                self.assertLessEqual(info['metadata_estimated_bytes'], 1500)
+                                self.assertLessEqual(len(list(Path('/proc/self/fd').iterdir())), before + 1)
+                    finally:
+                        cache.close()
+                    self.assertEqual(len(list(Path('/proc/self/fd').iterdir())), before)
+
+    def test_both_policies_preserve_initial_validation_and_failure_cleanup(self):
+        path = self.root / self.rows[0]['archive']
+        sidecar = path.with_suffix('.metadata.json')
+        valid = sidecar.read_text()
+        bad_directory = make_archive(self.root, 'bad-initial', frames=3,
+                                     names=['frame_000000000.png', 'wrong.png', 'frame_000000002.png'])
+        before = len(list(Path('/proc/self/fd').iterdir()))
+        for policy in ('strict', 'immutable'):
+            cache = zipped.ZipArchiveCache(integrity_policy=policy)
+            try:
+                for field, value in [('schema', 'wrong'), ('original_source_path', '/wrong'),
+                                     ('frames', 999), ('crop_bbox', [1, 2, 3, 4]), ('archive_bytes', 1)]:
+                    with self.subTest(policy=policy, field=field):
+                        sidecar.write_text(json.dumps(dict(json.loads(valid), **{field: value})))
+                        with self.assertRaisesRegex(RuntimeError, 'metadata mismatch'):
+                            cache.get(self.root, self.rows[0])
+                        self.assertFalse(cache.handles)
+                        self.assertFalse(cache.metadata)
+                sidecar.write_text('x' * 65537)
+                with self.assertRaisesRegex(RuntimeError, 'oversized'):
+                    cache.get(self.root, self.rows[0])
+                with self.assertRaisesRegex(RuntimeError, 'directory mismatch'):
+                    cache.get(self.root, bad_directory)
+                self.assertFalse(cache.handles)
+                self.assertFalse(cache.metadata)
+            finally:
+                cache.close()
+                sidecar.write_text(valid)
+            self.assertEqual(len(list(Path('/proc/self/fd').iterdir())), before)
 
     def test_lru_closes_eviction_and_reuses_validated_sidecar_on_reopen(self):
         a = self.cache.get(self.root, self.rows[0])
@@ -393,8 +624,8 @@ class DatasetCacheIntegrationTest(unittest.TestCase):
     def test_raw_rgb_matches_uncached_zip_and_invalid_member_fails(self):
         trajectory = self.original[str(self.data / '0.json')]
         keys = ['cameras.external_camera_2', 'cameras.tcp_camera']
-        for capacity in (1, 32):
-            zipped.configure_cache(max_open=capacity)
+        for policy, capacity in ((p, c) for p in ('strict', 'immutable') for c in (1, 32)):
+            zipped.configure_cache(max_open=capacity, integrity_policy=policy)
             for frame in (0, 4, 0):
                 actual = zipped.decode_images(trajectory, keys, frame)
                 for row, image in zip(self.rows[:2], actual):
@@ -416,12 +647,18 @@ class DatasetCacheIntegrationTest(unittest.TestCase):
             offset = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra)
             raw[offset + info.file_size - 1] ^= 1
         path.write_bytes(raw)
-        cache = zipped.configure_cache(max_bytes=1)
-        before = len(list(Path('/proc/self/fd').iterdir()))
-        with self.assertRaises(zipfile.BadZipFile):
-            zipped.decode_images(trajectory, ['cameras.external_camera_2'], 0)
-        self.assertFalse(cache.handles)
-        self.assertEqual(len(list(Path('/proc/self/fd').iterdir())), before)
+        for policy in ('strict', 'immutable'):
+            for budget in (1, 128 * 1024**2):
+                with self.subTest(policy=policy, budget=budget):
+                    cache = zipped.configure_cache(max_bytes=budget, integrity_policy=policy)
+                    before = len(list(Path('/proc/self/fd').iterdir()))
+                    try:
+                        with self.assertRaises(zipfile.BadZipFile):
+                            zipped.decode_images(trajectory, ['cameras.external_camera_2'], 0)
+                        self.assertEqual(len(cache.handles), 0 if budget == 1 else 1)
+                    finally:
+                        cache.close()
+                    self.assertEqual(len(list(Path('/proc/self/fd').iterdir())), before)
 
     def test_sample_identities_order_and_all_training_outputs_equal(self):
         dataset = DoosanJsonDataset(self.params)
@@ -442,6 +679,7 @@ class DatasetCacheIntegrationTest(unittest.TestCase):
             baseline.append(canonical(dataset[index]))
         dataset._json_cache = JsonEpisodeCache(16)
         dataset._zip_cache_options['max_open'] = 32
+        dataset._zip_cache_options['integrity_policy'] = 'immutable'
         rng_state = random.getstate()
         self.assertEqual([canonical(dataset[i]) for i in indices], baseline)
         self.assertEqual(random.getstate(), rng_state)
@@ -456,6 +694,7 @@ class DatasetCacheIntegrationTest(unittest.TestCase):
         for workers, entries in ((0, 2), (4, 2), (4, 16)):
             dataset._json_cache = JsonEpisodeCache(entries)
             dataset._zip_cache_options['max_open'] = 12 if entries == 2 else 32
+            dataset._zip_cache_options['integrity_policy'] = 'strict' if entries == 2 else 'immutable'
             sampler = DistributedSampler(dataset, num_replicas=1, rank=0, shuffle=True, seed=42)
             loader = DataLoader(dataset, batch_size=24, sampler=sampler, num_workers=workers,
                                 collate_fn=cpu_collate, worker_init_fn=seed_worker,
@@ -499,8 +738,10 @@ class DatasetCacheIntegrationTest(unittest.TestCase):
         dataset = DoosanJsonDataset(dict(max_steps=4, train_datasets=merged))
         self.assertEqual(dataset._json_cache.policy[:2], (16, 268435456))
         self.assertEqual(dataset._zip_cache_options['max_open'], 32)
+        self.assertEqual(dataset._zip_cache_options['integrity_policy'], 'immutable')
         dataset[0]
         self.assertEqual(zipped.cache_info()['max_open'], 32)
+        self.assertEqual(zipped.cache_info()['integrity_policy'], 'immutable')
 
 
 if __name__ == '__main__':

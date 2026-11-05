@@ -30,6 +30,11 @@ data:
       zip_cache_bytes: 134217728  # 128 MiB ZIP central-directory estimate
       zip_metadata_entries: 1024
       zip_metadata_bytes: 8388608  # 8 MiB validated identities
+      # Explicit opt-in for the original frozen dataset. Keep manifest, episode
+      # JSONs, ZIPs and sidecars externally immutable for every worker lifetime;
+      # stop/restart workers before any update. Initial/reopen checks and CRCs
+      # remain enabled. Use strict for two path stats on every handle hit.
+      zip_integrity_policy: immutable
       cache_report_every: 0  # optional bounded trace summary every N lookups
       deterministic_replay: true
 

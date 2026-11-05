@@ -9,18 +9,31 @@ import sys
 from mibot.utils.loader_trace import mark, stage
 
 
-def object_bytes(value):
+def object_bytes(value, limit=None):
     """Conservative decoded JSON size, including container capacity and scalars.
 
     Count aliased strings/scalars repeatedly (an upper estimate). This avoids a
     potentially large temporary set of object IDs. Excludes allocator overhead,
     parsing temporaries and downstream tensors; it is NOT a process RSS bound.
+    With a limit, return the exact estimate if it fits, otherwise stop once the
+    partial estimate exceeds the limit. Such a result is only for rejection,
+    never retention accounting. Scalar leaves need no recursive Python call.
     """
     size = sys.getsizeof(value)
+    if limit is not None and size > limit:
+        return size
     if isinstance(value, dict):
-        size += sum(object_bytes(k) + object_bytes(v) for k, v in value.items())
+        for key, item in value.items():
+            size += object_bytes(key)
+            size += object_bytes(item, None if limit is None else limit - size)
+            if limit is not None and size > limit:
+                break
     elif isinstance(value, (list, tuple)):
-        size += sum(object_bytes(v) for v in value)
+        for item in value:
+            size += (object_bytes(item, None if limit is None else limit - size)
+                     if isinstance(item, (dict, list, tuple)) else sys.getsizeof(item))
+            if limit is not None and size > limit:
+                break
     return size
 
 
@@ -103,7 +116,8 @@ class JsonEpisodeCache:
                     value = json.load(stream)
             limit, budget, _ = self.policy
             if limit and budget:
-                size = object_bytes(value) + object_bytes(key)
+                key_size = object_bytes(key)
+                size = object_bytes(value, limit=budget - key_size) + key_size
                 if size > budget:
                     self.metrics.add('oversized')
                 else:

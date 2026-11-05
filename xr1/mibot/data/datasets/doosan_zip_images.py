@@ -69,18 +69,23 @@ def _directory_bytes(archive):
 
 
 class ZipArchiveCache:
-    """Single-threaded worker-owned LRU; identity checks precede every reuse.
+    """Single-threaded worker-owned LRU with an explicit integrity policy.
 
-    Two path stats per lookup are intentional: immediate replacement detection
-    needs freshness I/O. No exists/is_file/resolve calls on the hot path. Cached
-    metadata skips sidecar opens/parsing, never the file identity checks. ZIPs
-    still parse their directory on reopen; live handles avoid that work.
+    strict (default): two path stats before every reuse. immutable: no filesystem
+    identity checks on live-handle hits; requires an externally frozen dataset
+    (manifest, ZIPs, sidecars and episode JSONs) for the entire worker lifetime.
+    Both policies validate identities on every miss/reopen. Neither stat identity
+    nor member CRC is a cryptographic guarantee or a transactional read lock.
     """
     def __init__(self, max_open=32, max_bytes=128 * 1024**2,
-                 metadata_entries=1024, metadata_bytes=8 * 1024**2, report_every=0):
+                 metadata_entries=1024, metadata_bytes=8 * 1024**2, report_every=0,
+                 integrity_policy='strict'):
         if max_open < 1 or min(max_bytes, metadata_entries, metadata_bytes, report_every) < 0:
             raise ValueError('Invalid ZIP cache bounds')
-        self.policy = (max_open, max_bytes, metadata_entries, metadata_bytes, report_every)
+        if integrity_policy not in ('strict', 'immutable'):
+            raise ValueError(f'Invalid ZIP integrity policy: {integrity_policy!r}')
+        self.policy = (max_open, max_bytes, metadata_entries, metadata_bytes, report_every,
+                       integrity_policy)
         self.handles = OrderedDict()
         self.metadata = OrderedDict()
         self.pid = None
@@ -101,6 +106,15 @@ class ZipArchiveCache:
         self.metrics = CacheMetrics(('hits', 'misses', 'opens', 'reopens', 'sidecar_reads',
                                      'metadata_hits', 'evictions', 'metadata_evictions',
                                      'invalidations', 'oversized'), self.policy[4])
+        # Always record the actual worker policy, independently of diagnostics.
+        # One startup record per cache/PID, never per-frame logging.
+        print('XR1_ZIP_CACHE_POLICY ' + json.dumps(dict(
+            pid=self.pid, integrity_policy=self.policy[5], max_open=self.max_open,
+            max_bytes=self.policy[1], metadata_entries=self.policy[2],
+            metadata_bytes=self.policy[3],
+            hit_path_stats=2 if self.policy[5] == 'strict' else 0,
+            immutable_dataset_required=self.policy[5] == 'immutable',
+        ), sort_keys=True), flush=True)
 
     def __getstate__(self):
         return {'policy': self.policy}
@@ -131,7 +145,8 @@ class ZipArchiveCache:
         self._local()
         return dict(self.metrics.counts, pid=self.pid, handles=len(self.handles),
                     metadata_entries=len(self.metadata), estimated_bytes=self.bytes,
-                    metadata_estimated_bytes=self.meta_bytes, max_open=self.max_open)
+                    metadata_estimated_bytes=self.meta_bytes, max_open=self.max_open,
+                    integrity_policy=self.policy[5])
 
     def release(self, archive):
         # Oversized directories are usable for this read but never retained.
@@ -143,19 +158,23 @@ class ZipArchiveCache:
         archive_path = root / row['archive']
         sidecar = archive_path.with_suffix('.metadata.json')
         key = os.fspath(archive_path)
+        identity = _row_identity(row)
+        held = self.handles.get(key)
+        # Explicit immutable opt-in only. Row provenance still compares in RAM;
+        # replacement/mutation of paths is NOT detected here. Reopens below stat
+        # both paths even under immutable policy and invalidate changed records.
+        if (held is not None and self.policy[5] == 'immutable'
+                and held[1][2] == identity):
+            return self._hit(key, held)
         try:
-            signature = (_signature(archive_path.stat()), _signature(sidecar.stat()), _row_identity(row))
+            signature = (_signature(archive_path.stat()), _signature(sidecar.stat()), identity)
         except OSError:
             if key in self.handles:
                 self._evict(key)
             self._forget_metadata(key)
             raise
-        held = self.handles.get(key)
         if held is not None and held[1] == signature:
-            self.metrics.add('hits')
-            self.handles.move_to_end(key)
-            self.metrics.report('zip', handles=len(self.handles), estimated_bytes=self.bytes)
-            return held[0]
+            return self._hit(key, held)
         self.metrics.add('misses')
         if held is not None:
             self._evict(key)
@@ -225,6 +244,12 @@ class ZipArchiveCache:
             self._forget_metadata(key)
             raise
 
+    def _hit(self, key, held):
+        self.metrics.add('hits')
+        self.handles.move_to_end(key)
+        self.metrics.report('zip', handles=len(self.handles), estimated_bytes=self.bytes)
+        return held[0]
+
 
 _cache = None
 
@@ -232,7 +257,7 @@ _cache = None
 def configure_cache(**options):
     global _cache
     policy = dict(max_open=32, max_bytes=128 * 1024**2, metadata_entries=1024,
-                  metadata_bytes=8 * 1024**2, report_every=0)
+                  metadata_bytes=8 * 1024**2, report_every=0, integrity_policy='strict')
     policy.update(options)
     if _cache is None or _cache.policy != tuple(policy.values()):
         replacement = ZipArchiveCache(**policy)

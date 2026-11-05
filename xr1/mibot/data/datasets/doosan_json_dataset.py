@@ -102,6 +102,7 @@ class DoosanJsonDataset(JsonDataset):
             metadata_entries=int(data.get('zip_metadata_entries', 1024)),
             metadata_bytes=int(data.get('zip_metadata_bytes', 8 * 1024**2)),
             report_every=int(data.get('cache_report_every', 0)),
+            integrity_policy=data.get('zip_integrity_policy', 'strict'),
         )
         # Base JsonDataset.__init__ calls self._samples(), so set seed first.
         self.sampler_seed = int(params["train_datasets"].get("sampler_seed", 42))

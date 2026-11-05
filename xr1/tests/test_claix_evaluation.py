@@ -8,6 +8,7 @@ import unittest
 import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
+from claix_test_fixtures import write_path_overrides
 
 from mibot.utils.claix_contract import audit_splits, resume_fingerprint, split_inventory
 from mibot.utils.claix_evaluation import action_errors, evaluate_items, inference_payload
@@ -164,7 +165,7 @@ class EvaluationTest(unittest.TestCase):
                  patch('mibot.data.collate.custom_collate.CustomCollate',return_value=SimpleNamespace(processor=ProcessorFixture())), \
                  patch('mibot.utils.claix_evaluation.evaluate_items',side_effect=cpu_evaluate), \
                  patch('torch.autocast',return_value=contextlib.nullcontext()):
-                entry.main(['--overrides',str(Path(__file__).resolve().parents[2]/'.claix_b24_reference/configs/hydra_overrides.json'),
+                entry.main(['--overrides',str(write_path_overrides(folder)),
                             '--checkpoint',str(Path(folder)/'mock.ckpt'),'--validation-root',validation,
                             '--test-root','IDENTITY_ONLY_NEVER_INFER','--output',str(output),'--limit','1'])
             self.assertEqual(audit.call_args.args[2],'IDENTITY_ONLY_NEVER_INFER')

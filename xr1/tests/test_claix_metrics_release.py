@@ -8,18 +8,16 @@ import tempfile
 import threading
 from types import SimpleNamespace
 import unittest
+from claix_test_fixtures import SyntheticPathOverridesTestCase
 from unittest.mock import patch
 
 import torch
-from hydra import compose, initialize_config_dir
-from lightning.pytorch.loggers import CSVLogger
 
 from mibot.utils.claix_checkpoint import (
     atomic_json, file_sha256, HISTORICAL_STEPS, load_verified, publish_checkpoint, rotate_checkpoints,
 )
 from test_claix_checkpoint import checkpoint_fixture
 from test_claix_launch import launch, ROOT
-from test_claix_runtime import tiny_run, TinyNetwork
 
 
 def publish(folder, step):
@@ -144,6 +142,9 @@ class MetricsReleaseTest(unittest.TestCase):
         self.addCleanup(lookup.stop)
 
     def test_per_step_csv_across_resume_and_identical_optimizer_results(self):
+        from hydra import compose, initialize_config_dir
+        from lightning.pytorch.loggers import CSVLogger
+        from test_claix_runtime import tiny_run, TinyNetwork
         with initialize_config_dir(config_dir=str(ROOT/'xr1/configs'), version_base=None):
             cfg = compose(config_name='claix_b24_production')
         self.assertEqual(cfg.trainer.log_every_n_steps, 1)
@@ -191,6 +192,7 @@ class MetricsReleaseTest(unittest.TestCase):
                              json.loads((run/'latest.json').read_text()))
 
     def test_scientific_configuration_is_unchanged(self):
+        from hydra import compose, initialize_config_dir
         with initialize_config_dir(config_dir=str(ROOT/'xr1/configs'), version_base=None):
             cfg = compose(config_name='claix_b24_production')
         schedule = cfg.trainer.scheduler.params
@@ -219,7 +221,7 @@ class MetricsReleaseTest(unittest.TestCase):
                 launch.check_release(path, {})
 
 
-class MonitorReleaseTest(unittest.TestCase):
+class MonitorReleaseTest(SyntheticPathOverridesTestCase):
     def test_sampler_records_devices_and_stops_without_changing_signals(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder)/'gpu.jsonl'
@@ -267,6 +269,7 @@ class MonitorReleaseTest(unittest.TestCase):
                 self.assertFalse(monitor.thread.is_alive())
 
     def test_launcher_closes_monitor_on_success_and_child_failure(self):
+        handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGUSR1, signal.SIGTERM, signal.SIGINT)}
         for failure in (False, True):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as folder, \
                  patch.object(launch, 'allocation_deadline', return_value=10000000000), \
@@ -279,14 +282,18 @@ class MonitorReleaseTest(unittest.TestCase):
                 release_path.write_text('{}')
                 if failure:
                     child.side_effect = OSError('synthetic child failure')
-                    with self.assertRaises(OSError):
-                        launch.main(['--execute', '--mode', 'production', '--run-root', folder, '--release-record', str(release_path)])
+                    # FileNotFoundError is also an OSError: require the actual
+                    # child-start failure, not an earlier missing test fixture.
+                    with self.assertRaisesRegex(OSError, '^synthetic child failure$'):
+                        launch.main([*self.path_args, '--execute', '--mode', 'production', '--run-root', folder, '--release-record', str(release_path)])
                 else:
                     child.return_value.wait.return_value = 0
-                    self.assertEqual(launch.main(['--execute', '--mode', 'production', '--run-root', folder,
+                    self.assertEqual(launch.main([*self.path_args, '--execute', '--mode', 'production', '--run-root', folder,
                                                   '--release-record', str(release_path)]), 0)
                 monitor.return_value.start.assert_called_once()
                 monitor.return_value.close.assert_called_once()
+                child.assert_called_once()
+                self.assertEqual(handlers, {sig: signal.getsignal(sig) for sig in handlers})
 
     def test_provenance_records_exact_commit_source_files_and_release(self):
         identity = launch.checkout_identity()

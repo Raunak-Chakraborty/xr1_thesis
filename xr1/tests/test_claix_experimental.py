@@ -261,7 +261,7 @@ class AllocationTest(unittest.TestCase):
         return dict(JobId='123', JobState='RUNNING', Account='thes2452', Partition='c23g',
                     NumNodes='1', NumTasks='1', NumCPUs='12', **{'CPUs/Task': '12'},
                     TimeLimit='20:00:00', EndTime='future',
-                    AllocTRES='cpu=12,mem=96G,gres/gpu=1,gres/gpu:h100=1',
+                    AllocTRES='cpu=12,mem=96G,gres/gpu=1,gres/gpu:hopper=1',
                     StdOut='/hpcwork/test/log.out', StdErr='/hpcwork/test/log.err', WorkDir='/hpcwork/test')
 
     def validate(self, fields, gpu='NVIDIA H100 80GB HBM3', batch=None):
@@ -301,7 +301,7 @@ class AllocationTest(unittest.TestCase):
         script = ROOT/'scripts/claix_b24_experimental.sbatch'
         subprocess.run(['bash', '-n', str(script)], check=True)
         content = script.read_text()
-        for directive in ('account=thes2452', 'partition=c23g', 'gres=gpu:h100:1', 'cpus-per-task=12',
+        for directive in ('account=thes2452', 'partition=c23g', 'gres=gpu:hopper:1', 'cpus-per-task=12',
                           'mem=96G', 'time=20:00:00', 'signal=B:USR1@1800', 'nodes=1', 'ntasks=1'):
             self.assertIn('#SBATCH --'+directive+'\n', content)
         self.assertIn('--experimental-unqualified', content)

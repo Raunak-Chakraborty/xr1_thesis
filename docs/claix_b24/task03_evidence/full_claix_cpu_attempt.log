@@ -1,0 +1,12 @@
+TEST_MOCK=mmengine.Config/Registry (dependency unavailable)
+TEST_MOCK=XR1 backbone import; existing flow-loss methods extracted verbatim via AST
+Traceback (most recent call last):
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_lustre_freshstart_v1/xr1/tests/run_claix_cpu_tests.py", line 78, in <module>
+    import test_training_logic
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_lustre_freshstart_v1/xr1/tests/test_training_logic.py", line 5, in <module>
+    from mibot.data.datasets.json_dataset import JsonDataset
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_lustre_freshstart_v1/xr1/mibot/data/__init__.py", line 2, in <module>
+    from mibot.data.datamodule.base_datamodule import BaseDataModule
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_lustre_freshstart_v1/xr1/mibot/data/datamodule/base_datamodule.py", line 4, in <module>
+    from lightning import LightningDataModule
+ModuleNotFoundError: No module named 'lightning'

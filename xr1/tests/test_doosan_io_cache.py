@@ -274,8 +274,11 @@ class ZipCacheTest(unittest.TestCase):
                         else:
                             before = path.stat()
                             path.write_bytes(path.read_bytes())
-                            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
-                            self.assertNotEqual(path.stat().st_ctime_ns, before.st_ctime_ns)
+                            # Lustre can report identical ctime after rapid writes.
+                            # Deliberately change observable mtime by two seconds,
+                            # beyond coarse timestamp resolution, without sleeping.
+                            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns - 2_000_000_000))
+                            self.assertNotEqual(path.stat().st_mtime_ns, before.st_mtime_ns)
                         if policy == 'immutable':
                             # This is deliberate deferred detection, not proof
                             # that a previously verified file stayed unchanged.

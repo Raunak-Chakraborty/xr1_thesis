@@ -9,6 +9,7 @@ import shlex
 from pathlib import Path
 import tempfile
 import unittest
+from claix_test_fixtures import SyntheticPathOverridesTestCase
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -16,8 +17,9 @@ spec=importlib.util.spec_from_file_location('claix_b24_launch',ROOT/'scripts/cla
 launch=importlib.util.module_from_spec(spec);spec.loader.exec_module(launch)
 
 
-class LaunchTest(unittest.TestCase):
+class LaunchTest(SyntheticPathOverridesTestCase):
     def setUp(self):
+        super().setUp()
         # Launcher child mocks must not intercept the new read-only git probes.
         identity = patch.object(launch, 'checkout_identity',
                                 return_value=dict(git_commit='synthetic', git_status=''))
@@ -28,14 +30,14 @@ class LaunchTest(unittest.TestCase):
         from mibot.utils.claix_contract import engineering_source_digest
         self.assertEqual(launch.tree_digest(),engineering_source_digest())
         with contextlib.redirect_stdout(io.StringIO()), patch.object(launch.subprocess,'Popen',side_effect=AssertionError('launch')):
-            self.assertEqual(launch.main(['--run-root','/tmp/dry-plan-only']),0)
+            self.assertEqual(launch.main([*self.path_args, '--run-root','/tmp/dry-plan-only']),0)
 
     def test_execute_fails_without_allocation_or_release(self):
         with contextlib.redirect_stdout(io.StringIO()), patch.dict(os.environ,{},clear=True):
             with self.assertRaisesRegex(RuntimeError,'Slurm allocation'):
-                launch.main(['--execute','--run-root','/tmp/dry-plan-only'])
+                launch.main([*self.path_args, '--execute','--run-root','/tmp/dry-plan-only'])
             with self.assertRaisesRegex(RuntimeError,'release record'):
-                launch.main(['--execute','--mode','production','--run-root','/tmp/dry-plan-only'])
+                launch.main([*self.path_args, '--execute','--mode','production','--run-root','/tmp/dry-plan-only'])
 
     def test_unverified_gates_and_hyperparameter_override_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -45,7 +47,7 @@ class LaunchTest(unittest.TestCase):
                 launch.check_release(record,{'test':True})
             overrides=Path(folder)/'overrides.json';overrides.write_text('["trainer.max_steps=1"]')
             with self.assertRaisesRegex(RuntimeError,'four staged path'):
-                launch.main(['--run-root',folder,'--overrides',str(overrides)])
+                launch.main([*self.path_args, '--run-root',folder,'--overrides',str(overrides)])
 
     def test_allocation_walltime_and_deadline(self):
         with patch.dict(os.environ,SLURM_JOB_ID='synthetic'), patch.object(launch.subprocess,'run') as run:
@@ -84,21 +86,62 @@ class LaunchTest(unittest.TestCase):
 
     def test_gpu_command_hydra_composition_with_paths_and_resume(self):
         from hydra import compose, initialize_config_dir
-        output=io.StringIO()
-        with contextlib.redirect_stdout(output):
-            launch.main(['--mode','h100-qualification','--workers','8','--run-root','/tmp/qualification space',
-                         '--resume','/tmp/checkpoint space/step-000003.ckpt','--stop-after-step','5'])
-        cmd=shlex.split(output.getvalue().split('COMMAND=')[1])
-        self.assertEqual(cmd[1:6],['-m','torch.distributed.run','--standalone','--nproc_per_node=1',str(ROOT/'xr1/tools/train_doosan_compact.py')])
-        with initialize_config_dir(config_dir=str(ROOT/'xr1/configs'),version_base=None):
-            cfg=compose(config_name='claix_b24_production',overrides=cmd[7:])
-        self.assertEqual(cfg.trainer.max_steps,6)
-        self.assertEqual(cfg.data.params.max_steps,48284)
-        self.assertEqual(cfg.trainer.scheduler.params.num_training_steps,48284)
-        self.assertEqual(cfg.data.params.train_datasets.num_workers,8)
-        self.assertEqual(cfg.trainer.default_root_dir,'/tmp/qualification space')
-        self.assertEqual(cfg.trainer.ckpt_path,'/tmp/checkpoint space/step-000003.ckpt')
-        self.assertEqual(cfg.production.stop_after_step,5)
+        with tempfile.TemporaryDirectory(prefix='checkpoint space ') as folder:
+            checkpoint=Path(folder)/'step-021500.ckpt'
+            # Dry command composition only: synthetic receipt, no payload read
+            # or historical checkpoint modification and no qualification claim.
+            checkpoint.with_suffix('.verified.json').write_text(json.dumps(dict(
+                schema='claix-b24-verified-v1', path=checkpoint.name, global_step=21500,
+                sha256='48fae2e1881e85ef8d760b30780ea21aa146053b1702b1084c56fb6644d64813')))
+            for resume in (False, True):
+                with self.subTest(resume=resume):
+                    output=io.StringIO()
+                    extra=['--resume',str(checkpoint)] if resume else ['--stop-after-step','5']
+                    with contextlib.redirect_stdout(output):
+                        launch.main([*self.path_args, '--mode','h100-qualification','--workers','8',
+                                     '--run-root','/tmp/qualification space',*extra])
+                    cmd=shlex.split(output.getvalue().split('COMMAND=')[1])
+                    self.assertEqual(cmd[1:6],['-m','torch.distributed.run','--standalone','--nproc_per_node=1',str(ROOT/'xr1/tools/train_doosan_compact.py')])
+                    with initialize_config_dir(config_dir=str(ROOT/'xr1/configs'),version_base=None):
+                        cfg=compose(config_name='claix_b24_production',overrides=cmd[7:])
+                    self.assertEqual(cfg.trainer.max_steps,48284 if resume else 6)
+                    self.assertEqual(cfg.data.params.max_steps,48284)
+                    self.assertEqual(cfg.trainer.scheduler.params.num_training_steps,48284)
+                    self.assertEqual(cfg.data.params.train_datasets.num_workers,8)
+                    self.assertEqual(cfg.data.params.train_datasets.paths,['/hpcwork/SYNTHETIC/train'])
+                    self.assertEqual(cfg.model.params.pretrained,'/hpcwork/SYNTHETIC/model_states.pt')
+                    self.assertEqual(cfg.model.params.language_policy_path,'/hpcwork/SYNTHETIC/language.yaml')
+                    self.assertEqual(cfg.trainer.default_root_dir,'/tmp/qualification space')
+                    self.assertEqual(cfg.trainer.ckpt_path,str(checkpoint) if resume else None)
+                    self.assertEqual(cfg.production.stop_after_step,21506 if resume else 5)
+
+    def test_resume_qualification_rejects_explicit_stop_and_wrong_identity(self):
+        with contextlib.redirect_stderr(io.StringIO()) as error:
+            with self.assertRaises(SystemExit) as result:
+                launch.main([*self.path_args, '--mode','h100-qualification','--run-root','/tmp/no-run',
+                             '--resume','/tmp/checkpoint space/step-000003.ckpt','--stop-after-step','5'])
+        self.assertEqual(result.exception.code,2)
+        self.assertIn('derives its stop step from the verified checkpoint',error.getvalue())
+        with tempfile.TemporaryDirectory() as folder, contextlib.redirect_stdout(io.StringIO()):
+            checkpoint=Path(folder)/'step-021500.ckpt'
+            args=[*self.path_args,'--mode','h100-qualification','--run-root','/tmp/no-run',
+                  '--resume',str(checkpoint)]
+            with self.assertRaisesRegex(RuntimeError,'Missing or invalid verified source'):
+                launch.main(args)
+            receipt=dict(schema='claix-b24-verified-v1',path=checkpoint.name,global_step=21500,
+                         sha256='48fae2e1881e85ef8d760b30780ea21aa146053b1702b1084c56fb6644d64813')
+            for key,value in (('schema','wrong'),('path','other.ckpt'),('global_step',3),('sha256','0'*64)):
+                checkpoint.with_suffix('.verified.json').write_text(json.dumps(dict(receipt,**{key:value})))
+                with self.subTest(key=key), self.assertRaisesRegex(RuntimeError,'verified step-21500 checkpoint'):
+                    launch.main(args)
+            checkpoint.with_suffix('.verified.json').write_text(json.dumps(receipt))
+            output=io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(launch.main(args),0)
+            command=shlex.split(output.getvalue().split('COMMAND=')[1])
+            self.assertIn('production.stop_after_step=21506',command)
+            self.assertIn('trainer.max_steps=48284',command)
+            self.assertIn('trainer.ckpt_path='+json.dumps(str(checkpoint)),command)
 
     def test_cpu_qualification_needs_no_release_and_hides_cuda(self):
         with tempfile.TemporaryDirectory() as folder, contextlib.redirect_stdout(io.StringIO()), \
@@ -106,7 +149,7 @@ class LaunchTest(unittest.TestCase):
              patch.object(launch.subprocess,'Popen') as child, \
              patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic/cache'):
             child.return_value.wait.return_value=0
-            self.assertEqual(launch.main(['--mode','cpu-qualification','--execute','--run-root',folder]),0)
+            self.assertEqual(launch.main([*self.path_args, '--mode','cpu-qualification','--execute','--run-root',folder]),0)
             deadline.assert_called_once_with('cpu-qualification')
             cmd=child.call_args.args[0]; env=child.call_args.kwargs['env']
             self.assertIn('claix_b24_worker_qualification.py',cmd[1])
@@ -147,7 +190,7 @@ class LaunchTest(unittest.TestCase):
                     # recovery lock is covered by test_claix_experimental.
                     for mode in ('cpu-qualification', 'h100-qualification', 'production'):
                         with self.subTest(mode=mode), self.assertRaises(BlockingIOError):
-                            launch.main(['--execute','--mode',mode,'--run-root',folder,'--release-record','synthetic'])
+                            launch.main([*self.path_args, '--execute','--mode',mode,'--run-root',folder,'--release-record','synthetic'])
 
     def test_existing_results_fail_before_starting_child(self):
         with tempfile.TemporaryDirectory() as folder, contextlib.redirect_stdout(io.StringIO()), \
@@ -155,11 +198,11 @@ class LaunchTest(unittest.TestCase):
              patch.object(launch.subprocess,'Popen',side_effect=AssertionError('must not start')):
             (Path(folder)/'workers.json').write_text('synthetic prior evidence')
             with self.assertRaisesRegex(RuntimeError,'contains state'):
-                launch.main(['--execute','--mode','cpu-qualification','--run-root',folder])
+                launch.main([*self.path_args, '--execute','--mode','cpu-qualification','--run-root',folder])
             target=Path(folder)/'project_xr1_doosan/qualification_b24_w4'
             target.mkdir(parents=True); (target/'telemetry.jsonl').write_text('synthetic prior run')
             with self.assertRaisesRegex(RuntimeError,'contains state'):
-                launch.main(['--execute','--mode','h100-qualification','--run-root',folder])
+                launch.main([*self.path_args, '--execute','--mode','h100-qualification','--run-root',folder])
 
     def test_controller_signal_and_persistent_logs_without_training(self):
         with tempfile.TemporaryDirectory() as folder, contextlib.redirect_stdout(io.StringIO()):
@@ -185,7 +228,7 @@ class LaunchTest(unittest.TestCase):
                 with patch.object(launch,'allocation_deadline',return_value=10000000000), \
                      patch.object(launch.subprocess,'Popen',side_effect=fake_child), \
                      patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic/cache'):
-                    self.assertEqual(launch.main(['--execute','--run-root',folder]),0)
+                    self.assertEqual(launch.main([*self.path_args, '--execute','--run-root',folder]),0)
                 self.assertIn('SYNTHETIC_WORKER_ONLY',next(Path(folder).glob('launch-*.out')).read_text())
                 self.assertTrue(list(Path(folder).glob('launch-*.err')))
                 self.assertFalse(list(Path(folder).glob('.stop-request*')))
@@ -199,7 +242,7 @@ class LaunchTest(unittest.TestCase):
             for mode in ('h100-qualification', 'qualification'):
                 output=io.StringIO()
                 with contextlib.redirect_stdout(output):
-                    launch.main(['--mode',mode,'--run-root','/tmp/bounded qualification',
+                    launch.main([*self.path_args, '--mode',mode,'--run-root','/tmp/bounded qualification',
                                  '--qualification-max-steps',str(maximum),'--stop-after-step',str(maximum)])
                 cmd=shlex.split(output.getvalue().split('COMMAND=')[1])
                 with initialize_config_dir(config_dir=str(ROOT/'xr1/configs'),version_base=None):
@@ -223,11 +266,11 @@ class LaunchTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()),contextlib.redirect_stdout(io.StringIO()):
             for args in invalid:
                 with self.subTest(args=args), self.assertRaises(SystemExit):
-                    launch.main(['--run-root','/tmp/no-run',*args])
+                    launch.main([*self.path_args, '--run-root','/tmp/no-run',*args])
         # Normal production still needs the full release and unchanged exact lease.
         with patch.dict(os.environ,{},clear=True),contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaisesRegex(RuntimeError,'release record'):
-                launch.main(['--execute','--mode','production','--run-root','/tmp/no-run'])
+                launch.main([*self.path_args, '--execute','--mode','production','--run-root','/tmp/no-run'])
 
     def test_qualification_deadline_can_only_shorten_and_controller_clock_requests_stop(self):
         for requested,expected in ((200.,200.),(2000.,1000.)):
@@ -253,7 +296,7 @@ class LaunchTest(unittest.TestCase):
                      patch.object(launch.time,'time',side_effect=lambda:clock[0]), \
                      patch.object(launch.subprocess,'Popen',side_effect=start), \
                      patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic/cache'):
-                    self.assertEqual(launch.main(['--execute','--run-root',folder,
+                    self.assertEqual(launch.main([*self.path_args, '--execute','--run-root',folder,
                         '--qualification-deadline-epoch',str(requested)]),0)
                 self.assertEqual(float(environment['XR1_SAFE_STOP_EPOCH']),expected)
                 row=json.loads(next(Path(folder).glob('launch-*.stop.json')).read_text())
@@ -262,7 +305,7 @@ class LaunchTest(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()),patch.object(launch,'allocation_deadline',return_value=1000.), \
              patch.object(launch.time,'time',return_value=300.):
             with self.assertRaisesRegex(RuntimeError,'already passed'):
-                launch.main(['--execute','--run-root','/tmp/no-run','--qualification-deadline-epoch','200'])
+                launch.main([*self.path_args, '--execute','--run-root','/tmp/no-run','--qualification-deadline-epoch','200'])
 
     def test_qualification_hung_child_is_bounded_and_only_owned_group_is_terminated(self):
         with tempfile.TemporaryDirectory() as folder,contextlib.redirect_stdout(io.StringIO()):
@@ -283,6 +326,6 @@ class LaunchTest(unittest.TestCase):
                  patch.object(launch.os,'killpg') as kill, \
                  patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic/cache'):
                 with self.assertRaisesRegex(RuntimeError,'bounded shutdown'):
-                    launch.main(['--execute','--run-root',folder])
+                    launch.main([*self.path_args, '--execute','--run-root',folder])
                 kill.assert_called_once_with(1234567,signal.SIGTERM)
             self.assertEqual(signal.getsignal(signal.SIGUSR1),old)

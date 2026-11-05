@@ -1,0 +1,123 @@
+TEST_MOCK=mmengine.Config/Registry (dependency unavailable)
+TEST_MOCK=XR1 backbone import; existing flow-loss methods extracted verbatim via AST
+TEST_MOCK=lightning.LightningDataModule base only
+CPU_ENV torch=2.7.1+cu128
+test_decode_crc_failure_closes_oversized_uncached_handle (test_doosan_io_cache.DatasetCacheIntegrationTest.test_decode_crc_failure_closes_oversized_uncached_handle) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 1, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 1, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_effective_production_loader_settings (test_doosan_io_cache.DatasetCacheIntegrationTest.test_effective_production_loader_settings) ... XR1_PRODUCTION_SAMPLER=PASS rank=0 offset=0 horizon=4
+XR1_LOADER_EFFECTIVE {'timeout': 600, 'num_workers': 4, 'prefetch_factor': 2, 'persistent_workers': True, 'in_order': True}
+XR1_DOOSAN_SAMPLER=PASS seed=42 raw_frames=15 samples=96 unique_episodes=3
+ok
+test_raw_rgb_matches_uncached_zip_and_invalid_member_fails (test_doosan_io_cache.DatasetCacheIntegrationTest.test_raw_rgb_matches_uncached_zip_and_invalid_member_fails) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_real_four_worker_ordered_loading_matches_zero_worker_outputs (test_doosan_io_cache.DatasetCacheIntegrationTest.test_real_four_worker_ordered_loading_matches_zero_worker_outputs) ... XR1_DOOSAN_SAMPLER=PASS seed=42 raw_frames=15 samples=96 unique_episodes=3
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 12, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 12, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 4}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 12, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 5}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 12, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 6}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 12, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 7}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 16}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 17}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 18}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 19}
+ok
+test_sample_identities_order_and_all_training_outputs_equal (test_doosan_io_cache.DatasetCacheIntegrationTest.test_sample_identities_order_and_all_training_outputs_equal) ... XR1_DOOSAN_SAMPLER=PASS seed=42 raw_frames=15 samples=96 unique_episodes=3
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_byte_budget_oversized_and_pickle_isolation (test_doosan_io_cache.JsonCacheTest.test_byte_budget_oversized_and_pickle_isolation) ... ok
+test_exact_content_lru_and_reopen (test_doosan_io_cache.JsonCacheTest.test_exact_content_lru_and_reopen) ... ok
+test_failed_parse_never_cached_and_reporting_is_optional_bounded (test_doosan_io_cache.JsonCacheTest.test_failed_parse_never_cached_and_reporting_is_optional_bounded) ... ok
+test_sizing_matches_legacy_and_limit_never_underestimates_retention (test_doosan_io_cache.JsonCacheTest.test_sizing_matches_legacy_and_limit_never_underestimates_retention) ... ok
+test_sizing_preserves_exact_byte_retention_boundary (test_doosan_io_cache.JsonCacheTest.test_sizing_preserves_exact_byte_retention_boundary) ... ok
+test_actual_fork_discards_parent_handles_and_mutable_json (test_doosan_io_cache.ZipCacheTest.test_actual_fork_discards_parent_handles_and_mutable_json) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 28}
+ok
+test_atomic_same_size_archive_replacement_revalidates (test_doosan_io_cache.ZipCacheTest.test_atomic_same_size_archive_replacement_revalidates) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_both_policies_bound_retention_and_release_all_descriptors (test_doosan_io_cache.ZipCacheTest.test_both_policies_bound_retention_and_release_all_descriptors) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 1, "max_open": 1, "metadata_bytes": 1500, "metadata_entries": 1, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 20000, "max_open": 1, "metadata_bytes": 1500, "metadata_entries": 1, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 1, "max_open": 1, "metadata_bytes": 1500, "metadata_entries": 1, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 20000, "max_open": 1, "metadata_bytes": 1500, "metadata_entries": 1, "pid": 3}
+ok
+test_both_policies_preserve_initial_validation_and_failure_cleanup (test_doosan_io_cache.ZipCacheTest.test_both_policies_preserve_initial_validation_and_failure_cleanup) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_directory_memory_budget_and_uncached_cleanup (test_doosan_io_cache.ZipCacheTest.test_directory_memory_budget_and_uncached_cleanup) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 9886, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 1, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_explicit_policy_provenance_pickle_and_reconfiguration (test_doosan_io_cache.ZipCacheTest.test_explicit_policy_provenance_pickle_and_reconfiguration) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_immutable_atomic_replacement_can_serve_old_valid_pixels_until_eviction (test_doosan_io_cache.ZipCacheTest.test_immutable_atomic_replacement_can_serve_old_valid_pixels_until_eviction) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_immutable_hit_still_compares_row_provenance (test_doosan_io_cache.ZipCacheTest.test_immutable_hit_still_compares_row_provenance) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 32, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_lru_closes_eviction_and_reuses_validated_sidecar_on_reopen (test_doosan_io_cache.ZipCacheTest.test_lru_closes_eviction_and_reuses_validated_sidecar_on_reopen) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_metadata_count_and_byte_eviction (test_doosan_io_cache.ZipCacheTest.test_metadata_count_and_byte_eviction) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 1, "metadata_entries": 1024, "pid": 3}
+ok
+test_no_fd_leak_on_success_validation_failure_or_reconfiguration (test_doosan_io_cache.ZipCacheTest.test_no_fd_leak_on_success_validation_failure_or_reconfiguration) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 3, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_partial_directory_and_read_crc_corruption_rejected (test_doosan_io_cache.ZipCacheTest.test_partial_directory_and_read_crc_corruption_rejected) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_real_filesystem_operations_initial_hit_and_reopen_for_each_policy (test_doosan_io_cache.ZipCacheTest.test_real_filesystem_operations_initial_hit_and_reopen_for_each_policy) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_reopen_uses_two_path_stats_and_hit_never_opens_sidecar (test_doosan_io_cache.ZipCacheTest.test_reopen_uses_two_path_stats_and_hit_never_opens_sidecar) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_replacement_mutation_and_deletion_detection_depends_on_policy (test_doosan_io_cache.ZipCacheTest.test_replacement_mutation_and_deletion_detection_depends_on_policy) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 0, "immutable_dataset_required": true, "integrity_policy": "immutable", "max_bytes": 134217728, "max_open": 1, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_rlimit_cap_and_spawn_pickle_drops_handles (test_doosan_io_cache.ZipCacheTest.test_rlimit_cap_and_spawn_pickle_drops_handles) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 16, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_same_size_in_place_rewrite_with_restored_mtime_invalidates (test_doosan_io_cache.ZipCacheTest.test_same_size_in_place_rewrite_with_restored_mtime_invalidates) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_sidecar_changes_missing_corrupt_and_provenance_rejected (test_doosan_io_cache.ZipCacheTest.test_sidecar_changes_missing_corrupt_and_provenance_rejected) ... XR1_ZIP_CACHE_POLICY {"hit_path_stats": 2, "immutable_dataset_required": false, "integrity_policy": "strict", "max_bytes": 134217728, "max_open": 2, "metadata_bytes": 8388608, "metadata_entries": 1024, "pid": 3}
+ok
+test_action_chunk (test_doosan_dataset.DoosanDatasetContractTest.test_action_chunk) ... ok
+test_bad_semantic_action_width_rejected (test_doosan_dataset.DoosanDatasetContractTest.test_bad_semantic_action_width_rejected) ... ok
+test_force_aware_state (test_doosan_dataset.DoosanDatasetContractTest.test_force_aware_state) ... ok
+test_force_free_state (test_doosan_dataset.DoosanDatasetContractTest.test_force_free_state) ... ok
+test_missing_wrench_rejected_when_enabled (test_doosan_dataset.DoosanDatasetContractTest.test_missing_wrench_rejected_when_enabled) ... ok
+test_precomputed_semantic_action_is_not_differenced_again (test_doosan_dataset.DoosanDatasetContractTest.test_precomputed_semantic_action_is_not_differenced_again)
+XR-1 must consume converter-produced deltas exactly once. ... ok
+test_configuration_fields (test_doosan_datamodule.DoosanDataModuleRegistrationTest.test_configuration_fields) ... ok
+test_inheritance (test_doosan_datamodule.DoosanDataModuleRegistrationTest.test_inheritance) ... ok
+test_registry (test_doosan_datamodule.DoosanDataModuleRegistrationTest.test_registry) ... ok
+test_setup_uses_doosan_dataset (test_doosan_datamodule.DoosanDataModuleRegistrationTest.test_setup_uses_doosan_dataset) ... ok
+
+----------------------------------------------------------------------
+Ran 38 tests in 0.648s
+
+OK

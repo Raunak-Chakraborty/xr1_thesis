@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import tempfile
 import time
 import unittest
+from claix_test_fixtures import SyntheticPathOverridesTestCase
 from unittest.mock import patch
 
 import torch
@@ -193,7 +194,7 @@ class ExactRestartTest(unittest.TestCase):
         self.assertIn('UNVERIFIED',plan['runtime_guarantee'])
 
 
-class AllocationStorageGateTest(unittest.TestCase):
+class AllocationStorageGateTest(SyntheticPathOverridesTestCase):
     def test_release_binds_actual_submission_report_and_rejects_corrupt_or_missing_evidence(self):
         changes = ('missing', 'file_missing', 'relative_path', 'report_changed', 'invalid_json', 'empty',
                    'unverified', 'allocation_stage', 'run_root', 'source', 'project', 'tmpfs', 'mount',
@@ -261,7 +262,7 @@ class AllocationStorageGateTest(unittest.TestCase):
                                   return_value=outcome if isinstance(outcome,dict) else None), \
                      contextlib.redirect_stdout(io.StringIO()):
                     with self.assertRaisesRegex(RuntimeError,'before model loading'):
-                        launch.main(['--mode','production','--execute','--run-root',folder,'--release-record',str(path)])
+                        launch.main([*self.path_args, '--mode','production','--execute','--run-root',folder,'--release-record',str(path)])
                 reports=list(root.glob('launch-*.storage.json'))
                 self.assertEqual(len(reports),1)
                 result=json.loads(reports[0].read_text())

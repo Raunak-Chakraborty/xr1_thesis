@@ -15,6 +15,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 import unittest
+from claix_test_fixtures import SyntheticPathOverridesTestCase
 from unittest.mock import patch
 
 import torch
@@ -447,19 +448,19 @@ class StoragePreflightTest(unittest.TestCase):
             inspect.assert_called_once_with(self.run, allow_missing=True, expected_source='approved')
 
 
-class MonitorQualificationTest(unittest.TestCase):
+class MonitorQualificationTest(SyntheticPathOverridesTestCase):
     def test_monitor_qualification_opt_in_and_cpu_rejected(self):
         with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
-                launch.main(['--run-root','/tmp/none','--mode','cpu-qualification','--qualification-gpu-monitor'])
-            self.assertEqual(launch.main(['--run-root','/tmp/none','--qualification-gpu-monitor']),0)
+                launch.main([*self.path_args, '--run-root','/tmp/none','--mode','cpu-qualification','--qualification-gpu-monitor'])
+            self.assertEqual(launch.main([*self.path_args, '--run-root','/tmp/none','--qualification-gpu-monitor']),0)
         with tempfile.TemporaryDirectory() as folder, \
              patch.object(launch,'allocation_deadline',return_value=time.time()+1000), \
              patch.object(launch,'write_provenance'), patch.object(launch,'NvidiaSmiMonitor') as monitor, \
              patch.object(launch.subprocess,'Popen') as child, \
              patch.dict(os.environ,XR1_DOOSAN_ZIP_CACHE_ROOT='/synthetic'):
             child.return_value.wait.return_value=0
-            launch.main(['--execute','--run-root',folder,'--qualification-gpu-monitor'])
+            launch.main([*self.path_args, '--execute','--run-root',folder,'--qualification-gpu-monitor'])
             monitor.return_value.start.assert_called_once()
             monitor.return_value.close.assert_called_once()
 
@@ -483,7 +484,7 @@ class MonitorQualificationTest(unittest.TestCase):
     def test_production_sbatch_and_bootstrap_contract(self):
         text=(ROOT/'scripts/claix_b24_production.sbatch').read_text()
         for directive in ('--account=thes2452','--partition=c23g','--ntasks=1','--gres=gpu:1',
-                          '--cpus-per-task=12','--mem=96G','--time=23:45:00','--signal=B:USR1@1800'):
+                          '--cpus-per-task=12','--mem=96G','--time=20:00:00','--signal=B:USR1@1800'):
             self.assertIn('#SBATCH '+directive,text)
         self.assertIn('--mode production --execute',text)
         self.assertIn('XR1_RELEASE_RECORD:?',text)

@@ -372,6 +372,8 @@ def main(argv=None):
                    help='H100 qualification only: shorten, never extend, allocation safe deadline')
     p.add_argument('--qualification-gpu-monitor', action='store_true',
                    help='Opt in to the production monitor in H100 qualification only')
+    p.add_argument('--qualification-last2-vram-probe', action='store_true',
+                   help='H100 qualification only: exactly 30 fresh last-2 steps')
     p.add_argument('--release-record')
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
@@ -401,6 +403,13 @@ def main(argv=None):
     qualification_steps = args.qualification_max_steps if args.qualification_max_steps is not None else 6
     if not 6 <= qualification_steps <= 300:
         p.error('qualification-max-steps must be between 6 and 300')
+    if args.qualification_last2_vram_probe and (
+            args.mode != 'h100-qualification'
+            or args.workers != 4
+            or args.resume is not None
+            or args.stop_after_step is not None
+            or qualification_steps != 30):
+        p.error('Last-2 VRAM probe requires fresh H100 qualification, 30 steps and 4 workers')
     if args.qualification_deadline_epoch is not None and (
             not math.isfinite(args.qualification_deadline_epoch) or args.qualification_deadline_epoch <= 0):
         p.error('qualification deadline must be a positive finite epoch')
@@ -419,6 +428,9 @@ def main(argv=None):
     plan = dict(batch_size=24, max_length=12288, data_horizon=48284, scheduler_steps=48284,
                 warmup_steps=500, workers=args.workers, world_size=1,
                 run_root=str(Path(args.run_root).resolve()), overrides=base)
+    if args.qualification_last2_vram_probe:
+        plan.update(qualification_last2_vram_probe=True, trainable_last_n=2,
+                    benchmark_steps=30)
     if experimental:
         if not Path(args.run_root).is_absolute() or Path(args.run_root).is_symlink():
             raise RuntimeError('Experimental run root must be absolute and non-symlink')
@@ -454,8 +466,15 @@ def main(argv=None):
                           f'production.stop_after_step={qualified_stop}']
             print(f'XR1_RESUME_QUALIFICATION=start:{receipt["global_step"]} stop:{qualified_stop}', flush=True)
         else:
+            qualification_name = ('qualification_last2_vram_w4'
+                                  if args.qualification_last2_vram_probe
+                                  else 'qualification_b24_w' + str(args.workers))
             overrides += [f'trainer.max_steps={qualification_steps}',
-                          'trainer.exp_name=qualification_b24_w' + str(args.workers)]
+                          'trainer.exp_name=' + qualification_name]
+            if args.qualification_last2_vram_probe:
+                overrides += ['model.params.last_n=2',
+                              '+production.last2_vram_probe=true',
+                              'trainer.save_interval=500']
     overrides += ['hydra.run.dir=' + json.dumps(str(Path(plan['run_root']) / 'hydra' / f'{args.mode}-{time.time_ns()}')),
                   'hydra.job.chdir=false']
     if args.resume:
@@ -530,7 +549,9 @@ def main(argv=None):
                     os.fsync(stream.fileno())
         target = run_root / 'project_xr1_doosan' / (
             profile['name'] if experimental else
-            'xr1_doosan_b24_results_v1' if args.mode == 'production' else f'qualification_b24_w{args.workers}')
+            'xr1_doosan_b24_results_v1' if args.mode == 'production' else
+            'qualification_last2_vram_w4' if args.qualification_last2_vram_probe
+            else f'qualification_b24_w{args.workers}')
         if args.mode == 'cpu-qualification':
             target = run_root / 'workers.json'
         if target.is_file() or (target.exists() and any(target.iterdir()) and not args.resume):
@@ -570,6 +591,8 @@ def main(argv=None):
                    PYTHONUNBUFFERED='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1',
                    XR1_SAFE_STOP_EPOCH=str(deadline),
                    PYTHONPATH=str(ROOT / 'xr1') + os.pathsep + os.environ.get('PYTHONPATH', ''))
+        if args.qualification_last2_vram_probe:
+            env['XR1_LAST2_VRAM_PROBE'] = '1'
         if experimental:
             env['XR1_EXPERIMENTAL_UNQUALIFIED'] = '1'
             env['XR1_LOADER_DIAGNOSTICS_JSON'] = str(experimental_diagnostics(log_prefix, run_root))

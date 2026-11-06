@@ -104,6 +104,8 @@ class DoosanCompactRunner(BaseRunner):
             }
             if 'experiment' in self._compact_cfg:
                 checkpoint['xr1_production']['experiment'] = dict(self._compact_cfg['experiment'])
+            if self._compact_cfg.get('qualification_last2_vram_probe') is True:
+                checkpoint['xr1_production']['qualification_last2_vram_probe'] = True
         if int(checkpoint.get('global_step', step)) != step:
             raise RuntimeError('Lightning checkpoint step inconsistent with sampler cursor')
         if not checkpoint.get('lr_schedulers') or not checkpoint.get('optimizer_states'):

@@ -47,8 +47,17 @@ def main(cfg: DictConfig):
         if max_length != 12288 or os.environ.get('MAX_LENGTH', '12288') != '12288':
             raise RuntimeError('Production MAX_LENGTH must be 12288 before collator creation')
         os.environ['MAX_LENGTH'] = str(max_length)
-        if int(conf.model.params.last_n) != 1 or int(conf.data.params.train_datasets.batch_size) != 24:
-            raise RuntimeError('Production requires approved last_n=1 and batch=24')
+        last2_probe = production.get('last2_vram_probe') is True
+        required_last_n = 2 if last2_probe else 1
+        if (int(conf.model.params.last_n) != required_last_n
+                or int(conf.data.params.train_datasets.batch_size) != 24):
+            raise RuntimeError('Unapproved last-N policy or batch size')
+        if last2_probe and (
+                os.environ.get('XR1_LAST2_VRAM_PROBE') != '1'
+                or production.get('experimental_unqualified') is True
+                or int(conf.trainer.max_steps) != 30
+                or int(conf.trainer.save_interval) != 500):
+            raise RuntimeError('Last-2 VRAM probe requires isolated 30-step qualification')
         if str(conf.model.params.source_commit) != BASELINE:
             raise RuntimeError('Production source baseline identity changed')
         if (int(conf.data.params.max_steps) != 48284
@@ -156,6 +165,8 @@ def main(cfg: DictConfig):
             conf.model.params.compact_fp32['resume_input_config_sha256'] = (
                 bridge_record['original_config_sha256']
             )
+    if production and production.get('last2_vram_probe') is True:
+        conf.model.params.compact_fp32['qualification_last2_vram_probe'] = True
     conf.model.params.pop('last_n', None)
     conf.model.params.optimizer = conf.trainer.pop('optimizer')
     conf.model.params.scheduler = conf.trainer.pop('scheduler')

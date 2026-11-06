@@ -78,11 +78,28 @@ def validate_production_checkpoint(ck, contract, *, expected_config=None, resuma
         raise RuntimeError('Missing or inconsistent checkpoint replay contract')
     validate_full_compact_resume(ck, contract, resumable=resumable)
     meta = ck['xr1_compact_fp32']
+
+    # The established production contract remains last_n=1.
+    # Permit last_n=2 only for the explicitly marked, non-experimental
+    # short E1 VRAM qualification. No general last-N relaxation.
+    runtime_probe = ck.get('xr1_production', {})
+    marker = runtime_probe.get('qualification_last2_vram_probe')
+    approved_last_n = (
+        (meta.get('last_n') == 1 and marker is None)
+        or (
+            meta.get('last_n') == 2
+            and marker is True
+            and runtime_probe.get('experiment') is None
+        )
+    )
+    if not approved_last_n:
+        raise RuntimeError('Unapproved compact last-N qualification identity')
+
     for field in ('pretrained_sha256', 'language_sha256'):
         value = meta.get(field, '')
         if len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
             raise RuntimeError('Missing immutable compact provenance: ' + field)
-    if (not meta.get('source_commit') or meta.get('last_n') != 1
+    if (not meta.get('source_commit')
             or meta.get('trainable_storage_dtype') != 'torch.float32'
             or meta.get('frozen_weights_source') != 'external_original_pretrained_checkpoint'
             or meta.get('optimizer') != 'torch.optim.AdamW with fp32 exp_avg and exp_avg_sq'):

@@ -190,12 +190,16 @@ PROFILES = {
 
 
 def allocation_deadline(mode='production', *, max_seconds=None, allocation_record=None,
-                        checkpoint_interval=250):
+                        checkpoint_interval=250, combined_leg=None):
     if checkpoint_interval != 250 and mode != 'experimental':
         raise RuntimeError('Checkpoint variant requires experimental mode')
     if mode == 'experimental':
         experiment_profile(checkpoint_interval)  # fail closed before allocation queries
-    profile = PROFILES[mode]
+    if combined_leg is not None:
+        if not ((combined_leg == 'B' and mode == 'experimental' and checkpoint_interval == 500)
+                or (combined_leg == 'E1' and mode == 'h100-qualification')):
+            raise RuntimeError('Invalid combined allocation leg')
+    profile = PROFILES['experimental'] if combined_leg == 'E1' else PROFILES[mode]
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('--execute requires a compute-node Slurm allocation')
     result = subprocess.run(['scontrol', 'show', 'job', os.environ['SLURM_JOB_ID'], '-o'],
@@ -203,6 +207,8 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
     fields = dict(pair.split('=', 1) for pair in result.stdout.split() if '=' in pair)
     limit = fields.get('TimeLimit', '')
     required_walltime = {'production': '20:00:00', 'experimental': '23:45:00'}
+    if combined_leg is not None:
+        required_walltime[mode] = '08:00:00'
     if mode in required_walltime and limit != required_walltime[mode]:
         raise RuntimeError(
             f'{mode.capitalize()} requires exactly {required_walltime[mode]} allocation'
@@ -230,7 +236,7 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
         raise RuntimeError('Cannot establish allocation host memory') from error
     if not math.isfinite(memory_bytes) or memory_bytes < (48 if mode == 'cpu-qualification' else 96) * 1024**3:
         raise RuntimeError('Allocation host memory is below the reviewed request')
-    if mode == 'experimental':
+    if mode == 'experimental' or combined_leg == 'E1':
         required = dict(JobId=os.environ['SLURM_JOB_ID'], JobState='RUNNING', Account='thes2452',
                         Partition='c23g', NumNodes='1', NumTasks='1', NumCPUs='12', **{'CPUs/Task': '12'})
         if any(fields.get(key) != value for key, value in required.items()):
@@ -247,8 +253,10 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
         # Check the actual saved batch script, not an assumed filesystem path.
         batch = subprocess.check_output(['scontrol', 'write', 'batch_script',
                                          os.environ['SLURM_JOB_ID'], '-'], text=True)
-        if batch != (ROOT/'scripts'/experiment_profile(checkpoint_interval)['batch_script']).read_text():
-            raise RuntimeError('Experimental allocation requires the dedicated batch wrapper (USR1@1800)')
+        batch_name = ('claix_b24_sync500_last2.sbatch' if combined_leg is not None
+                      else experiment_profile(checkpoint_interval)['batch_script'])
+        if batch != (ROOT/'scripts'/batch_name).read_text():
+            raise RuntimeError('Allocation requires the exact dedicated batch wrapper (USR1@1800)')
         sys.path.insert(0, str(ROOT/'scripts'))
         from claix_b24_filesystem import inspect_directory
         for key in ('StdOut', 'StdErr', 'WorkDir'):
@@ -374,10 +382,29 @@ def main(argv=None):
                    help='Opt in to the production monitor in H100 qualification only')
     p.add_argument('--qualification-last2-vram-probe', action='store_true',
                    help='H100 qualification only: exactly 30 fresh last-2 steps')
+    p.add_argument('--combined-leg', choices=('B', 'E1'),
+                   help='Exact two-run Sync-500 then last-two VRAM qualification allocation')
     p.add_argument('--release-record')
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
     experimental = args.mode == 'experimental'
+    if args.combined_leg is not None:
+        valid_b = (args.combined_leg == 'B' and experimental
+                   and args.experimental_unqualified
+                   and args.experimental_checkpoint_interval == 500
+                   and args.stop_after_step == 1500
+                   and args.workers == 4 and args.resume is None
+                   and not args.qualification_last2_vram_probe)
+        valid_e1 = (args.combined_leg == 'E1'
+                    and args.mode == 'h100-qualification'
+                    and args.qualification_last2_vram_probe
+                    and args.qualification_max_steps == 30
+                    and args.qualification_gpu_monitor
+                    and args.workers == 4 and args.resume is None
+                    and args.stop_after_step is None
+                    and not args.experimental_unqualified)
+        if not (valid_b or valid_e1):
+            p.error('Combined allocation accepts only B: sync500/1500 or E1: last2/30')
     if args.experimental_checkpoint_interval is not None and not experimental:
         p.error('Checkpoint selector requires experimental mode')
     checkpoint_interval = args.experimental_checkpoint_interval or 250
@@ -501,7 +528,10 @@ def main(argv=None):
         release_hash = check_release(args.release_record, plan, require_immutable=True)
     allocation = {}
     variant_options = dict(checkpoint_interval=500) if checkpoint_interval == 500 else {}
-    deadline = (allocation_deadline(args.mode, allocation_record=allocation, **variant_options) if experimental
+    if args.combined_leg is not None:
+        variant_options['combined_leg'] = args.combined_leg
+    deadline = (allocation_deadline(args.mode, allocation_record=allocation, **variant_options)
+                if experimental or args.combined_leg is not None
                 else allocation_deadline(args.mode))
     if args.qualification_deadline_epoch is not None:
         deadline = min(deadline, args.qualification_deadline_epoch)
@@ -531,7 +561,7 @@ def main(argv=None):
         else:
             run_root.mkdir(parents=True, exist_ok=False)
     else:
-        run_root.mkdir(parents=True, exist_ok=True)
+        run_root.mkdir(parents=True, exist_ok=not bool(args.combined_leg))
     # One lock across qualification/production sharing the run root. Held by
     # controller AND torchrun, so controller death cannot free an active run lock.
     with (run_root / '.production.lock').open('a') as lock:

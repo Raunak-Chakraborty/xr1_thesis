@@ -1,0 +1,13 @@
+# @package _global_
+# Task 04B: isolated opt-in writer, same Task 04A science and horizon.
+defaults:
+  - claix_b24_checkpoint500
+  - _self_
+
+production:
+  checkpoint_variant: checkpoint500_async_v1
+
+trainer:
+  exp_name: xr1_doosan_b24_checkpoint500_async_v1
+  default_root_dir: null
+  ckpt_path: null

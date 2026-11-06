@@ -1,0 +1,57 @@
+{
+  "new_runs": [
+    "B: Sync-500",
+    "C: Async-500"
+  ],
+  "commands": [
+    [
+      "/EXISTING_CLAIX_ENV/bin/python",
+      "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint500_async_v1/scripts/claix_b24_launch.py",
+      "--mode",
+      "experimental",
+      "--experimental-unqualified",
+      "--experimental-checkpoint-interval",
+      "500",
+      "--experimental-two-way-leg",
+      "B",
+      "--run-root",
+      "/hpcwork/SYNTHETIC/task04b-two-way/B_sync500",
+      "--workers",
+      "4",
+      "--overrides",
+      "/hpcwork/SYNTHETIC/paths.json",
+      "--filesystem-source",
+      "SYNTHETIC",
+      "--project-id",
+      "44885",
+      "--python",
+      "/EXISTING_CLAIX_ENV/bin/python"
+    ],
+    [
+      "/EXISTING_CLAIX_ENV/bin/python",
+      "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint500_async_v1/scripts/claix_b24_launch.py",
+      "--mode",
+      "experimental",
+      "--experimental-unqualified",
+      "--experimental-checkpoint-interval",
+      "500",
+      "--experimental-two-way-leg",
+      "C",
+      "--run-root",
+      "/hpcwork/SYNTHETIC/task04b-two-way/C_async500",
+      "--workers",
+      "4",
+      "--overrides",
+      "/hpcwork/SYNTHETIC/paths.json",
+      "--filesystem-source",
+      "SYNTHETIC",
+      "--project-id",
+      "44885",
+      "--python",
+      "/EXISTING_CLAIX_ENV/bin/python"
+    ]
+  ],
+  "steps_each": 1500,
+  "historical_sync250_job": 5504969,
+  "gpu_jobs_submitted": 0
+}

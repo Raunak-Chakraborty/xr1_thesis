@@ -199,6 +199,12 @@ def main(cfg: DictConfig):
         conf.trainer.plugins = [VerifiedCheckpointIO(expected_config=fingerprint if experiment else None,
                                                      expected_experiment=experiment,
                                                      instrument=bool(experiment and experiment.get('checkpoint_interval') == 500))]
+        if experiment and experiment.get('checkpoint_writer') == 'async_thread_v1':
+            from mibot.utils.claix_async_checkpoint import AsyncProductionRuntime, AsyncVerifiedCheckpointIO
+            checkpoint = AsyncProductionRuntime(target, deadline=deadline, interval=interval,
+                                                stop_after_step=production.get('stop_after_step'))
+            conf.trainer.plugins = [AsyncVerifiedCheckpointIO(expected_config=fingerprint,
+                                                              expected_experiment=experiment)]
     conf.trainer.callbacks = [ModelSummary(max_depth=2), checkpoint]
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
@@ -217,9 +223,14 @@ def main(cfg: DictConfig):
     finally:
         # Reap prefetched persistent workers on normal completion and failures.
         from mibot.data.datamodule.doosan_datamodule import shutdown_loader
-        loader = trainer.train_dataloader
-        if loader is not None:
-            shutdown_loader(loader, getattr(loader, '_iterator', None))
+        try:
+            if experiment and experiment.get('checkpoint_writer') == 'async_thread_v1':
+                # Also covers failures before callbacks or strategy teardown run.
+                conf.trainer.plugins[0].close()
+        finally:
+            loader = trainer.train_dataloader
+            if loader is not None:
+                shutdown_loader(loader, getattr(loader, '_iterator', None))
 
 
 if __name__ == '__main__':

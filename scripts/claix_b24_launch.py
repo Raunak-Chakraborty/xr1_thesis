@@ -190,11 +190,13 @@ PROFILES = {
 
 
 def allocation_deadline(mode='production', *, max_seconds=None, allocation_record=None,
-                        checkpoint_interval=250):
+                        checkpoint_interval=250, two_way_leg=None):
+    if two_way_leg is not None and mode != 'experimental':
+        raise RuntimeError('Two-way benchmark requires experimental mode')
     if checkpoint_interval != 250 and mode != 'experimental':
         raise RuntimeError('Checkpoint variant requires experimental mode')
     if mode == 'experimental':
-        experiment_profile(checkpoint_interval)  # fail closed before allocation queries
+        experiment_profile(checkpoint_interval, two_way_leg)  # fail closed before allocation queries
     profile = PROFILES[mode]
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('--execute requires a compute-node Slurm allocation')
@@ -247,7 +249,7 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
         # Check the actual saved batch script, not an assumed filesystem path.
         batch = subprocess.check_output(['scontrol', 'write', 'batch_script',
                                          os.environ['SLURM_JOB_ID'], '-'], text=True)
-        if batch != (ROOT/'scripts'/experiment_profile(checkpoint_interval)['batch_script']).read_text():
+        if batch != (ROOT/'scripts'/experiment_profile(checkpoint_interval, two_way_leg)['batch_script']).read_text():
             raise RuntimeError('Experimental allocation requires the dedicated batch wrapper (USR1@1800)')
         sys.path.insert(0, str(ROOT/'scripts'))
         from claix_b24_filesystem import inspect_directory
@@ -274,6 +276,7 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
 
 EXPERIMENT_NAME = 'xr1_doosan_b24_experimental_v1'
 CHECKPOINT500_NAME = 'xr1_doosan_b24_checkpoint500_v1'
+ASYNC500_NAME = 'xr1_doosan_b24_checkpoint500_async_v1'
 EXPERIMENT_PROFILES = {
     250: dict(name=EXPERIMENT_NAME, config='claix_b24_experimental',
               batch_script='claix_b24_experimental.sbatch'),
@@ -282,9 +285,15 @@ EXPERIMENT_PROFILES = {
 }
 
 
-def experiment_profile(interval):
+def experiment_profile(interval, two_way_leg=None):
     if type(interval) is not int or interval not in EXPERIMENT_PROFILES:
         raise RuntimeError('Unreviewed experimental checkpoint interval')
+    if two_way_leg is not None:
+        if interval != 500 or two_way_leg not in ('B', 'C'):
+            raise RuntimeError('Two-way benchmark requires B/C and interval 500')
+        return dict(name=CHECKPOINT500_NAME if two_way_leg == 'B' else ASYNC500_NAME,
+                    config='claix_b24_checkpoint500' if two_way_leg == 'B' else 'claix_b24_checkpoint500_async',
+                    batch_script='claix_b24_checkpoint_two_way.sbatch')
     return EXPERIMENT_PROFILES[interval]
 
 
@@ -309,7 +318,8 @@ def check_experimental_resume(run_root, resume, plan):
     raw = Path(resume)
     if raw.is_symlink():
         raise RuntimeError('Symlink experimental checkpoint refused')
-    target = Path(run_root)/'project_xr1_doosan'/experiment_profile(plan['checkpoint_interval'])['name']
+    profile = experiment_profile(plan['checkpoint_interval'], plan.get('two_way_leg'))
+    target = Path(run_root)/'project_xr1_doosan'/profile['name']
     check_resume_directory(target, resume)
     receipt = json.loads(raw.with_suffix('.verified.json').read_text())
     experiment = receipt.get('experiment', {})
@@ -319,8 +329,10 @@ def check_experimental_resume(run_root, resume, plan):
         raise RuntimeError('Checkpoint receipt does not belong to this experimental run')
     if plan['checkpoint_interval'] == 500 and (
             experiment.get('checkpoint_interval') != 500
-            or experiment.get('experiment_name') != CHECKPOINT500_NAME):
+            or experiment.get('experiment_name') != profile['name']):
         raise RuntimeError('Checkpoint receipt variant mismatch')
+    if experiment.get('checkpoint_writer', 'sync') != plan.get('checkpoint_writer', 'sync'):
+        raise RuntimeError('Checkpoint receipt writer mismatch')
     return record
 
 
@@ -358,6 +370,8 @@ def main(argv=None):
     p.add_argument('--experimental-unqualified', action='store_true', help='Explicit opt-in; bypass formal release approvals only')
     p.add_argument('--experimental-checkpoint-interval', type=int, choices=(250, 500),
                    help='Experimental only: select the reviewed 250 or isolated 500 recipe')
+    p.add_argument('--experimental-two-way-leg', choices=('B', 'C'),
+                   help='Dedicated two-way wrapper only: B sync-500 or C async-500; fixed stop at 1500')
     p.add_argument('--filesystem-source', help='Experimental: verified persistent Lustre SOURCE')
     p.add_argument('--project-id', type=int, help='Experimental: actual Lustre project ID')
     p.add_argument('--execute', action='store_true')
@@ -376,10 +390,14 @@ def main(argv=None):
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
     experimental = args.mode == 'experimental'
+    if args.experimental_two_way_leg is not None:
+        if not experimental or args.experimental_checkpoint_interval != 500 or args.stop_after_step is not None:
+            p.error('Two-way legs require experimental interval 500 and fixed 1500-step stop')
+        args.stop_after_step = 1500
     if args.experimental_checkpoint_interval is not None and not experimental:
         p.error('Checkpoint selector requires experimental mode')
     checkpoint_interval = args.experimental_checkpoint_interval or 250
-    profile = experiment_profile(checkpoint_interval)
+    profile = experiment_profile(checkpoint_interval, args.experimental_two_way_leg)
     if experimental != args.experimental_unqualified:
         p.error('Experimental mode requires --mode experimental AND --experimental-unqualified')
     if experimental and (args.release_record or os.environ.get('XR1_OPTION_B_RESUME_BRIDGE')):
@@ -429,6 +447,9 @@ def main(argv=None):
                     filesystem_source=args.filesystem_source, project_id=args.project_id)
         if checkpoint_interval == 500:
             plan['experiment_name'] = profile['name']
+        if args.experimental_two_way_leg is not None:
+            plan.update(two_way_leg=args.experimental_two_way_leg, benchmark_steps=1500,
+                        checkpoint_writer='sync' if args.experimental_two_way_leg == 'B' else 'async_thread_v1')
         if args.resume:
             check_experimental_resume(plan['run_root'], args.resume, plan)
     overrides = base + ['trainer.default_root_dir=' + json.dumps(plan['run_root']),
@@ -482,6 +503,8 @@ def main(argv=None):
         release_hash = check_release(args.release_record, plan, require_immutable=True)
     allocation = {}
     variant_options = dict(checkpoint_interval=500) if checkpoint_interval == 500 else {}
+    if args.experimental_two_way_leg is not None:
+        variant_options['two_way_leg'] = args.experimental_two_way_leg
     deadline = (allocation_deadline(args.mode, allocation_record=allocation, **variant_options) if experimental
                 else allocation_deadline(args.mode))
     if args.qualification_deadline_epoch is not None:

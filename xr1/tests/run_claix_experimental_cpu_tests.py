@@ -33,6 +33,13 @@ if __name__ == '__main__':
         sys.modules['lightning.fabric.plugins.io'].CheckpointIO = type('CheckpointIO', (), {})
     print(f'CPU_ENV torch={torch.__version__}; CUDA hidden; synthetic files only', flush=True)
     suite = unittest.defaultTestLoader.discover(str(ROOT/'xr1/tests'), pattern='test_claix_experimental.py')
+    from test_claix_checkpoint500 import (
+        Checkpoint500LaunchTest, Checkpoint500ConfigTest, Checkpoint500EntrypointTest,
+        Checkpoint500RuntimeTest, Checkpoint500TransactionTest,
+    )
+    for cls in (Checkpoint500LaunchTest, Checkpoint500ConfigTest, Checkpoint500EntrypointTest,
+                Checkpoint500RuntimeTest, Checkpoint500TransactionTest):
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(cls))
     from test_claix_checkpoint import CheckpointTest
     from test_claix_final_release import RotationIOTest, ReleasePreparationTest, StoragePreflightTest, MonitorQualificationTest
     from test_claix_final_corrections import PersistentPathsTest, ResumeDirectorySafetyTest, AllocationStorageGateTest

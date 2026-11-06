@@ -1,0 +1,111 @@
+COMMAND=python3 -B /tmp/xr1-task04-static-checks.py
+REPRODUCIBLE_SCRIPT:
+import ast
+from pathlib import Path
+import subprocess
+
+root = Path.cwd()
+base = '0106f1a0e0dfbcbf18e9732f4924b8ccd9e937f0'
+expected = {
+    'scripts/claix_b24_launch.py',
+    'xr1/mibot/utils/claix_checkpoint.py',
+    'xr1/mibot/utils/claix_experiment.py',
+    'xr1/mibot/utils/claix_runtime.py',
+    'xr1/tools/train_doosan_compact.py',
+    'xr1/tests/run_claix_experimental_cpu_tests.py',
+    'xr1/tests/test_claix_experimental.py',
+    'xr1/tests/test_claix_runtime.py',
+}
+def git(*args):
+    return subprocess.check_output(['git', *args], cwd=root)
+assert git('rev-parse', 'HEAD').decode().strip() == base
+assert git('branch', '--show-current').decode().strip() == 'thesis/xr1-checkpoint500-v1'
+assert set(git('diff', '--name-only', base).decode().splitlines()) == expected
+print('START_COMMIT_BRANCH_AND_TRACKED_CHANGE_SCOPE=PASS')
+python_files = sorted([*expected, 'xr1/tests/test_claix_checkpoint500.py'])
+for name in python_files:
+    ast.parse((root/name).read_text(), filename=name)
+print(f'PYTHON_AST=PASS files={len(python_files)}')
+wrappers = sorted(root.glob('scripts/claix_b24*.sbatch'))
+for path in [*wrappers, root/'scripts/claix_b24_environment.sh']:
+    subprocess.run(['bash', '-n', str(path)], check=True)
+print(f'BASH_SYNTAX=PASS wrappers={len(wrappers)} environment_scripts=1')
+tracked = git('ls-files').decode().splitlines()
+protected = [name for name in tracked if (
+    name.startswith(('xr1/configs/', 'xr1/mibot/models/', 'xr1/mibot/data/',
+                     'xr1/mibot/utils/doosan_'))
+    or name in {'xr1/mibot/utils/claix_contract.py', 'xr1/mibot/utils/claix_resume_bridge.py',
+                'xr1/mibot/utils/claix_evaluation.py', 'xr1/mibot/utils/cosine_warmup.py',
+                'xr1/tools/train.py'}
+    or name.startswith('scripts/claix_b24') and name != 'scripts/claix_b24_launch.py')]
+for name in protected:
+    assert (root/name).read_bytes() == git('show', base+':'+name), name
+print(f'BASELINE_PROTECTED_BYTES=PASS files={len(protected)}')
+for name in protected:
+    print('UNCHANGED '+name)
+subprocess.run(['git', 'diff', '--check'], check=True)
+print('GIT_DIFF_CHECK=PASS')
+print('GPU_JOBS=0; no Slurm commands or GPU queries executed by these checks')
+
+RESULTS:
+START_COMMIT_BRANCH_AND_TRACKED_CHANGE_SCOPE=PASS
+PYTHON_AST=PASS files=9
+BASH_SYNTAX=PASS wrappers=7 environment_scripts=1
+BASELINE_PROTECTED_BYTES=PASS files=55
+UNCHANGED scripts/claix_b24_combined_qualification.py
+UNCHANGED scripts/claix_b24_combined_qualification.sbatch
+UNCHANGED scripts/claix_b24_cpu_qualification.sbatch
+UNCHANGED scripts/claix_b24_environment.sh
+UNCHANGED scripts/claix_b24_experimental.sbatch
+UNCHANGED scripts/claix_b24_filesystem.py
+UNCHANGED scripts/claix_b24_h100_qualification.sbatch
+UNCHANGED scripts/claix_b24_production.sbatch
+UNCHANGED scripts/claix_b24_release.py
+UNCHANGED scripts/claix_b24_retention_benchmark.py
+UNCHANGED scripts/claix_b24_storage_preflight.py
+UNCHANGED scripts/claix_b24_targeted_h100.py
+UNCHANGED scripts/claix_b24_targeted_h100.sbatch
+UNCHANGED xr1/configs/__init__.py
+UNCHANGED xr1/configs/claix_b24_experimental.yaml
+UNCHANGED xr1/configs/claix_b24_production.yaml
+UNCHANGED xr1/configs/config.yaml
+UNCHANGED xr1/configs/data/doosan.yaml
+UNCHANGED xr1/configs/data/doosan_fp32_v2.yaml
+UNCHANGED xr1/configs/data/load_washer.yaml
+UNCHANGED xr1/configs/doosan_compact_fp32.yaml
+UNCHANGED xr1/configs/language/doosan_assembly_language_v2.yaml
+UNCHANGED xr1/configs/model/doosan_fp32_v2.yaml
+UNCHANGED xr1/configs/model/posttrain.yaml
+UNCHANGED xr1/configs/trainer/deepspeed.yaml
+UNCHANGED xr1/configs/trainer/doosan_fp32_v2.yaml
+UNCHANGED xr1/mibot/data/__init__.py
+UNCHANGED xr1/mibot/data/collate/__init__.py
+UNCHANGED xr1/mibot/data/collate/custom_collate.py
+UNCHANGED xr1/mibot/data/datamodule/__init__.py
+UNCHANGED xr1/mibot/data/datamodule/base_datamodule.py
+UNCHANGED xr1/mibot/data/datamodule/doosan_datamodule.py
+UNCHANGED xr1/mibot/data/datasets/__init__.py
+UNCHANGED xr1/mibot/data/datasets/doosan_cached_images.py
+UNCHANGED xr1/mibot/data/datasets/doosan_json_dataset.py
+UNCHANGED xr1/mibot/data/datasets/doosan_video_decoder.py
+UNCHANGED xr1/mibot/data/datasets/doosan_zip_images.py
+UNCHANGED xr1/mibot/data/datasets/json_dataset.py
+UNCHANGED xr1/mibot/models/VLA/XR1.py
+UNCHANGED xr1/mibot/models/VLA/__init__.py
+UNCHANGED xr1/mibot/models/VLM/__init__.py
+UNCHANGED xr1/mibot/models/VLM/qwen3vl.py
+UNCHANGED xr1/mibot/models/__init__.py
+UNCHANGED xr1/mibot/models/runner/__init__.py
+UNCHANGED xr1/mibot/models/runner/base_runner.py
+UNCHANGED xr1/mibot/models/runner/doosan_compact_runner.py
+UNCHANGED xr1/mibot/utils/claix_contract.py
+UNCHANGED xr1/mibot/utils/claix_evaluation.py
+UNCHANGED xr1/mibot/utils/claix_resume_bridge.py
+UNCHANGED xr1/mibot/utils/cosine_warmup.py
+UNCHANGED xr1/mibot/utils/doosan_compact_fp32.py
+UNCHANGED xr1/mibot/utils/doosan_io_cache.py
+UNCHANGED xr1/mibot/utils/doosan_last_n.py
+UNCHANGED xr1/mibot/utils/doosan_replay.py
+UNCHANGED xr1/tools/train.py
+GIT_DIFF_CHECK=PASS
+GPU_JOBS=0; no Slurm commands or GPU queries executed by these checks

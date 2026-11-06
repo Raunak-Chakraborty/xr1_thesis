@@ -7,6 +7,7 @@ import json
 import os
 import random
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -136,30 +137,46 @@ def validate_production_checkpoint(ck, contract, *, expected_config=None, resuma
     return 12 * int(ck['xr1_compact_fp32']['trainable_parameter_count']) + 64 * 1024**2
 
 
-def publish_checkpoint(ck, path):
+def publish_checkpoint(ck, path, *, timings=None):
     """Read back and verify before publishing immutable payload, receipt, then pointer.
 
     A crash between payload and receipt leaves an orphan, never a valid resume.
     Existing committed checkpoints are never overwritten. Rotation happens later.
     """
+    # Optional fixed-size timing output belongs to telemetry, never the receipt.
+    measured = timings is not None
+    start = time.perf_counter() if measured else None
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     if os.path.lexists(path) or os.path.lexists(path.with_suffix('.verified.json')):
         raise FileExistsError(f'Checkpoint destination already exists: {path}')
     ceiling = validate_production_checkpoint(ck, ck['xr1_replay_contract'], resumable=False)
+    if measured:
+        timings['prewrite_validation_seconds'] = time.perf_counter() - start
+        start = time.perf_counter()
     fd, tmp = tempfile.mkstemp(prefix='.' + path.name, suffix='.tmp', dir=path.parent)
     try:
         with os.fdopen(fd, 'wb') as stream:
             torch.save(ck, stream)
             stream.flush()
             os.fsync(stream.fileno())
+        if measured:
+            timings['serialization_fsync_seconds'] = time.perf_counter() - start
+            start = time.perf_counter()
         if Path(tmp).stat().st_size > ceiling:
             raise RuntimeError('Compact checkpoint exceeds expected size ceiling')
         reread = torch.load(tmp, map_location='cpu', weights_only=False)
         validate_production_checkpoint(reread, ck['xr1_replay_contract'], resumable=False)
+        if measured:
+            timings['readback_validation_seconds'] = time.perf_counter() - start
+            start = time.perf_counter()
+        checksum = file_sha256(tmp)
+        if measured:
+            timings['sha256_seconds'] = time.perf_counter() - start
+            start = time.perf_counter()
         receipt = dict(schema='claix-b24-verified-v1', path=path.name,
                        global_step=int(ck['global_step']), bytes=Path(tmp).stat().st_size,
-                       sha256=file_sha256(tmp), config_sha256=ck['xr1_production']['config_sha256'])
+                       sha256=checksum, config_sha256=ck['xr1_production']['config_sha256'])
         if ck['xr1_production'].get('experiment') is not None:
             receipt['experiment'] = dict(ck['xr1_production']['experiment'])
         # Atomic no-clobber publication, even if another writer bypassed flock.
@@ -168,6 +185,8 @@ def publish_checkpoint(ck, path):
         fsync_directory(path.parent)
         atomic_json(path.with_suffix('.verified.json'), receipt, exclusive=True)
         atomic_json(path.parent / 'latest.json', receipt)
+        if measured:
+            timings['publication_seconds'] = time.perf_counter() - start
         return receipt
     finally:
         if os.path.exists(tmp):

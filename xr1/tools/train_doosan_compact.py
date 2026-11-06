@@ -197,7 +197,8 @@ def main(cfg: DictConfig):
         checkpoint = ProductionRuntime(target, deadline=deadline, interval=interval,
                                        stop_after_step=production.get('stop_after_step'))
         conf.trainer.plugins = [VerifiedCheckpointIO(expected_config=fingerprint if experiment else None,
-                                                     expected_experiment=experiment)]
+                                                     expected_experiment=experiment,
+                                                     instrument=bool(experiment and experiment.get('checkpoint_interval') == 500))]
     conf.trainer.callbacks = [ModelSummary(max_depth=2), checkpoint]
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True

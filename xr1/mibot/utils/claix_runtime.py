@@ -48,15 +48,27 @@ class StopRequest:
 
 
 class VerifiedCheckpointIO(CheckpointIO):
-    def __init__(self, *, expected_config=None, expected_experiment=None):
+    def __init__(self, *, expected_config=None, expected_experiment=None, instrument=False):
         super().__init__()
         self.expected_config = expected_config
         self.expected_experiment = expected_experiment
+        self.instrument = bool(instrument)
+        self.capture_started = None
+        self.last_save_timings = None
 
     def save_checkpoint(self, checkpoint, path, storage_options=None):
         if storage_options:
             raise RuntimeError('Only local POSIX checkpoint storage is supported')
-        publish_checkpoint(checkpoint, path)
+        if self.instrument:
+            timings = {}
+            if self.capture_started is not None:
+                timings['state_capture_seconds'] = time.perf_counter() - self.capture_started
+            self.capture_started = None
+            self.last_save_timings = None  # never expose stale success after a failed save
+            publish_checkpoint(checkpoint, path, timings=timings)
+            self.last_save_timings = timings
+        else:
+            publish_checkpoint(checkpoint, path)
 
     def load_checkpoint(self, path, map_location=None):
         # Entrypoint and module validate full receipt/config before this load.
@@ -142,6 +154,11 @@ class ProductionRuntime(Callback):
         step = int(trainer.global_step)
         if self.last_saved == step:
             return
+        checkpoint_io = getattr(trainer.strategy, 'checkpoint_io', None)
+        measured = getattr(checkpoint_io, 'instrument', False)
+        callback_started = time.perf_counter() if measured else None
+        if measured:
+            checkpoint_io.capture_started = callback_started
         local = rng_state()
         if dist.is_available() and dist.is_initialized():
             states = [None] * dist.get_world_size()
@@ -155,14 +172,22 @@ class ProductionRuntime(Callback):
         trainer.save_checkpoint(str(path), weights_only=False)
         trainer.strategy.barrier('verified_checkpoint')
         if trainer.is_global_zero:
+            pointer_started = time.perf_counter() if measured else None
             from mibot.utils.claix_checkpoint import atomic_json
             if reason != 'interval':
                 # Small receipt pointer only; compact payload format is unchanged.
                 atomic_json(self.directory / 'safe-stop.json',
                             json.loads(path.with_suffix('.verified.json').read_text()))
+            rotation_started = time.perf_counter() if measured else None
             rotation = rotate_checkpoints(self.directory, expected_config=pl_module._compact_cfg['config_sha256'])
+            timing_fields = {}
+            if measured:
+                timing_fields['timings'] = dict(checkpoint_io.last_save_timings,
+                    safe_stop_pointer_seconds=rotation_started - pointer_started,
+                    rotation_verification_seconds=time.perf_counter() - rotation_started,
+                    callback_duration_seconds=time.perf_counter() - callback_started)
             self.emit(trainer, 'checkpoint', path=str(path), bytes=path.stat().st_size,
-                      rotation=rotation,
+                      rotation=rotation, **timing_fields,
                       duration_seconds=time.perf_counter() - start, verified=True, reason=reason)
         self.last_saved = step
 

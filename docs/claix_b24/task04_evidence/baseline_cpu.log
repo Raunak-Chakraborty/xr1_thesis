@@ -1,0 +1,179 @@
+TEST_MOCK=Lightning Callback/CheckpointIO base classes only; no Trainer execution
+CPU_ENV torch=2.7.1+cu128; CUDA hidden; synthetic files only
+test_batch_wrapper_syntax_resources_and_strict_unchanged (test_claix_experimental.AllocationTest.test_batch_wrapper_syntax_resources_and_strict_unchanged) ... ok
+test_exact_allocation_and_1800_margin (test_claix_experimental.AllocationTest.test_exact_allocation_and_1800_margin) ... ALLOCATION={"mode": "experimental", "time_limit": "23:45:00", "end_time": "future", "safe_stop_epoch": 8200.0, "alloc_tres": {"cpu": "12", "mem": "96G", "gres/gpu": "1", "gres/gpu:hopper": "1"}}
+ok
+test_wrong_allocation_or_missing_slurm_rejected (test_claix_experimental.AllocationTest.test_wrong_allocation_or_missing_slurm_rejected) ... ok
+test_actual_main_function_uses_original_base_new_optimizer_scheduler_and_step_zero (test_claix_experimental.EntrypointTest.test_actual_main_function_uses_original_base_new_optimizer_scheduler_and_step_zero) ... ok
+test_publication_retention_and_safe_stop_pointer_for_experiment (test_claix_experimental.ExperimentalCheckpointTest.test_publication_retention_and_safe_stop_pointer_for_experiment) ... ok
+test_real_runner_hooks_preserve_and_enforce_experimental_identity (test_claix_experimental.ExperimentalCheckpointTest.test_real_runner_hooks_preserve_and_enforce_experimental_identity) ... ok
+test_run_identity_changes_resume_fingerprint (test_claix_experimental.ExperimentalCheckpointTest.test_run_identity_changes_resume_fingerprint) ... ok
+test_runtime_signal_publishes_only_completed_step_and_verifies_finish (test_claix_experimental.ExperimentalCheckpointTest.test_runtime_signal_publishes_only_completed_step_and_verifies_finish) ... CLAIX {"cpu_rss_bytes": 624930816, "elapsed_seconds": 0.10002278199681314, "end_to_end_examples_per_second": 239.94533566127637, "event": "step", "frozen_bf16": true, "gpu_allocated_bytes": null, "gpu_peak_allocated_bytes": null, "gpu_peak_reserved_bytes": null, "gpu_reserved_bytes": null, "gpu_utilization_percent": null, "learning_rate": 5e-07, "loss": 1.0, "packed_tokens": 100, "pipeline_wait_seconds": 0.01, "remaining_seconds": 4829.399983152129, "retained_examples": 24, "safe_stop_in_seconds": 999.9950771331787, "samples_consumed": 24, "step": 1, "step_seconds": 0.10002278199681314, "timestamp": "2026-11-06T21:57:49.507243+00:00", "trainable_fp32": true, "views": 48, "worker_rss_bytes": 0}
+CLAIX {"bytes": 17241, "duration_seconds": 0.02300958699925104, "event": "checkpoint", "path": "/tmp/tmp8fjdsuz7/step-000001.ckpt", "reason": "signal:10", "rotation": {"deleted": 0, "verified": 1}, "step": 1, "timestamp": "2026-11-06T21:57:49.530575+00:00", "verified": true}
+CLAIX {"event": "graceful_stop", "reason": "signal:10", "step": 1, "timestamp": "2026-11-06T21:57:49.530706+00:00"}
+CLAIX {"end_to_end_examples_per_second": 166.52100473414512, "end_to_end_seconds": 0.14412423199974, "event": "fit_end", "final_checkpoint_verified": true, "step": 1, "timestamp": "2026-11-06T21:57:49.533207+00:00"}
+ok
+test_same_run_only_and_all_existing_verification_still_required (test_claix_experimental.ExperimentalCheckpointTest.test_same_run_only_and_all_existing_verification_still_required) ... ok
+test_controller_signal_still_writes_persistent_safe_stop_request (test_claix_experimental.ExperimentalLaunchTest.test_controller_signal_still_writes_persistent_safe_stop_request) ... ok
+test_dry_run_is_read_only_and_frozen_recipe_unchanged (test_claix_experimental.ExperimentalLaunchTest.test_dry_run_is_read_only_and_frozen_recipe_unchanged) ... ok
+test_explicit_double_opt_in_and_no_cross_mode_fallback (test_claix_experimental.ExperimentalLaunchTest.test_explicit_double_opt_in_and_no_cross_mode_fallback) ... ok
+test_historical_checkpoint_rejected_even_with_forged_step_name (test_claix_experimental.ExperimentalLaunchTest.test_historical_checkpoint_rejected_even_with_forged_step_name) ... ok
+test_initial_launch_bypasses_only_release_and_starts_at_zero (test_claix_experimental.ExperimentalLaunchTest.test_initial_launch_bypasses_only_release_and_starts_at_zero) ... ok
+test_no_local_cache_no_foreign_bridge_no_release_record (test_claix_experimental.ExperimentalLaunchTest.test_no_local_cache_no_foreign_bridge_no_release_record) ... ok
+test_recovery_requires_same_root_source_config_latest_and_lock (test_claix_experimental.ExperimentalLaunchTest.test_recovery_requires_same_root_source_config_latest_and_lock) ... ok
+test_storage_failure_prevents_directory_and_child (test_claix_experimental.ExperimentalLaunchTest.test_storage_failure_prevents_directory_and_child) ... ok
+test_unique_root_and_inherited_run_lock (test_claix_experimental.ExperimentalLaunchTest.test_unique_root_and_inherited_run_lock) ... ok
+test_watchdog_preserves_timing_options_and_binds_persistent_destination (test_claix_experimental.ExperimentalLaunchTest.test_watchdog_preserves_timing_options_and_binds_persistent_destination) ... ok
+test_bad_unknown_or_exhausted_quotas_and_wrong_project_fail_closed (test_claix_experimental.ExperimentalStorageTest.test_bad_unknown_or_exhausted_quotas_and_wrong_project_fail_closed) ... ok
+test_live_free_space_inodes_and_user_project_quotas (test_claix_experimental.ExperimentalStorageTest.test_live_free_space_inodes_and_user_project_quotas) ... ok
+test_real_filesystem_guard_rejects_tmp_and_missing_approved_source (test_claix_experimental.ExperimentalStorageTest.test_real_filesystem_guard_rejects_tmp_and_missing_approved_source) ... ok
+test_all_nine_unapproved_gates_remain_blocking (test_claix_experimental.StrictReleaseRegressionTest.test_all_nine_unapproved_gates_remain_blocking) ... ok
+test_approved_last_one_policy_preserves_frozen_stacks (test_claix_checkpoint.CheckpointTest.test_approved_last_one_policy_preserves_frozen_stacks) ... ok
+test_batch_end_boundary_and_fractional_counters_fail_closed (test_claix_checkpoint.CheckpointTest.test_batch_end_boundary_and_fractional_counters_fail_closed) ... ok
+test_interrupted_write_keeps_previous_commit (test_claix_checkpoint.CheckpointTest.test_interrupted_write_keeps_previous_commit) ... ok
+test_orphan_filename_is_not_a_checkpoint (test_claix_checkpoint.CheckpointTest.test_orphan_filename_is_not_a_checkpoint) ... ok
+test_receipt_configuration_must_match_payload (test_claix_checkpoint.CheckpointTest.test_receipt_configuration_must_match_payload) ... ok
+test_required_state_and_counters (test_claix_checkpoint.CheckpointTest.test_required_state_and_counters) ... ok
+test_terminal_checkpoint_and_retention (test_claix_checkpoint.CheckpointTest.test_terminal_checkpoint_and_retention) ... ok
+test_verified_roundtrip_and_corruption (test_claix_checkpoint.CheckpointTest.test_verified_roundtrip_and_corruption) ... ok
+test_atomic_receipt_failure_keeps_previous_pointer_and_orphan (test_claix_final_release.RotationIOTest.test_atomic_receipt_failure_keeps_previous_pointer_and_orphan) ... ok
+test_backlog_verification_is_capped_and_recovery_failure_is_closed (test_claix_final_release.RotationIOTest.test_backlog_verification_is_capped_and_recovery_failure_is_closed) ... ok
+test_corrupt_newest_or_safe_stop_never_authorizes_deletion (test_claix_final_release.RotationIOTest.test_corrupt_newest_or_safe_stop_never_authorizes_deletion) ... ok
+test_counts_independent_of_historical_milestones_and_receipt_history (test_claix_final_release.RotationIOTest.test_counts_independent_of_historical_milestones_and_receipt_history) ... ok
+test_initial_publication_and_resume_keep_full_verification_without_preload (test_claix_final_release.RotationIOTest.test_initial_publication_and_resume_keep_full_verification_without_preload) ... ok
+test_null_stop_large_receipt_and_fifo_are_fail_safe (test_claix_final_release.RotationIOTest.test_null_stop_large_receipt_and_fifo_are_fail_safe) ... ok
+test_previous_corrupt_uses_older_recovery_once (test_claix_final_release.RotationIOTest.test_previous_corrupt_uses_older_recovery_once) ... ok
+test_receipt_types_foreign_latest_and_dangling_symlinks_fail_safely (test_claix_final_release.RotationIOTest.test_receipt_types_foreign_latest_and_dangling_symlinks_fail_safely) ... ok
+test_safe_stop_resume_supersession_has_bounded_reads (test_claix_final_release.RotationIOTest.test_safe_stop_resume_supersession_has_bounded_reads) ... ok
+test_size_changed_previous_cannot_masquerade_as_first_publication (test_claix_final_release.RotationIOTest.test_size_changed_previous_cannot_masquerade_as_first_publication) ... ok
+test_write_failures_and_symlink_pointers_preserve_files (test_claix_final_release.RotationIOTest.test_write_failures_and_symlink_pointers_preserve_files) ... ok
+test_builder_never_approves_and_exclusively_creates (test_claix_final_release.ReleasePreparationTest.test_builder_never_approves_and_exclusively_creates) ... ok
+test_original_provenance_job_and_commit_mismatch_rejected (test_claix_final_release.ReleasePreparationTest.test_original_provenance_job_and_commit_mismatch_rejected) ... ok
+test_reviewed_release_checks_all_artifacts_and_rejects_old_hardware (test_claix_final_release.ReleasePreparationTest.test_reviewed_release_checks_all_artifacts_and_rejects_old_hardware) ... ok
+test_scientific_approval_extra_gate_and_cpu_claims_rejected (test_claix_final_release.ReleasePreparationTest.test_scientific_approval_extra_gate_and_cpu_claims_rejected) ... ok
+test_allocation_reverifies_filesystem_and_source (test_claix_final_release.StoragePreflightTest.test_allocation_reverifies_filesystem_and_source) ... ok
+test_bound_allocation_report_cannot_be_changed_or_removed (test_claix_final_release.StoragePreflightTest.test_bound_allocation_report_cannot_be_changed_or_removed) ... ok
+test_insufficient_disk_space_and_exact_boundary (test_claix_final_release.StoragePreflightTest.test_insufficient_disk_space_and_exact_boundary) ... ok
+test_insufficient_inodes_and_exact_boundary (test_claix_final_release.StoragePreflightTest.test_insufficient_inodes_and_exact_boundary) ... ok
+test_long_queue_and_changed_shared_quota_do_not_abort (test_claix_final_release.StoragePreflightTest.test_long_queue_and_changed_shared_quota_do_not_abort) ... ok
+test_optional_real_claix_quota_format_and_query_failures_are_diagnostic_only (test_claix_final_release.StoragePreflightTest.test_optional_real_claix_quota_format_and_query_failures_are_diagnostic_only) ... ok
+test_storage_pass_needs_no_attestation_or_quota_queries_and_does_not_write (test_claix_final_release.StoragePreflightTest.test_storage_pass_needs_no_attestation_or_quota_queries_and_does_not_write) ... ok
+test_alias_and_canonical_paths_use_same_actual_mount (test_claix_final_corrections.PersistentPathsTest.test_alias_and_canonical_paths_use_same_actual_mount) ... ok
+test_documented_aliases_only (test_claix_final_corrections.PersistentPathsTest.test_documented_aliases_only) ... ok
+test_missing_file_dangling_and_escape_paths_rejected (test_claix_final_corrections.PersistentPathsTest.test_missing_file_dangling_and_escape_paths_rejected) ... ok
+test_tmpfs_ramfs_local_overlay_wrong_mount_and_source_rejected (test_claix_final_corrections.PersistentPathsTest.test_tmpfs_ramfs_local_overlay_wrong_mount_and_source_rejected) ... ok
+test_latest_resume_only_with_complete_contiguous_telemetry (test_claix_final_corrections.ResumeDirectorySafetyTest.test_latest_resume_only_with_complete_contiguous_telemetry) ... ok
+test_allocation_failure_is_machine_readable_and_never_loads_model (test_claix_final_corrections.AllocationStorageGateTest.test_allocation_failure_is_machine_readable_and_never_loads_model) ... ok
+test_old_submission_report_does_not_expire_or_approve_unverified_gates (test_claix_final_corrections.AllocationStorageGateTest.test_old_submission_report_does_not_expire_or_approve_unverified_gates) ... ok
+test_release_binds_actual_submission_report_and_rejects_corrupt_or_missing_evidence (test_claix_final_corrections.AllocationStorageGateTest.test_release_binds_actual_submission_report_and_rejects_corrupt_or_missing_evidence) ... ok
+test_monitor_qualification_opt_in_and_cpu_rejected (test_claix_final_release.MonitorQualificationTest.test_monitor_qualification_opt_in_and_cpu_rejected) ... {
+  "safety_margin_seconds": 600,
+  "mode": "h100-qualification",
+  "workers_measured": [
+    4
+  ],
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/tmp/tmp4ix4n1ni",
+    "overrides": [
+      "data.params.train_datasets.paths=[\"/hpcwork/SYNTHETIC/train\"]",
+      "model.params.pretrained=\"/hpcwork/SYNTHETIC/model_states.pt\"",
+      "model.params.language_policy_path=\"/hpcwork/SYNTHETIC/language.yaml\"",
+      "trainer.default_root_dir=\"/hpcwork/SYNTHETIC/unused\""
+    ]
+  },
+  "source_tree_sha256": "4679c28c19ef1d95d433a51ac819766e172f7df5a585ac65b5521f645e560031"
+}
+COMMAND=/home/horus/anaconda3/envs/forcevla_thesis_env/bin/python -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint500_v1/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=["/hpcwork/SYNTHETIC/train"]' 'model.params.pretrained="/hpcwork/SYNTHETIC/model_states.pt"' 'model.params.language_policy_path="/hpcwork/SYNTHETIC/language.yaml"' 'trainer.default_root_dir="/hpcwork/SYNTHETIC/unused"' 'trainer.default_root_dir="/tmp/tmp4ix4n1ni"' data.params.train_datasets.num_workers=4 trainer.max_steps=6 trainer.exp_name=qualification_b24_w4 'hydra.run.dir="/tmp/tmp4ix4n1ni/hydra/h100-qualification-1794002272222693160"' hydra.job.chdir=false
+PERSISTENT_STDOUT=/tmp/tmp4ix4n1ni/launch-1794002272228192469.out PERSISTENT_STDERR=/tmp/tmp4ix4n1ni/launch-1794002272228192469.err
+ok
+test_production_sbatch_and_bootstrap_contract (test_claix_final_release.MonitorQualificationTest.test_production_sbatch_and_bootstrap_contract) ... ok
+test_real_timeout_kills_and_reaps_query_process (test_claix_final_release.MonitorQualificationTest.test_real_timeout_kills_and_reaps_query_process) ... ok
+test_targeted_dry_run_never_launches (test_claix_final_release.MonitorQualificationTest.test_targeted_dry_run_never_launches) ... ok
+test_targeted_verifier_checks_persistent_step_metrics_receipts_and_provenance (test_claix_final_release.MonitorQualificationTest.test_targeted_verifier_checks_persistent_step_metrics_receipts_and_provenance) ... ok
+test_launcher_closes_monitor_on_success_and_child_failure (test_claix_metrics_release.MonitorReleaseTest.test_launcher_closes_monitor_on_success_and_child_failure) ... {
+  "safety_margin_seconds": 1800,
+  "mode": "production",
+  "workers_measured": [
+    4
+  ],
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/tmp/tmp1wess9dx",
+    "overrides": [
+      "data.params.train_datasets.paths=[\"/hpcwork/SYNTHETIC/train\"]",
+      "model.params.pretrained=\"/hpcwork/SYNTHETIC/model_states.pt\"",
+      "model.params.language_policy_path=\"/hpcwork/SYNTHETIC/language.yaml\"",
+      "trainer.default_root_dir=\"/hpcwork/SYNTHETIC/unused\""
+    ]
+  },
+  "source_tree_sha256": "4679c28c19ef1d95d433a51ac819766e172f7df5a585ac65b5521f645e560031"
+}
+COMMAND=/home/horus/anaconda3/envs/forcevla_thesis_env/bin/python -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint500_v1/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=["/hpcwork/SYNTHETIC/train"]' 'model.params.pretrained="/hpcwork/SYNTHETIC/model_states.pt"' 'model.params.language_policy_path="/hpcwork/SYNTHETIC/language.yaml"' 'trainer.default_root_dir="/hpcwork/SYNTHETIC/unused"' 'trainer.default_root_dir="/tmp/tmp1wess9dx"' data.params.train_datasets.num_workers=4 'hydra.run.dir="/tmp/tmp1wess9dx/hydra/production-1794002275369754977"' hydra.job.chdir=false
+ALLOCATION_STORAGE={"status": "PASS"}
+PERSISTENT_STDOUT=/tmp/tmp1wess9dx/launch-1794002275376261900.out PERSISTENT_STDERR=/tmp/tmp1wess9dx/launch-1794002275376261900.err
+{
+  "safety_margin_seconds": 1800,
+  "mode": "production",
+  "workers_measured": [
+    4
+  ],
+  "production_plan": {
+    "batch_size": 24,
+    "max_length": 12288,
+    "data_horizon": 48284,
+    "scheduler_steps": 48284,
+    "warmup_steps": 500,
+    "workers": 4,
+    "world_size": 1,
+    "run_root": "/tmp/tmp3ppqlclf",
+    "overrides": [
+      "data.params.train_datasets.paths=[\"/hpcwork/SYNTHETIC/train\"]",
+      "model.params.pretrained=\"/hpcwork/SYNTHETIC/model_states.pt\"",
+      "model.params.language_policy_path=\"/hpcwork/SYNTHETIC/language.yaml\"",
+      "trainer.default_root_dir=\"/hpcwork/SYNTHETIC/unused\""
+    ]
+  },
+  "source_tree_sha256": "4679c28c19ef1d95d433a51ac819766e172f7df5a585ac65b5521f645e560031"
+}
+COMMAND=/home/horus/anaconda3/envs/forcevla_thesis_env/bin/python -m torch.distributed.run --standalone --nproc_per_node=1 /home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint500_v1/xr1/tools/train_doosan_compact.py --config-name=claix_b24_production 'data.params.train_datasets.paths=["/hpcwork/SYNTHETIC/train"]' 'model.params.pretrained="/hpcwork/SYNTHETIC/model_states.pt"' 'model.params.language_policy_path="/hpcwork/SYNTHETIC/language.yaml"' 'trainer.default_root_dir="/hpcwork/SYNTHETIC/unused"' 'trainer.default_root_dir="/tmp/tmp3ppqlclf"' data.params.train_datasets.num_workers=4 'hydra.run.dir="/tmp/tmp3ppqlclf/hydra/production-1794002275380156044"' hydra.job.chdir=false
+ALLOCATION_STORAGE={"status": "PASS"}
+PERSISTENT_STDOUT=/tmp/tmp3ppqlclf/launch-1794002275386471227.out PERSISTENT_STDERR=/tmp/tmp3ppqlclf/launch-1794002275386471227.err
+ok
+test_missing_binary_timeout_driver_and_log_errors_only_disable_monitor (test_claix_metrics_release.MonitorReleaseTest.test_missing_binary_timeout_driver_and_log_errors_only_disable_monitor) ... ok
+test_provenance_records_exact_commit_source_files_and_release (test_claix_metrics_release.MonitorReleaseTest.test_provenance_records_exact_commit_source_files_and_release) ... ok
+test_sampler_records_devices_and_stops_without_changing_signals (test_claix_metrics_release.MonitorReleaseTest.test_sampler_records_devices_and_stops_without_changing_signals) ... ok
+test_allocation_walltime_and_deadline (test_claix_launch.LaunchTest.test_allocation_walltime_and_deadline) ... ALLOCATION={"mode": "production", "time_limit": "20:00:00", "end_time": "2026-10-31T18:00:00", "safe_stop_epoch": 8200.0, "alloc_tres": {"cpu": "12", "mem": "96G", "gres/gpu": "1", "gres/gpu:h100": "1"}}
+ok
+test_controller_signal_and_persistent_logs_without_training (test_claix_launch.LaunchTest.test_controller_signal_and_persistent_logs_without_training) ... ok
+test_cpu_qualification_needs_no_release_and_hides_cuda (test_claix_launch.LaunchTest.test_cpu_qualification_needs_no_release_and_hides_cuda) ... ok
+test_duplicate_run_lock (test_claix_launch.LaunchTest.test_duplicate_run_lock) ... ok
+test_execute_fails_without_allocation_or_release (test_claix_launch.LaunchTest.test_execute_fails_without_allocation_or_release) ... ok
+test_existing_results_fail_before_starting_child (test_claix_launch.LaunchTest.test_existing_results_fail_before_starting_child) ... ok
+test_new_qualification_arguments_rejected_outside_contract (test_claix_launch.LaunchTest.test_new_qualification_arguments_rejected_outside_contract) ... ok
+test_plan_does_not_launch_or_require_slurm (test_claix_launch.LaunchTest.test_plan_does_not_launch_or_require_slurm) ... ok
+test_production_checks_every_gate_and_evidence_checksum (test_claix_launch.LaunchTest.test_production_checks_every_gate_and_evidence_checksum) ... ok
+test_qualification_deadline_can_only_shorten_and_controller_clock_requests_stop (test_claix_launch.LaunchTest.test_qualification_deadline_can_only_shorten_and_controller_clock_requests_stop) ... ok
+test_qualification_hung_child_is_bounded_and_only_owned_group_is_terminated (test_claix_launch.LaunchTest.test_qualification_hung_child_is_bounded_and_only_owned_group_is_terminated) ... ok
+test_resume_qualification_rejects_explicit_stop_and_wrong_identity (test_claix_launch.LaunchTest.test_resume_qualification_rejects_explicit_stop_and_wrong_identity) ... ok
+test_short_qualification_allocations_and_failures (test_claix_launch.LaunchTest.test_short_qualification_allocations_and_failures) ... ALLOCATION={"mode": "cpu-qualification", "time_limit": "00:20:00", "end_time": "2026-10-31T18:00:00", "safe_stop_epoch": 9880.0, "alloc_tres": {"cpu": "12", "mem": "48G"}}
+ALLOCATION={"mode": "h100-qualification", "time_limit": "00:45:00", "end_time": "2026-10-31T18:00:00", "safe_stop_epoch": 9400.0, "alloc_tres": {"cpu": "12", "mem": "98304M", "gres/gpu": "1"}}
+ok
+test_unverified_gates_and_hyperparameter_override_rejected (test_claix_launch.LaunchTest.test_unverified_gates_and_hyperparameter_override_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 84 tests in 8.470s
+
+OK

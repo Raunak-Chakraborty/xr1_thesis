@@ -505,12 +505,16 @@ class Config(dict):
 
 
 class EntrypointTest(unittest.TestCase):
+    config_name = 'claix_b24_experimental'
+    interval = 250
+    experiment_name = launch.EXPERIMENT_NAME
+
     def test_actual_main_function_uses_original_base_new_optimizer_scheduler_and_step_zero(self):
         from mibot.utils.claix_runtime import ProductionRuntime, VerifiedCheckpointIO
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder); cache = root/'cache'; cache.mkdir()
             (cache/'media_manifest.jsonl').write_text('SYNTHETIC\n')
-            cfg = recipe('claix_b24_experimental')
+            cfg = recipe(self.config_name)
             cfg['trainer']['default_root_dir'] = folder
             cfg['production']['experimental_run_id'] = '1'*32
             for path_key, hash_key in [('pretrained','pretrained_sha256'), ('language_policy_path','language_sha256')]:
@@ -518,7 +522,8 @@ class EntrypointTest(unittest.TestCase):
                 cfg['model']['params'][path_key] = str(path)
                 cfg['model']['params'][hash_key] = file_sha256(path)
             atomic_json(root/'experiment.json', dict(schema='claix-b24-experiment-v1', experimental_unqualified=True,
-                run_id='1'*32, source_tree_sha256=launch.tree_digest(), plan=dict(run_root=folder)))
+                run_id='1'*32, source_tree_sha256=launch.tree_digest(),
+                plan=dict(run_root=folder, checkpoint_interval=self.interval, experiment_name=self.experiment_name)))
             inventory = dict(episodes=255, frames=289703, sha256=FROZEN_TRAIN_SHA256)
             model_builder = Mock(return_value=SimpleNamespace())
             trainer = Mock(); trainer.train_dataloader = None
@@ -580,9 +585,10 @@ class EntrypointTest(unittest.TestCase):
             self.assertEqual(start['initial_global_step'], 0)
             self.assertTrue(start['new_optimizer_and_scheduler'])
             self.assertEqual(start['dataset_identity'], FROZEN_TRAIN_SHA256)
-            self.assertEqual(trainer_type.call_args.kwargs['callbacks'][1].interval, 250)
+            self.assertEqual(trainer_type.call_args.kwargs['callbacks'][1].interval, self.interval)
             self.assertIsInstance(trainer_type.call_args.kwargs['plugins'][0], VerifiedCheckpointIO)
-            target = root/'project_xr1_doosan'/launch.EXPERIMENT_NAME
+            self.assertEqual(trainer_type.call_args.kwargs['plugins'][0].instrument, self.interval == 500)
+            target = root/'project_xr1_doosan'/self.experiment_name
             ck = checkpoint_fixture(2, 48284)
             ck['xr1_production'].update(config_sha256=start['config_sha256'], experiment=start['experiment'])
             ck['xr1_compact_fp32'].update(pretrained_sha256=cfg['model']['params']['pretrained_sha256'],

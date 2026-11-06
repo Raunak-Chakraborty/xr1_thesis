@@ -9,6 +9,7 @@ from mibot.utils.claix_checkpoint import file_sha256, load_verified
 from mibot.utils.claix_contract import FROZEN_TRAIN_SHA256, engineering_source_digest
 
 EXPERIMENT_NAME = 'xr1_doosan_b24_experimental_v1'
+CHECKPOINT500_NAME = 'xr1_doosan_b24_checkpoint500_v1'
 
 
 def bind_experiment(conf, production, inventory):
@@ -38,17 +39,36 @@ def bind_experiment(conf, production, inventory):
                               zip_integrity_policy='immutable', sampler_seed=42).items():
         if loader.get(key) != expected:
             raise RuntimeError('Experimental frozen loader setting changed: ' + key)
-    if conf['trainer']['save_interval'] != 250 or conf['trainer']['exp_name'] != EXPERIMENT_NAME:
+    variant = production.get('checkpoint_variant', 'checkpoint250_v1')
+    if variant not in ('checkpoint250_v1', 'checkpoint500_v1'):
+        raise RuntimeError('Unreviewed experimental checkpoint variant')
+    interval, name = (500, CHECKPOINT500_NAME) if variant == 'checkpoint500_v1' else (250, EXPERIMENT_NAME)
+    if conf['trainer']['save_interval'] != interval or conf['trainer']['exp_name'] != name:
         raise RuntimeError('Experimental checkpoint/output configuration changed')
+    if interval == 500 and (manifest.get('plan', {}).get('checkpoint_interval') != interval
+                            or manifest.get('plan', {}).get('experiment_name') != name):
+        raise RuntimeError('Experimental checkpoint variant/manifest mismatch')
+    if interval == 250 and (manifest.get('plan', {}).get('checkpoint_interval', 250) != 250
+                            or manifest.get('plan', {}).get('experiment_name', name) != name):
+        raise RuntimeError('Experimental checkpoint variant/manifest mismatch')
     cache = Path(os.environ['XR1_DOOSAN_ZIP_CACHE_ROOT']).resolve(strict=True)
-    return dict(schema='claix-b24-experimental-checkpoint-v1', experimental_unqualified=True,
+    identity = dict(schema='claix-b24-experimental-checkpoint-v1', experimental_unqualified=True,
                 run_id=run_id, run_root=str(root),
                 zip_cache_root=str(cache), zip_manifest_sha256=file_sha256(cache/'media_manifest.jsonl'))
+    if interval == 500:
+        identity.update(checkpoint_interval=interval, experiment_name=name)
+    return identity
 
 
 def load_experimental_resume(path, contract, fingerprint, experiment):
     path = Path(path)
-    target = Path(experiment['run_root'])/'project_xr1_doosan'/EXPERIMENT_NAME
+    interval = experiment.get('checkpoint_interval', 250)
+    if type(interval) is not int or interval not in (250, 500):
+        raise RuntimeError('Unreviewed experimental recovery interval')
+    name = CHECKPOINT500_NAME if interval == 500 else EXPERIMENT_NAME
+    if interval == 500 and experiment.get('experiment_name') != name:
+        raise RuntimeError('Experimental recovery variant mismatch')
+    target = Path(experiment['run_root'])/'project_xr1_doosan'/name
     if path.is_symlink() or path.resolve(strict=True).parent != target.resolve(strict=True):
         raise RuntimeError('Experimental recovery accepts this run directory only')
     return load_verified(path, contract, expected_config=fingerprint, expected_experiment=experiment)

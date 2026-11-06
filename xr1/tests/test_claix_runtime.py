@@ -61,25 +61,25 @@ class TinyRunner(DoosanCompactRunner):
 
 
 def tiny_run(directory, *, workers, max_steps=8, stop_after=None, resume=None, deadline=None,
-             logger=False, log_every_n_steps=50):
-    params=Config(dict(max_steps=8,train_datasets=dict(batch_size=2,num_workers=workers,
+             logger=False, log_every_n_steps=50, horizon=8, interval=250, instrument=False):
+    params=Config(dict(max_steps=horizon,train_datasets=dict(batch_size=2,num_workers=workers,
                   prefetch_factor=2,persistent_workers=bool(workers),pin_memory=False,
                   deterministic_replay=True,sampler_seed=42,resume_step=resume[1] if resume else 0)))
     with patch('mibot.data.datamodule.base_datamodule.CustomCollate'):
         dm=DoosanDataModule(params)
     dm.collate_fn=tiny_collate
-    dm.train_set=AugmentedFixture(length=16)
-    model=TinyRunner(dict(compact_fp32=dict(last_n=1,data_horizon=8,batch_size=2,world_size=1,
+    dm.train_set=AugmentedFixture(length=horizon*2)
+    model=TinyRunner(dict(compact_fp32=dict(last_n=1,data_horizon=horizon,batch_size=2,world_size=1,
                                           sampler_seed=42,num_workers=workers,
                                           resume_step=resume[1] if resume else 0,config_sha256='c'*64),
                           optimizer=dict(type='torch.optim.AdamW',params=dict(lr=1.0,weight_decay=0.1)),
                           scheduler=dict(type='mibot.utils.cosine_warmup.get_cosine_schedule_with_warmup',
-                                         params=dict(num_warmup_steps=2,num_training_steps=8,
+                                         params=dict(num_warmup_steps=2,num_training_steps=horizon,
                                                      max_lr=0.02,min_lr=0.005,warmup_lr_start=0.001))))
     runtime=ProductionRuntime(directory,deadline=deadline if deadline else time.time()+3600,
-                              interval=250,stop_after_step=stop_after)
+                              interval=interval,stop_after_step=stop_after)
     trainer=Trainer(accelerator='cpu',devices=1,max_steps=max_steps,max_epochs=1,
-                    strategy=SingleDeviceStrategy(device='cpu',checkpoint_io=VerifiedCheckpointIO()),
+                    strategy=SingleDeviceStrategy(device='cpu',checkpoint_io=VerifiedCheckpointIO(instrument=instrument)),
                     callbacks=[runtime],logger=logger,log_every_n_steps=log_every_n_steps,
                     enable_checkpointing=False,enable_progress_bar=False,
                     enable_model_summary=False,use_distributed_sampler=False,num_sanity_val_steps=0)
@@ -146,6 +146,28 @@ class RuntimeTest(unittest.TestCase):
             self.assertGreaterEqual(step['pipeline_wait_seconds'],.04)
             self.assertGreaterEqual(final['end_to_end_seconds'],.07)
             self.assertLess(final['end_to_end_examples_per_second'],step['end_to_end_examples_per_second'])
+
+    def test_checkpoint500_real_lightning_stop_resume_and_final_verification(self):
+        # CPU acceptance with the real Trainer/strategy: no XR-1 or GPU assets.
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model, first = tiny_run(root, workers=0, max_steps=1001, horizon=1001,
+                                    interval=500, stop_after=751, instrument=True)
+            self.assertEqual(first.global_step, 751)
+            self.assertFalse((root/'step-000250.ckpt').exists())
+            self.assertFalse((root/'step-000750.ckpt').exists())
+            load_verified(root/'step-000500.ckpt', model._replay_contract)
+            load_verified(root/'step-000751.ckpt', model._replay_contract)
+            resumed, last = tiny_run(root, workers=0, max_steps=1001, horizon=1001,
+                interval=500, resume=(root/'step-000751.ckpt', 751), instrument=True)
+            self.assertEqual(last.global_step, 1001)
+            load_verified(root/'step-001000.ckpt', resumed._replay_contract)
+            load_verified(root/'step-001001.ckpt', resumed._replay_contract, resumable=False)
+            rows = [json.loads(line) for line in (root/'telemetry.jsonl').read_text().splitlines()]
+            checkpoints = [row for row in rows if row['event'] == 'checkpoint']
+            self.assertEqual([row['step'] for row in checkpoints], [500, 751, 1000, 1001])
+            self.assertTrue(all('state_capture_seconds' in row['timings'] for row in checkpoints))
+            self.assertTrue(rows[-1]['final_checkpoint_verified'])
 
     def test_deadline_stops_on_completed_optimizer_step(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -189,7 +189,12 @@ PROFILES = {
 }
 
 
-def allocation_deadline(mode='production', *, max_seconds=None, allocation_record=None):
+def allocation_deadline(mode='production', *, max_seconds=None, allocation_record=None,
+                        checkpoint_interval=250):
+    if checkpoint_interval != 250 and mode != 'experimental':
+        raise RuntimeError('Checkpoint variant requires experimental mode')
+    if mode == 'experimental':
+        experiment_profile(checkpoint_interval)  # fail closed before allocation queries
     profile = PROFILES[mode]
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('--execute requires a compute-node Slurm allocation')
@@ -242,7 +247,7 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
         # Check the actual saved batch script, not an assumed filesystem path.
         batch = subprocess.check_output(['scontrol', 'write', 'batch_script',
                                          os.environ['SLURM_JOB_ID'], '-'], text=True)
-        if batch != (ROOT/'scripts/claix_b24_experimental.sbatch').read_text():
+        if batch != (ROOT/'scripts'/experiment_profile(checkpoint_interval)['batch_script']).read_text():
             raise RuntimeError('Experimental allocation requires the dedicated batch wrapper (USR1@1800)')
         sys.path.insert(0, str(ROOT/'scripts'))
         from claix_b24_filesystem import inspect_directory
@@ -268,6 +273,19 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
 
 
 EXPERIMENT_NAME = 'xr1_doosan_b24_experimental_v1'
+CHECKPOINT500_NAME = 'xr1_doosan_b24_checkpoint500_v1'
+EXPERIMENT_PROFILES = {
+    250: dict(name=EXPERIMENT_NAME, config='claix_b24_experimental',
+              batch_script='claix_b24_experimental.sbatch'),
+    500: dict(name=CHECKPOINT500_NAME, config='claix_b24_checkpoint500',
+              batch_script='claix_b24_checkpoint500.sbatch'),
+}
+
+
+def experiment_profile(interval):
+    if type(interval) is not int or interval not in EXPERIMENT_PROFILES:
+        raise RuntimeError('Unreviewed experimental checkpoint interval')
+    return EXPERIMENT_PROFILES[interval]
 
 
 def read_experiment(run_root):
@@ -291,7 +309,7 @@ def check_experimental_resume(run_root, resume, plan):
     raw = Path(resume)
     if raw.is_symlink():
         raise RuntimeError('Symlink experimental checkpoint refused')
-    target = Path(run_root)/'project_xr1_doosan'/EXPERIMENT_NAME
+    target = Path(run_root)/'project_xr1_doosan'/experiment_profile(plan['checkpoint_interval'])['name']
     check_resume_directory(target, resume)
     receipt = json.loads(raw.with_suffix('.verified.json').read_text())
     experiment = receipt.get('experiment', {})
@@ -299,6 +317,10 @@ def check_experimental_resume(run_root, resume, plan):
             or experiment.get('run_id') != plan['run_id']
             or experiment.get('run_root') != plan['run_root']):
         raise RuntimeError('Checkpoint receipt does not belong to this experimental run')
+    if plan['checkpoint_interval'] == 500 and (
+            experiment.get('checkpoint_interval') != 500
+            or experiment.get('experiment_name') != CHECKPOINT500_NAME):
+        raise RuntimeError('Checkpoint receipt variant mismatch')
     return record
 
 
@@ -334,6 +356,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--mode', choices=('cpu-qualification', 'h100-qualification', 'qualification', 'production', 'experimental'), default='h100-qualification')
     p.add_argument('--experimental-unqualified', action='store_true', help='Explicit opt-in; bypass formal release approvals only')
+    p.add_argument('--experimental-checkpoint-interval', type=int, choices=(250, 500),
+                   help='Experimental only: select the reviewed 250 or isolated 500 recipe')
     p.add_argument('--filesystem-source', help='Experimental: verified persistent Lustre SOURCE')
     p.add_argument('--project-id', type=int, help='Experimental: actual Lustre project ID')
     p.add_argument('--execute', action='store_true')
@@ -352,6 +376,10 @@ def main(argv=None):
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
     experimental = args.mode == 'experimental'
+    if args.experimental_checkpoint_interval is not None and not experimental:
+        p.error('Checkpoint selector requires experimental mode')
+    checkpoint_interval = args.experimental_checkpoint_interval or 250
+    profile = experiment_profile(checkpoint_interval)
     if experimental != args.experimental_unqualified:
         p.error('Experimental mode requires --mode experimental AND --experimental-unqualified')
     if experimental and (args.release_record or os.environ.get('XR1_OPTION_B_RESUME_BRIDGE')):
@@ -397,8 +425,10 @@ def main(argv=None):
         run_id = read_experiment(plan['run_root'])['run_id'] if args.resume else uuid.uuid4().hex
         plan.update(experimental_unqualified=True, run_id=run_id, worker_timeout=600,
                     prefetch_factor=2, persistent_workers=True, in_order=True,
-                    zip_integrity_policy='immutable', checkpoint_interval=250,
+                    zip_integrity_policy='immutable', checkpoint_interval=checkpoint_interval,
                     filesystem_source=args.filesystem_source, project_id=args.project_id)
+        if checkpoint_interval == 500:
+            plan['experiment_name'] = profile['name']
         if args.resume:
             check_experimental_resume(plan['run_root'], args.resume, plan)
     overrides = base + ['trainer.default_root_dir=' + json.dumps(plan['run_root']),
@@ -434,7 +464,7 @@ def main(argv=None):
         overrides += ['production.stop_after_step=' + str(args.stop_after_step)]
     cmd = [args.python, '-m', 'torch.distributed.run', '--standalone', '--nproc_per_node=1',
            str(ROOT / 'xr1/tools/train_doosan_compact.py'),
-           '--config-name=' + ('claix_b24_experimental' if experimental else 'claix_b24_production'), *overrides]
+           '--config-name=' + (profile['config'] if experimental else 'claix_b24_production'), *overrides]
     if args.mode == 'cpu-qualification':
         cmd = [args.python, str(ROOT / 'xr1/tools/claix_b24_worker_qualification.py'),
                '--overrides', str(Path(args.overrides).resolve()),
@@ -451,7 +481,8 @@ def main(argv=None):
             raise RuntimeError('Production requires completed qualification release record')
         release_hash = check_release(args.release_record, plan, require_immutable=True)
     allocation = {}
-    deadline = (allocation_deadline(args.mode, allocation_record=allocation) if experimental
+    variant_options = dict(checkpoint_interval=500) if checkpoint_interval == 500 else {}
+    deadline = (allocation_deadline(args.mode, allocation_record=allocation, **variant_options) if experimental
                 else allocation_deadline(args.mode))
     if args.qualification_deadline_epoch is not None:
         deadline = min(deadline, args.qualification_deadline_epoch)
@@ -498,7 +529,7 @@ def main(argv=None):
                     stream.flush()
                     os.fsync(stream.fileno())
         target = run_root / 'project_xr1_doosan' / (
-            EXPERIMENT_NAME if experimental else
+            profile['name'] if experimental else
             'xr1_doosan_b24_results_v1' if args.mode == 'production' else f'qualification_b24_w{args.workers}')
         if args.mode == 'cpu-qualification':
             target = run_root / 'workers.json'

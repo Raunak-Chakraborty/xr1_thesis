@@ -1,0 +1,15 @@
+# @package _global_
+# Task 04A: checkpoint engineering only; explicit unqualified, isolated experiment.
+defaults:
+  - claix_b24_experimental
+  - _self_
+
+production:
+  checkpoint_variant: checkpoint500_v1
+
+trainer:
+  save_interval: 500
+  exp_name: xr1_doosan_b24_checkpoint500_v1
+  # Require the launcher's NEW persistent run root, never inherit a historical root.
+  default_root_dir: null
+  ckpt_path: null

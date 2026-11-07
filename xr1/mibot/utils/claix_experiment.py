@@ -66,6 +66,14 @@ def bind_experiment(conf, production, inventory):
         identity['checkpoint_writer'] = 'async_thread_v1'
     elif manifest.get('plan', {}).get('checkpoint_writer', 'sync') != 'sync':
         raise RuntimeError('Sync writer/manifest mismatch')
+    leg = manifest.get('plan', {}).get('two_way_leg')
+    if leg is not None:
+        if (leg not in ('B', 'C') or interval != 500 or asynchronous != (leg == 'C')
+                or manifest['plan'].get('benchmark_steps') != 1500
+                or production.get('stop_after_step') != 1500
+                or conf['trainer']['max_steps'] != 48284):
+            raise RuntimeError('Two-way leg/step/writer contract mismatch')
+        identity.update(two_way_leg=leg, benchmark_steps=1500)
     return identity
 
 

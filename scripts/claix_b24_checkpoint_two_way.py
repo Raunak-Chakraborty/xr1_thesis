@@ -15,6 +15,28 @@ import time
 import claix_b24_launch as launch
 
 
+def same_state(a, b):
+    """Exact scientific state; identity, output paths and timings are separate."""
+    import numpy as np
+    import torch
+    if isinstance(a, torch.Tensor):
+        return (isinstance(b, torch.Tensor) and a.dtype == b.dtype
+                and a.shape == b.shape and torch.equal(a, b))
+    if isinstance(a, np.ndarray):
+        return isinstance(b, np.ndarray) and a.dtype == b.dtype and np.array_equal(a, b)
+    if isinstance(a, dict):
+        return isinstance(b, dict) and a.keys() == b.keys() and all(same_state(a[k], b[k]) for k in a)
+    if isinstance(a, (list, tuple)):
+        return type(a) is type(b) and len(a) == len(b) and all(same_state(x, y) for x, y in zip(a, b))
+    return type(a) is type(b) and a == b
+
+
+class LegFailure(RuntimeError):
+    def __init__(self, message, code):
+        super().__init__(message)
+        self.returncode = code if code > 0 else 128-code if code < 0 else 1
+
+
 def commands(args):
     root = Path(args.run_root)
     if not root.is_absolute() or root.is_symlink():
@@ -37,6 +59,8 @@ def verify_leg(root, leg):
     manifest = launch.read_experiment(root)
     plan = manifest['plan']
     if (plan.get('two_way_leg') != leg or plan.get('benchmark_steps') != 1500
+            or plan.get('run_root') != str(root) or plan.get('run_id') != manifest['run_id']
+            or plan.get('checkpoint_interval') != 500 or plan.get('experiment_name') != profile['name']
             or manifest['source_tree_sha256'] != launch.tree_digest()):
         raise RuntimeError('Two-way source/plan identity drift')
     rows = [json.loads(line) for line in (target/'telemetry.jsonl').read_text().splitlines()]
@@ -55,6 +79,8 @@ def verify_leg(root, leg):
     if (expected_experiment['run_id'] != manifest['run_id']
             or expected_experiment['run_root'] != str(root)
             or expected_experiment['experiment_name'] != profile['name']
+            or expected_experiment.get('two_way_leg') != leg
+            or expected_experiment.get('benchmark_steps') != 1500
             or expected_experiment.get('checkpoint_writer', 'sync') != plan['checkpoint_writer']):
         raise RuntimeError('Two-way checkpoint identity mismatch')
     receipts = []
@@ -79,7 +105,9 @@ def verify_leg(root, leg):
         raise RuntimeError('Benchmark requires exactly one fresh training invocation per leg')
     initial = json.loads(starts[0].read_text())
     if (initial['initial_global_step'] != 0 or initial['new_optimizer_and_scheduler'] is not True
-            or initial['initial_checkpoint_mode'] != 'original_pretrained_step_zero'):
+            or initial['initial_checkpoint_mode'] != 'original_pretrained_step_zero'
+            or initial['experiment'] != expected_experiment
+            or initial['config_sha256'] != latest['config_sha256']):
         raise RuntimeError('Benchmark leg was not initialized fresh')
     scientific_trainer = dict(initial['source_config']['trainer'])
     for key in ('exp_name', 'default_root_dir', 'ckpt_path'):
@@ -97,6 +125,15 @@ def verify_leg(root, leg):
     for saved in saves:
         for key, seconds in saved.get('timings', {}).items():
             phase_totals[key] = phase_totals.get(key, 0.) + seconds
+    monitors = sorted(root.glob('launch-*.gpu.jsonl'))
+    monitor_values = []
+    for path in monitors:
+        with path.open() as stream:
+            for line in stream:
+                row = json.loads(line)
+                if row.get('event') == 'sample':
+                    monitor_values.extend(d['utilization_percent'] for d in row['devices']
+                                          if type(d.get('utilization_percent')) in (int, float))
     metrics = dict(fit_wall_seconds=rows[-1]['end_to_end_seconds'],
         end_to_end_examples_per_second=rows[-1]['end_to_end_examples_per_second'],
         step_sample_mean_gpu_utilization_percent=sum(utilization)/len(utilization) if utilization else None,
@@ -107,7 +144,10 @@ def verify_leg(root, leg):
         main_thread_checkpoint_blocking_seconds=sum(r['timings'][
             'callback_duration_seconds' if leg == 'B' else 'main_thread_blocking_seconds'] for r in saves),
         backpressure_seconds=sum(r['backpressure_seconds'] for r in rows if r['event'] == 'checkpoint_staged'),
-        gpu_monitor_files=[str(p) for p in root.glob('launch-*.gpu.jsonl')])
+        gpu_monitor_files=[str(p) for p in monitors], independent_monitor_samples=len(monitor_values),
+        independent_monitor_sample_mean_utilization_percent=(sum(monitor_values)/len(monitor_values)
+                                                             if monitor_values else None),
+        independent_monitor_status='AVAILABLE' if monitor_values else 'MISSING performance review blocked')
     return dict(run_id=manifest['run_id'], receipts=receipts, final_telemetry=rows[-1],
                 science_sha256=hashlib.sha256(json.dumps(science, sort_keys=True).encode()).hexdigest(),
                 metrics=metrics,
@@ -116,27 +156,16 @@ def verify_leg(root, leg):
 
 def verify_pair(root, results):
     """CPU-only final-state comparison after both training processes have exited."""
-    import numpy as np
-    import torch
     from mibot.utils.claix_checkpoint import load_verified
     if results[0]['science_sha256'] != results[1]['science_sha256']:
         raise RuntimeError('Two-way scientific configurations or initialization differ')
-    def equal(a, b):
-        if isinstance(a, torch.Tensor):
-            return isinstance(b, torch.Tensor) and a.dtype == b.dtype and torch.equal(a, b)
-        if isinstance(a, np.ndarray):
-            return isinstance(b, np.ndarray) and a.dtype == b.dtype and np.array_equal(a, b)
-        if isinstance(a, dict):
-            return isinstance(b, dict) and a.keys() == b.keys() and all(equal(a[k], b[k]) for k in a)
-        if isinstance(a, (list, tuple)):
-            return type(a) is type(b) and len(a) == len(b) and all(equal(x, y) for x, y in zip(a, b))
-        return a == b
     checkpoints = [load_verified(root/name/'project_xr1_doosan'/launch.experiment_profile(500, leg)['name']/'step-001500.ckpt')
                    for name, leg in (('B_sync500', 'B'), ('C_async500', 'C'))]
-    for key in ('state_dict', 'optimizer_states', 'lr_schedulers', 'loops', 'xr1_replay'):
-        if not equal(checkpoints[0][key], checkpoints[1][key]):
+    for key in ('state_dict', 'optimizer_states', 'lr_schedulers', 'loops', 'xr1_replay',
+                'global_step', 'epoch', 'xr1_replay_contract', 'xr1_compact_fp32'):
+        if not same_state(checkpoints[0][key], checkpoints[1][key]):
             raise RuntimeError('Two-way deterministic final state differs: ' + key)
-    if not equal(checkpoints[0]['xr1_production']['rng_by_rank'], checkpoints[1]['xr1_production']['rng_by_rank']):
+    if not same_state(checkpoints[0]['xr1_production']['rng_by_rank'], checkpoints[1]['xr1_production']['rng_by_rank']):
         raise RuntimeError('Two-way final RNG differs')
     return 'PASS exact final model/AdamW/scheduler/loop/replay/RNG equality; resume execution remains separate acceptance'
 
@@ -149,6 +178,8 @@ def main(argv=None):
     parser.add_argument('--project-id', required=True, type=int)
     parser.add_argument('--python', default=sys.executable)
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--review')
+    parser.add_argument('--review-sha256')
     args = parser.parse_args(argv)
     cmds = commands(args)
     if not args.execute:
@@ -157,6 +188,12 @@ def main(argv=None):
         return 0
     if os.environ.get('XR1_RESUME') or os.environ.get('XR1_STOP_AFTER_STEP'):
         raise RuntimeError('Two-way job must start both legs fresh with fixed step budget')
+    from claix_b24_task04c_preflight import verify as preflight
+    review = preflight(args.review, args.review_sha256, expected_root=args.run_root,
+                       expected_overrides=args.overrides, expected_python=args.python,
+                       expected_filesystem_source=args.filesystem_source, expected_project_id=args.project_id)
+    for cmd, leg in zip(cmds, ('B', 'C')):
+        cmd += ['--experimental-run-id', review['run_ids'][leg]]
     launch.allocation_deadline('experimental', checkpoint_interval=500, two_way_leg='B')
     from claix_b24_storage_preflight import experimental_evaluate
     root = Path(args.run_root)
@@ -168,10 +205,13 @@ def main(argv=None):
     from mibot.utils.claix_checkpoint import atomic_json
     digest = launch.tree_digest()
     atomic_json(root/'two-way-plan.json', dict(commands=cmds, source_tree_sha256=digest,
-                storage=storage, **launch.checkout_identity()), exclusive=True)
+                storage=storage, reviewed_input_path=args.review, reviewed_input_sha256=args.review_sha256,
+                **launch.checkout_identity()), exclusive=True)
+    atomic_json(root/'two-way-preflight-review.json', review, exclusive=True)
     pending = []
     def stop(signum, frame):
-        pending.append(signum)
+        if not pending:
+            pending.append(signum)
     handlers = {s: signal.signal(s, stop) for s in (signal.SIGUSR1, signal.SIGTERM, signal.SIGINT)}
     results = []
     try:
@@ -179,7 +219,8 @@ def main(argv=None):
             if pending or launch.tree_digest() != digest:
                 raise RuntimeError('Two-way interrupted or source changed; no next leg')
             started = time.perf_counter()
-            child = subprocess.Popen(cmd, start_new_session=True)
+            child = subprocess.Popen(cmd, start_new_session=True,
+                                     env=dict(os.environ, XR1_COORDINATOR_ID=launch.process_identity()))
             sent = False
             try:
                 while True:
@@ -202,12 +243,17 @@ def main(argv=None):
             results.append(result)
             atomic_json(root/'two-way-results.json', dict(status='PENDING', legs=results))
             if code or pending:
-                raise RuntimeError(f'Leg {leg} failed/interrupted; preserve evidence, no retry')
+                raise LegFailure(f'Leg {leg} failed/interrupted; preserve evidence, no retry',
+                                 code or (128 + pending[0] if pending else 1))
             leg_root = root/('B_sync500' if leg == 'B' else 'C_async500')
             result.update(verify_leg(leg_root, leg))
+            if result['run_id'] != review['run_ids'][leg]:
+                raise RuntimeError('Leg UUID differs from exact reviewed identity')
             if leg == 'C' and results[0]['run_id'] == result['run_id']:
                 raise RuntimeError('Two-way experiment IDs must be independent')
         pair = verify_pair(root, results)
+        if pending or launch.tree_digest() != digest:
+            raise RuntimeError('Two-way interrupted or source changed during final verification')
         atomic_json(root/'two-way-results.json', dict(status='TRANSACTIONS_VERIFIED', legs=results,
                     final_state_comparison=pair,
                     historical_sync250=dict(job=5504969, steps=48129, allocated_gpu_hours_approx=23.26,
@@ -216,6 +262,7 @@ def main(argv=None):
         return 0
     except BaseException as error:
         atomic_json(root/'two-way-results.json', dict(status='BLOCKED', legs=results, error=str(error),
+                    returncode=getattr(error, 'returncode', 1),
                     recommendation='Abandon async if C failed; preserve all evidence; no automatic retry'))
         raise
     finally:
@@ -224,4 +271,8 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except LegFailure as error:
+        print(str(error), file=sys.stderr)
+        raise SystemExit(error.returncode)

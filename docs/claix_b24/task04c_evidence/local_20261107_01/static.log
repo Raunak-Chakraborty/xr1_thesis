@@ -1,0 +1,9 @@
+START=c3b2c6895fe2d3bfd19c3d301ef5b49a02841686
+HEAD=c3b2c6895fe2d3bfd19c3d301ef5b49a02841686
+BRANCH=thesis/xr1-checkpoint-benchmark-hardening-v1
+PROTECTED_BYTES=PASS files=77 (science, sync runtime/I/O, historical wrappers, retained evidence)
+PYTHON_AST=PASS files=98
+BASH_SYNTAX=PASS files=10
+GIT_DIFF_CHECK=PASS
+REAL_CLAIX_ACCEPTANCE=PENDING
+GPU_JOBS_SUBMITTED=0

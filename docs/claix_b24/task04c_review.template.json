@@ -1,0 +1,29 @@
+{
+  "schema": "task04c-benchmark-review-v1",
+  "reviewer": null,
+  "worktree": null,
+  "branch": "thesis/xr1-checkpoint-benchmark-hardening-v1",
+  "commit": null,
+  "source_tree_sha256": null,
+  "python": null,
+  "overrides": null,
+  "overrides_sha256": null,
+  "run_root": null,
+  "run_ids": {"B": null, "C": null},
+  "filesystem_source": null,
+  "project_id": null,
+  "zip_cache_root": null,
+  "zip_manifest_sha256": null,
+  "split_roots": {"train": null, "validation": null, "test": null},
+  "split_identities": {
+    "train": "1cb1cfc2491f4ae98942c26a7ece63bff5076fdd28322e98d9b83dcba287a548",
+    "validation": null,
+    "test": null
+  },
+  "cpu_report": null,
+  "cpu_report_sha256": null,
+  "wrapper_sha256": null,
+  "log_directory": null,
+  "project_budget": null,
+  "project_budget_sha256": null
+}

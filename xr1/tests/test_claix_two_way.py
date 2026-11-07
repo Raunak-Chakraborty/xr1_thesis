@@ -189,7 +189,8 @@ class TwoWayConfigTest(unittest.TestCase):
         self.assertEqual(validate(batch), 8200)
         for saved in (batch+'# changed\n', (ROOT/'scripts/claix_b24_checkpoint500.sbatch').read_text()):
             with self.assertRaisesRegex(RuntimeError, 'wrapper'): validate(saved)
-        for key, value in (('Account', 'other'), ('TimeLimit', '20:00:00'), ('AllocTRES', 'cpu=12,mem=97G,gres/gpu=1')):
+        for key, value in (('Account', 'other'), ('TimeLimit', '20:00:00'), ('TimeLimit', '06:00:00'),
+                           ('TimeLimit', '23:44:00'), ('AllocTRES', 'cpu=12,mem=97G,gres/gpu=1')):
             with self.assertRaises(RuntimeError): validate(batch, **{key: value})
 
 
@@ -224,6 +225,7 @@ class TwoWayCoordinatorTest(unittest.TestCase):
                 return 0
             children[0].wait.side_effect = wait
         with patch.object(benchmark.launch, 'allocation_deadline'), \
+             patch('claix_b24_task04c_preflight.verify', return_value=dict(run_ids={'B':'B'*32, 'C':'C'*32})), \
              patch.object(benchmark.launch, 'checkout_identity', return_value=dict(git_commit='synthetic', git_status='')), \
              patch.object(storage, 'experimental_evaluate', return_value=dict(status=quota)), \
              patch.object(benchmark.subprocess, 'Popen', side_effect=children) as start, \
@@ -264,11 +266,13 @@ class TwoWayEvidenceTest(unittest.TestCase):
             root = self.root/name; root.mkdir()
             profile = launch.experiment_profile(500, leg)
             target = root/'project_xr1_doosan'/profile['name']
-            ident = identity(root); ident.update(run_id=leg.lower()*32, experiment_name=profile['name'])
+            ident = identity(root); ident.update(run_id=leg.lower()*32, experiment_name=profile['name'],
+                                                 two_way_leg=leg, benchmark_steps=1500)
             if leg == 'B': ident.pop('checkpoint_writer')
             tx.atomic_json(root/'experiment.json', dict(schema='claix-b24-experiment-v1', experimental_unqualified=True,
                 run_id=ident['run_id'], source_tree_sha256=launch.tree_digest(), plan=dict(two_way_leg=leg,
-                    benchmark_steps=1500, checkpoint_writer=ident.get('checkpoint_writer', 'sync'))))
+                    benchmark_steps=1500, checkpoint_writer=ident.get('checkpoint_writer', 'sync'),
+                    run_root=str(root), run_id=ident['run_id'], checkpoint_interval=500, experiment_name=profile['name'])))
             for step in (500, 1000, 1500):
                 ck = payload(root, step); ck['xr1_production'].update(experiment=ident, rng_by_rank=[rng])
                 receipt = tx.publish_checkpoint(ck, target/f'step-{step:06d}.ckpt')
@@ -276,6 +280,7 @@ class TwoWayEvidenceTest(unittest.TestCase):
                 tx.rotate_checkpoints(target)
             cfg = recipe(profile['config'])
             tx.atomic_json(target/'experimental-start-1.json', dict(initial_global_step=0, new_optimizer_and_scheduler=True,
+                experiment=ident, config_sha256='a'*64,
                 initial_checkpoint_mode='original_pretrained_step_zero', source_config=cfg,
                 dataset_identity=FROZEN_TRAIN_SHA256, pretrained_identity={'sha256':'a'*64}, language_identity={'sha256':'b'*64}))
             rows = [dict(event='train_start', step=0)] + [dict(event='step', step=s) for s in range(1,1501)]

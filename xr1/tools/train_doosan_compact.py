@@ -199,6 +199,10 @@ def main(cfg: DictConfig):
         conf.trainer.plugins = [VerifiedCheckpointIO(expected_config=fingerprint if experiment else None,
                                                      expected_experiment=experiment,
                                                      instrument=bool(experiment and experiment.get('checkpoint_interval') == 500))]
+        if experiment and experiment.get('two_way_leg') == 'B':
+            from mibot.utils.claix_benchmark_runtime import BenchmarkSyncRuntime
+            checkpoint = BenchmarkSyncRuntime(target, run_root=experiment['run_root'], deadline=deadline, interval=interval,
+                                              stop_after_step=production.get('stop_after_step'))
         if experiment and experiment.get('checkpoint_writer') == 'async_thread_v1':
             from mibot.utils.claix_async_checkpoint import AsyncProductionRuntime, AsyncVerifiedCheckpointIO
             checkpoint = AsyncProductionRuntime(target, deadline=deadline, interval=interval,

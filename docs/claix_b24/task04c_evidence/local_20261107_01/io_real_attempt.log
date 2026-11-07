@@ -1,0 +1,58 @@
+CPU_ENV torch=2.7.1+cu128
+test_doosan_io_cache (unittest.loader._FailedTest.test_doosan_io_cache) ... ERROR
+test_doosan_dataset (unittest.loader._FailedTest.test_doosan_dataset) ... ERROR
+test_doosan_datamodule (unittest.loader._FailedTest.test_doosan_datamodule) ... ERROR
+
+======================================================================
+ERROR: test_doosan_io_cache (unittest.loader._FailedTest.test_doosan_io_cache)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_doosan_io_cache
+Traceback (most recent call last):
+  File "/home/horus/anaconda3/envs/forcevla_thesis_env/lib/python3.11/unittest/loader.py", line 419, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/horus/anaconda3/envs/forcevla_thesis_env/lib/python3.11/unittest/loader.py", line 362, in _get_module_from_name
+    __import__(name)
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint_benchmark_hardening_v1/xr1/tests/test_doosan_io_cache.py", line 21, in <module>
+    from mmengine import Config
+ModuleNotFoundError: No module named 'mmengine'
+
+
+======================================================================
+ERROR: test_doosan_dataset (unittest.loader._FailedTest.test_doosan_dataset)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_doosan_dataset
+Traceback (most recent call last):
+  File "/home/horus/anaconda3/envs/forcevla_thesis_env/lib/python3.11/unittest/loader.py", line 419, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/horus/anaconda3/envs/forcevla_thesis_env/lib/python3.11/unittest/loader.py", line 362, in _get_module_from_name
+    __import__(name)
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint_benchmark_hardening_v1/xr1/tests/test_doosan_dataset.py", line 7, in <module>
+    from mibot.data.datasets.doosan_json_dataset import (
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint_benchmark_hardening_v1/xr1/mibot/data/__init__.py", line 2, in <module>
+    from mibot.data.datamodule.base_datamodule import BaseDataModule
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint_benchmark_hardening_v1/xr1/mibot/data/datamodule/base_datamodule.py", line 4, in <module>
+    from lightning import LightningDataModule
+ModuleNotFoundError: No module named 'lightning'
+
+
+======================================================================
+ERROR: test_doosan_datamodule (unittest.loader._FailedTest.test_doosan_datamodule)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_doosan_datamodule
+Traceback (most recent call last):
+  File "/home/horus/anaconda3/envs/forcevla_thesis_env/lib/python3.11/unittest/loader.py", line 419, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/horus/anaconda3/envs/forcevla_thesis_env/lib/python3.11/unittest/loader.py", line 362, in _get_module_from_name
+    __import__(name)
+  File "/home/horus/robotics_thesis/xr1_claix/worktrees/xr1_checkpoint_benchmark_hardening_v1/xr1/tests/test_doosan_datamodule.py", line 6, in <module>
+    from mmengine import Config, DATASETS
+ModuleNotFoundError: No module named 'mmengine'
+
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+FAILED (errors=3)

@@ -37,6 +37,7 @@ if __name__ == '__main__':
     print(f'CPU_ENV torch={torch.__version__}; CUDA hidden; real CPU tensors and POSIX transactions', flush=True)
     suite = unittest.defaultTestLoader.discover(str(ROOT/'xr1/tests'), pattern='test_claix_async_checkpoint.py')
     suite.addTests(unittest.defaultTestLoader.discover(str(ROOT/'xr1/tests'), pattern='test_claix_two_way.py'))
+    suite.addTests(unittest.defaultTestLoader.discover(str(ROOT/'xr1/tests'), pattern='test_claix_task04c.py'))
     if not args.allow_framework_stubs:
         suite.addTests(unittest.defaultTestLoader.discover(str(ROOT/'xr1/tests'), pattern='test_claix_async_framework.py'))
     result = unittest.TextTestRunner(verbosity=2).run(suite)

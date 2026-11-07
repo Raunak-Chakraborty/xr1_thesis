@@ -21,6 +21,8 @@ import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'xr1'))
+from mibot.utils.claix_process import process_identity, process_alive, writer_lifetime_lock
 GATES = ('frozen_splits', 'tokens_24_examples_48_views', 'workers_0_4_8',
          'h100_b24_memory', 'end_to_end_throughput', 'real_compact_resume',
          'safe_stop_and_storage', 'held_out_validation', 'lr_and_horizon_approval')
@@ -378,6 +380,7 @@ def main(argv=None):
     p.add_argument('--python', default=sys.executable)
     p.add_argument('--workers', type=int, choices=(0, 4, 8), default=4)
     p.add_argument('--run-root', required=True)
+    p.add_argument('--experimental-run-id', help='Reviewed fresh two-way UUID only')
     p.add_argument('--resume')
     p.add_argument('--stop-after-step', type=int)
     p.add_argument('--qualification-max-steps', type=int,
@@ -389,6 +392,11 @@ def main(argv=None):
     p.add_argument('--release-record')
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
+    if args.experimental_run_id is not None and (
+            args.experimental_two_way_leg is None or args.resume
+            or len(args.experimental_run_id) != 32
+            or any(c not in '0123456789abcdef' for c in args.experimental_run_id)):
+        p.error('Reviewed run ID requires a fresh B/C leg and 32 lowercase hex characters')
     experimental = args.mode == 'experimental'
     if args.experimental_two_way_leg is not None:
         if not experimental or args.experimental_checkpoint_interval != 500 or args.stop_after_step is not None:
@@ -440,7 +448,8 @@ def main(argv=None):
     if experimental:
         if not Path(args.run_root).is_absolute() or Path(args.run_root).is_symlink():
             raise RuntimeError('Experimental run root must be absolute and non-symlink')
-        run_id = read_experiment(plan['run_root'])['run_id'] if args.resume else uuid.uuid4().hex
+        run_id = (read_experiment(plan['run_root'])['run_id'] if args.resume else
+                  args.experimental_run_id or uuid.uuid4().hex)
         plan.update(experimental_unqualified=True, run_id=run_id, worker_timeout=600,
                     prefetch_factor=2, persistent_workers=True, in_order=True,
                     zip_integrity_policy='immutable', checkpoint_interval=checkpoint_interval,
@@ -540,6 +549,8 @@ def main(argv=None):
     # controller AND torchrun, so controller death cannot free an active run lock.
     with (run_root / '.production.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if experimental and args.resume:
+            writer_lifetime_lock(run_root, probe=True)
         if experimental:
             if args.resume:
                 check_experimental_resume(run_root, args.resume, plan)
@@ -595,6 +606,7 @@ def main(argv=None):
                    PYTHONPATH=str(ROOT / 'xr1') + os.pathsep + os.environ.get('PYTHONPATH', ''))
         if experimental:
             env['XR1_EXPERIMENTAL_UNQUALIFIED'] = '1'
+            env['XR1_CONTROLLER_ID'] = process_identity()
             env['XR1_LOADER_DIAGNOSTICS_JSON'] = str(experimental_diagnostics(log_prefix, run_root))
         if args.mode == 'cpu-qualification':
             env['CUDA_VISIBLE_DEVICES'] = ''
@@ -626,6 +638,9 @@ def main(argv=None):
             child = subprocess.Popen(cmd, cwd=ROOT / 'xr1', env=env, pass_fds=(lock.fileno(),),
                                      stdout=stdout, stderr=stderr, start_new_session=True)
             while True:
+                coordinator = os.environ.get('XR1_COORDINATOR_ID')
+                if experimental and coordinator and not process_alive(coordinator):
+                    pending.setdefault('reason', 'coordinator_lost')
                 if time.time() >= deadline:
                     pending.setdefault('reason', 'safe_deadline')
                 if pending and not stop_file.exists():
@@ -649,6 +664,23 @@ def main(argv=None):
                 except subprocess.TimeoutExpired:
                     continue
         finally:
+            if experimental and child is not None and not child_finished:
+                # An exception must not release ownership or delete the request
+                # while torchrun/rank/writer still runs. No forced Python writer
+                # cancellation: a Lustre hang can require Slurm's final kill.
+                try:
+                    if not stop_file.exists():
+                        request = dict(reason='controller_failure')
+                        with stop_file.open('x') as stream:
+                            json.dump(request, stream)
+                            stream.flush()
+                            os.fsync(stream.fileno())
+                    Path(str(log_prefix) + '.stop.json').write_text(json.dumps(
+                        dict(reason='controller_failure', child_pid=child.pid)) + '\n')
+                except OSError as error:
+                    print('STOP_REQUEST_IO_FAILED; retaining child ownership: ' + str(error),
+                          file=sys.stderr, flush=True)
+                child.wait()  # reaps; may wait for the allocation's external hard kill
             if monitor is not None:
                 monitor.close()
             # Only our new-session child group; never signal a Slurm daemon or job group.

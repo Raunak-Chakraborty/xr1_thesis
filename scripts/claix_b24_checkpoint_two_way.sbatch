@@ -13,7 +13,7 @@
 #SBATCH --output=claix_b24_checkpoint_two_way_%j.out
 #SBATCH --error=claix_b24_checkpoint_two_way_%j.err
 set -Eeuo pipefail
-: "${XR1_WORKTREE:?Set this Task 04B worktree}"
+: "${XR1_WORKTREE:?Set exact reviewed Task 04C checkout}"
 : "${XR1_EXPERIMENTAL_UNQUALIFIED:?Explicitly set to 1}"
 [[ "$XR1_EXPERIMENTAL_UNQUALIFIED" == 1 ]] || exit 1
 [[ -z "${XR1_RESUME:-}" && -z "${XR1_STOP_AFTER_STEP:-}" ]] || exit 1
@@ -23,9 +23,12 @@ source "$XR1_WORKTREE/scripts/claix_b24_environment.sh"
 : "${XR1_FILESYSTEM_SOURCE:?Set operator-verified persistent findmnt SOURCE}"
 : "${XR1_LUSTRE_PROJECT_ID:?Set actual storage project ID}"
 : "${XR1_PATH_OVERRIDES:?Set existing four staged path overrides JSON}"
+: "${XR1_BENCHMARK_REVIEW:?Set exact reviewed Task04C preflight input JSON}"
+: "${XR1_BENCHMARK_REVIEW_SHA256:?Set independently reviewed input SHA256}"
 xr1_require_persistent_directory "${SLURM_SUBMIT_DIR:?}"
 xr1_require_persistent_directory "$PWD"
 exec "$XR1_PYTHON" "$XR1_WORKTREE/scripts/claix_b24_checkpoint_two_way.py" \
     --execute --python "$XR1_PYTHON" --run-root "$XR1_TWO_WAY_ROOT" \
     --overrides "$XR1_PATH_OVERRIDES" --filesystem-source "$XR1_FILESYSTEM_SOURCE" \
-    --project-id "$XR1_LUSTRE_PROJECT_ID"
+    --project-id "$XR1_LUSTRE_PROJECT_ID" \
+    --review "$XR1_BENCHMARK_REVIEW" --review-sha256 "$XR1_BENCHMARK_REVIEW_SHA256"

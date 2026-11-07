@@ -7,6 +7,7 @@ There is no queued second snapshot, retry, coalescing or synchronous fallback.
 from __future__ import annotations
 
 from collections import OrderedDict
+import os
 from pathlib import Path
 import threading
 import time
@@ -18,6 +19,21 @@ import torch.distributed as dist
 
 from mibot.utils import claix_checkpoint as transaction
 from mibot.utils.claix_runtime import ProductionRuntime, VerifiedCheckpointIO
+from mibot.utils.claix_process import process_alive, writer_lifetime_lock
+
+
+def detached_error(error):
+    """Strip the whole exception chain: inner publication frames also own tensors."""
+    seen = set()
+    pending = [error]
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        current.__traceback__ = None
+        pending.extend((current.__cause__, current.__context__))
+    return error
 
 
 def owned_cpu_snapshot(value):
@@ -64,6 +80,8 @@ class AsyncVerifiedCheckpointIO(VerifiedCheckpointIO):
         self._armed = None
         self._closed = False
         self.last_submitted = -1
+        self._lifetime_lock = (writer_lifetime_lock(expected_experiment['run_root'])
+                               if expected_experiment is not None else None)
 
     def _check_owner(self):
         if threading.get_ident() != self._owner:
@@ -88,7 +106,14 @@ class AsyncVerifiedCheckpointIO(VerifiedCheckpointIO):
         reason, capture_started = self._armed
         self._armed = None
         stage_started = time.perf_counter()
-        snapshot = owned_cpu_snapshot(checkpoint)
+        try:
+            snapshot = owned_cpu_snapshot(checkpoint)
+        except BaseException as error:
+            self._closed = True
+            # Re-raising `error` below attaches this capture frame again. Keep
+            # a separate diagnostic rather than retaining the live checkpoint.
+            self._error = RuntimeError(f'Snapshot staging failed: {type(error).__name__}: {error}')
+            raise
         timings = dict(state_capture_seconds=stage_started-capture_started,
                        snapshot_staging_seconds=time.perf_counter()-stage_started)
         validation_started = time.perf_counter()
@@ -110,7 +135,8 @@ class AsyncVerifiedCheckpointIO(VerifiedCheckpointIO):
             self._thread.start()
         except BaseException as error:
             self._thread = None
-            self._error = error
+            self._closed = True
+            self._error = RuntimeError(f'Writer start failed: {type(error).__name__}: {error}')
             raise
         self.last_submitted = step
 
@@ -133,7 +159,7 @@ class AsyncVerifiedCheckpointIO(VerifiedCheckpointIO):
                                 reason=reason, rotation=rotation, timings=timings, verified=True)
         except BaseException as error:
             # Keep the cause, without traceback frames retaining the large snapshot.
-            self._error = error.with_traceback(None)
+            self._error = detached_error(error)
 
     def collect(self, *, wait=False):
         self._check_owner()
@@ -147,12 +173,21 @@ class AsyncVerifiedCheckpointIO(VerifiedCheckpointIO):
         return result
 
     def close(self):
+        """Drain before teardown. POSIX I/O has NO guaranteed Python timeout.
+
+        A blocked non-daemon writer keeps this call and process alive. The 1800s
+        reserve is a qualification target; only Slurm's final kill can bound a
+        hung allocation. Never report a timed-out write as closed or verified.
+        """
         self._check_owner()
         self._closed = True
         self._armed = None
         if self._thread is not None:
             self._thread.join()  # never release the run lifetime with a live writer
             self._thread = None
+        if self._lifetime_lock is not None:
+            self._lifetime_lock.close()
+            self._lifetime_lock = None
         self._raise_error()
 
     def teardown(self):
@@ -173,6 +208,9 @@ class AsyncProductionRuntime(ProductionRuntime):
                 or not trainer.is_global_zero
                 or (dist.is_available() and dist.is_initialized() and dist.get_world_size() != 1)):
             raise RuntimeError('Async runtime requires its own IO and single-rank strategy')
+        if hasattr(self, '_bound_io') and self._bound_io is not io:
+            raise RuntimeError('Strategy replaced the active async checkpoint IO')
+        self._bound_io = io
         return io
 
     def _collect(self, trainer, *, wait=False):
@@ -200,6 +238,9 @@ class AsyncProductionRuntime(ProductionRuntime):
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         self._collect(trainer)
+        controller = os.environ.get('XR1_CONTROLLER_ID')
+        if controller and not process_alive(controller):
+            self.stop.reason = 'controller_lost'
         super().on_train_batch_end(trainer, pl_module, outputs, batch, batch_idx)
 
     def save(self, trainer, pl_module, reason):
@@ -234,7 +275,10 @@ class AsyncProductionRuntime(ProductionRuntime):
 
     def on_exception(self, trainer, pl_module, exception):
         try:
-            self._io(trainer).close()
+            # If strategy identity validation itself failed, the old bound IO
+            # still owns its writer. Drain that owner before framework teardown.
+            io = getattr(self, '_bound_io', None)
+            (io if io is not None else self._io(trainer)).close()
         finally:
             try:
                 super().on_exception(trainer, pl_module, exception)

@@ -51,6 +51,50 @@ def compose(overrides, run_root):
 
 def check_cpu_acceptance(path, source):
     record = read_json(path)
+
+    # Explicit operator-requested waiver, NEVER a test PASS.
+    # Keep the normal full CPU acceptance path below unchanged.
+    if record.get('schema') == 'claix-last2-serious-cpu-waiver-v1':
+        if (
+            record.get('status') != 'WAIVED_NOT_PASSED'
+            or record.get('operator_acknowledgement')
+            != 'SKIP_REAL_FRAMEWORK_CPU_ACCEPT_UNVERIFIED_RESUME_RISK'
+            or record.get('framework_resume_verified') is not False
+            or any(record.get(k) != v for k, v in source.items())
+            or record.get('batch_script_sha256')
+            != file_sha256(ROOT / 'scripts' / BATCH_SCRIPT)
+        ):
+            raise RuntimeError('Invalid explicit serious-run CPU waiver')
+
+        jobs = record.get('failed_framework_jobs')
+
+        expected = {
+            '5545545': 'OSError: AF_UNIX path too long',
+            '5545732': 'RuntimeError: Packed token certification exceeded',
+        }
+
+        if not isinstance(jobs, dict) or set(jobs) != set(expected):
+            raise RuntimeError('CPU waiver missing actual failed job evidence')
+
+        for job, marker in expected.items():
+            entry = jobs[job]
+            if not isinstance(entry, dict):
+                raise RuntimeError('Invalid CPU waiver evidence entry')
+            log = Path(entry.get('path', ''))
+            if (
+                not log.is_absolute()
+                or log.is_symlink()
+                or not log.is_file()
+                or log.stat().st_size > 2 * 1024 * 1024
+                or entry.get('sha256') != file_sha256(log)
+                or marker not in log.read_text(errors='replace')
+            ):
+                raise RuntimeError(
+                    'Unverified failed CPU framework log: ' + job
+                )
+
+        return file_sha256(path)
+
     required = ('hydra_composition', 'lightning_same_run_resume', 'ordered_four_worker_replay',
                 'serious_checkpoint_roundtrip', 'legacy_sync_regressions', 'dataset_io')
     if (record.get('schema') != 'claix-last2-serious-cpu-acceptance-v1'

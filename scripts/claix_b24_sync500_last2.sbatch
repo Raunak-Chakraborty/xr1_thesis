@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:hopper:1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=96G
-#SBATCH --time=08:00:00
+#SBATCH --time=03:00:00
 #SBATCH --signal=B:USR1@1800
 #SBATCH --output=xr1_sync500_last2_%j.out
 #SBATCH --error=xr1_sync500_last2_%j.err

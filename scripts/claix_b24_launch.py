@@ -208,7 +208,7 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
     limit = fields.get('TimeLimit', '')
     required_walltime = {'production': '20:00:00', 'experimental': '23:45:00'}
     if combined_leg is not None:
-        required_walltime[mode] = '08:00:00'
+        required_walltime[mode] = '03:00:00'
     if mode in required_walltime and limit != required_walltime[mode]:
         raise RuntimeError(
             f'{mode.capitalize()} requires exactly {required_walltime[mode]} allocation'

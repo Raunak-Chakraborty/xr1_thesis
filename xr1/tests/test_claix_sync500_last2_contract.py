@@ -34,13 +34,13 @@ class CombinedAllocationContractTest(unittest.TestCase):
         interval,
         leg,
         *,
-        limit="08:00:00",
+        limit="03:00:00",
         cpus=12,
         gpu="NVIDIA H100",
         batch=BATCH,
     ):
         job_id = "999123"
-        end_epoch = int(time.time()) + 8 * 3600
+        end_epoch = int(time.time()) + 3 * 3600
 
         fields = {
             "JobId": job_id,
@@ -53,7 +53,7 @@ class CombinedAllocationContractTest(unittest.TestCase):
             "CPUs/Task": str(cpus),
             "AllocTRES": f"cpu={cpus},mem=96G,gres/gpu=1",
             "TimeLimit": limit,
-            "EndTime": "2026-11-08T08:00:00",
+            "EndTime": "2026-11-08T03:00:00",
             "StdOut": "/hpcwork/SYNTHETIC/job.out",
             "StdErr": "/hpcwork/SYNTHETIC/job.err",
             "WorkDir": "/hpcwork/SYNTHETIC",
@@ -135,13 +135,13 @@ class CombinedAllocationContractTest(unittest.TestCase):
         )
         self.assertGreater(deadline, time.time())
 
-    def test_original_qualification_rejects_eight_hours(self):
+    def test_original_qualification_rejects_three_hours(self):
         with self.assertRaises(RuntimeError):
             self.allocation(
                 "h100-qualification", 250, None
             )
 
-    def test_original_experiment_rejects_eight_hours(self):
+    def test_original_experiment_rejects_three_hours(self):
         with self.assertRaises(RuntimeError):
             self.allocation(
                 "experimental", 500, None
@@ -204,7 +204,7 @@ class CombinedAllocationContractTest(unittest.TestCase):
             "#SBATCH --gres=gpu:hopper:1",
             "#SBATCH --cpus-per-task=12",
             "#SBATCH --mem=96G",
-            "#SBATCH --time=08:00:00",
+            "#SBATCH --time=03:00:00",
             "#SBATCH --signal=B:USR1@1800",
         )
 

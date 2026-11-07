@@ -190,7 +190,9 @@ PROFILES = {
 
 
 def allocation_deadline(mode='production', *, max_seconds=None, allocation_record=None,
-                        checkpoint_interval=250, combined_leg=None):
+                        checkpoint_interval=250, combined_leg=None, serious_last2=False):
+    if serious_last2 and (mode != 'experimental' or checkpoint_interval != 500 or combined_leg is not None):
+        raise RuntimeError('Serious last-two allocation requires isolated Sync-500 experimental mode')
     if checkpoint_interval != 250 and mode != 'experimental':
         raise RuntimeError('Checkpoint variant requires experimental mode')
     if mode == 'experimental':
@@ -239,6 +241,8 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
     if mode == 'experimental' or combined_leg == 'E1':
         required = dict(JobId=os.environ['SLURM_JOB_ID'], JobState='RUNNING', Account='thes2452',
                         Partition='c23g', NumNodes='1', NumTasks='1', NumCPUs='12', **{'CPUs/Task': '12'})
+        if serious_last2:
+            required['JobName'] = 'xr1_last2_serious'
         if any(fields.get(key) != value for key, value in required.items()):
             raise RuntimeError('Experimental allocation requires running thes2452/c23g, one task/node and exactly twelve CPUs')
         if tres.get('cpu') != '12' or memory_bytes != 96*1024**3:
@@ -252,11 +256,26 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
             raise RuntimeError('Experimental allocation requires exactly one H100')
         # Check the actual saved batch script, not an assumed filesystem path.
         batch = subprocess.check_output(['scontrol', 'write', 'batch_script',
-                                         os.environ['SLURM_JOB_ID'], '-'], text=True)
+                                         os.environ['SLURM_JOB_ID'], '-'], text=not serious_last2)
         batch_name = ('claix_b24_sync500_last2.sbatch' if combined_leg is not None
-                      else experiment_profile(checkpoint_interval)['batch_script'])
-        if batch != (ROOT/'scripts'/batch_name).read_text():
+                      else experiment_profile(checkpoint_interval, serious_last2=serious_last2)['batch_script'])
+        expected_batch = ((ROOT/'scripts'/batch_name).read_bytes() if serious_last2
+                          else (ROOT/'scripts'/batch_name).read_text())
+        if batch != expected_batch:
             raise RuntimeError('Allocation requires the exact dedicated batch wrapper (USR1@1800)')
+        if serious_last2:
+            # Query actual capacity, not the H100 product label or Slurm GRES.
+            total = subprocess.check_output(['nvidia-smi', '--id='+visible,
+                '--query-gpu=memory.total', '--format=csv,noheader,nounits'], text=True).strip()
+            from mibot.utils.claix_last2_serious import MIN_GPU_BYTES
+            try:
+                memory_total = int(total) * 1024**2
+            except ValueError as error:
+                raise RuntimeError('Cannot verify physical H100 VRAM') from error
+            if memory_total < MIN_GPU_BYTES:
+                raise RuntimeError('Serious last-two requires >=90 GiB physical H100 VRAM')
+            if allocation_record is not None:
+                allocation_record['gpu_memory_total_bytes'] = memory_total
         sys.path.insert(0, str(ROOT/'scripts'))
         from claix_b24_filesystem import inspect_directory
         for key in ('StdOut', 'StdErr', 'WorkDir'):
@@ -264,7 +283,7 @@ def allocation_deadline(mode='production', *, max_seconds=None, allocation_recor
             inspect_directory(path if key == 'WorkDir' else path.parent)
         if allocation_record is not None:
             allocation_record.update(fields=fields, alloc_tres=tres, gpu_name=gpu[0],
-                                     batch_script_sha256=hashlib.sha256(batch.encode()).hexdigest(),
+                                     batch_script_sha256=hashlib.sha256(batch if isinstance(batch, bytes) else batch.encode()).hexdigest(),
                                      signal_request='B:USR1@1800')
     end = fields.get('EndTime', '')
     if not end or end in ('Unknown', 'N/A'):
@@ -290,9 +309,15 @@ EXPERIMENT_PROFILES = {
 }
 
 
-def experiment_profile(interval):
+def experiment_profile(interval, *, serious_last2=False):
     if type(interval) is not int or interval not in EXPERIMENT_PROFILES:
         raise RuntimeError('Unreviewed experimental checkpoint interval')
+    if serious_last2:
+        if interval != 500:
+            raise RuntimeError('Serious last-two requires Sync-500')
+        sys.path.insert(0, str(ROOT / 'xr1'))
+        from mibot.utils.claix_last2_serious import NAME, CONFIG, BATCH_SCRIPT
+        return dict(name=NAME, config=CONFIG, batch_script=BATCH_SCRIPT)
     return EXPERIMENT_PROFILES[interval]
 
 
@@ -317,7 +342,9 @@ def check_experimental_resume(run_root, resume, plan):
     raw = Path(resume)
     if raw.is_symlink():
         raise RuntimeError('Symlink experimental checkpoint refused')
-    target = Path(run_root)/'project_xr1_doosan'/experiment_profile(plan['checkpoint_interval'])['name']
+    serious = plan.get('serious_variant') == 'last2_sync500_serious_v1'
+    name = experiment_profile(plan['checkpoint_interval'], serious_last2=serious)['name']
+    target = Path(run_root)/'project_xr1_doosan'/name
     check_resume_directory(target, resume)
     receipt = json.loads(raw.with_suffix('.verified.json').read_text())
     experiment = receipt.get('experiment', {})
@@ -327,8 +354,28 @@ def check_experimental_resume(run_root, resume, plan):
         raise RuntimeError('Checkpoint receipt does not belong to this experimental run')
     if plan['checkpoint_interval'] == 500 and (
             experiment.get('checkpoint_interval') != 500
-            or experiment.get('experiment_name') != CHECKPOINT500_NAME):
+            or experiment.get('experiment_name') != name):
         raise RuntimeError('Checkpoint receipt variant mismatch')
+    if serious:
+        from mibot.utils.claix_last2_serious import validate_identity, check_milestones, check_resume_evidence
+        from mibot.utils.claix_checkpoint import config_digest, load_verified
+        validate_identity(experiment)
+        inputs = plan['serious_inputs']
+        if (experiment['inputs_sha256'] != config_digest(inputs)
+                or any(experiment.get(k) != inputs.get(k) for k in (
+                    'source_commit', 'source_tree_sha256', 'scientific_config_sha256',
+                    'pretrained_sha256', 'language_sha256', 'zip_manifest_sha256', 'zip_cache_root'))):
+            raise RuntimeError('Serious resume input/source identity mismatch')
+        check_milestones(target, receipt['global_step'], expected_config=receipt['config_sha256'],
+                         expected_experiment=experiment)
+        check_resume_evidence(target, receipt)
+        from claix_b24_last2_serious_audit import compose
+        from mibot.utils.claix_contract import resume_fingerprint
+        cfg = compose(plan['overrides'], plan['run_root'])
+        fingerprint = resume_fingerprint(cfg, dict(sha256=inputs['train_sha256']), 12288, experiment=experiment)
+        # Full receipt/SHA/master/AdamW/scheduler/loops/RNG/replay validation.
+        ck = load_verified(raw, expected_config=fingerprint, expected_experiment=experiment)
+        del ck
     return record
 
 
@@ -366,6 +413,8 @@ def main(argv=None):
     p.add_argument('--experimental-unqualified', action='store_true', help='Explicit opt-in; bypass formal release approvals only')
     p.add_argument('--experimental-checkpoint-interval', type=int, choices=(250, 500),
                    help='Experimental only: select the reviewed 250 or isolated 500 recipe')
+    p.add_argument('--serious-last2', action='store_true', help='Explicit isolated full-horizon last-two Sync-500 profile')
+    p.add_argument('--serious-audit', help='Successful dedicated pre-submission audit JSON; required for execution')
     p.add_argument('--filesystem-source', help='Experimental: verified persistent Lustre SOURCE')
     p.add_argument('--project-id', type=int, help='Experimental: actual Lustre project ID')
     p.add_argument('--execute', action='store_true')
@@ -388,6 +437,15 @@ def main(argv=None):
     p.add_argument('--overrides', default=str(ROOT / '.claix_b24_reference/configs/hydra_overrides.json'))
     args = p.parse_args(argv)
     experimental = args.mode == 'experimental'
+    if args.serious_last2 and (not experimental or not args.experimental_unqualified
+            or args.experimental_checkpoint_interval != 500 or args.combined_leg is not None
+            or args.qualification_last2_vram_probe or args.qualification_max_steps is not None
+            or os.environ.get('XR1_LAST2_VRAM_PROBE')):
+        p.error('Serious last-two requires isolated explicit experimental Sync-500 selection')
+    if args.serious_audit and not args.serious_last2:
+        p.error('Serious audit is for the serious last-two profile only')
+    if args.serious_last2 and args.execute and not args.serious_audit:
+        p.error('Serious execution requires a reviewed CPU/pre-submission audit')
     if args.combined_leg is not None:
         valid_b = (args.combined_leg == 'B' and experimental
                    and args.experimental_unqualified
@@ -408,7 +466,7 @@ def main(argv=None):
     if args.experimental_checkpoint_interval is not None and not experimental:
         p.error('Checkpoint selector requires experimental mode')
     checkpoint_interval = args.experimental_checkpoint_interval or 250
-    profile = experiment_profile(checkpoint_interval)
+    profile = experiment_profile(checkpoint_interval, serious_last2=args.serious_last2)
     if experimental != args.experimental_unqualified:
         p.error('Experimental mode requires --mode experimental AND --experimental-unqualified')
     if experimental and (args.release_record or os.environ.get('XR1_OPTION_B_RESUME_BRIDGE')):
@@ -468,6 +526,16 @@ def main(argv=None):
                     filesystem_source=args.filesystem_source, project_id=args.project_id)
         if checkpoint_interval == 500:
             plan['experiment_name'] = profile['name']
+        if args.serious_last2:
+            from mibot.utils.claix_last2_serious import VARIANT
+            plan.update(serious_variant=VARIANT, trainable_last_n=2, training_steps=48284,
+                        retention_milestones=list(range(5000, 50000, 5000)))
+            if args.serious_audit:
+                sys.path.insert(0, str(ROOT/'scripts'))
+                from claix_b24_last2_serious_audit import validate_report
+                inputs, _ = validate_report(args.serious_audit, plan, args.python, args.resume,
+                                             allocation=args.execute)
+                plan['serious_inputs'] = inputs
         if args.resume:
             check_experimental_resume(plan['run_root'], args.resume, plan)
     overrides = base + ['trainer.default_root_dir=' + json.dumps(plan['run_root']),
@@ -528,6 +596,8 @@ def main(argv=None):
         release_hash = check_release(args.release_record, plan, require_immutable=True)
     allocation = {}
     variant_options = dict(checkpoint_interval=500) if checkpoint_interval == 500 else {}
+    if args.serious_last2:
+        variant_options['serious_last2'] = True
     if args.combined_leg is not None:
         variant_options['combined_leg'] = args.combined_leg
     deadline = (allocation_deadline(args.mode, allocation_record=allocation, **variant_options)
@@ -540,10 +610,11 @@ def main(argv=None):
     run_root = Path(plan['run_root'])
     if experimental:
         sys.path.insert(0, str(ROOT/'scripts'))
-        from claix_b24_storage_preflight import experimental_evaluate
+        from claix_b24_storage_preflight import experimental_evaluate, serious_evaluate
         from claix_b24_filesystem import inspect_directory
         # Do not create state on an unverified filesystem, even for a failed launch.
-        storage_result = experimental_evaluate(run_root, args.filesystem_source, args.project_id)
+        storage_result = (serious_evaluate if args.serious_last2 else experimental_evaluate)(
+            run_root, args.filesystem_source, args.project_id)
         print('ALLOCATION_STORAGE=' + json.dumps(storage_result, sort_keys=True), flush=True)
         if storage_result['status'] != 'PASS':
             raise RuntimeError('Experimental storage preflight aborted before model loading: '
@@ -623,6 +694,8 @@ def main(argv=None):
                    PYTHONPATH=str(ROOT / 'xr1') + os.pathsep + os.environ.get('PYTHONPATH', ''))
         if args.qualification_last2_vram_probe:
             env['XR1_LAST2_VRAM_PROBE'] = '1'
+        if args.serious_last2:
+            env['XR1_SERIOUS_LAST2'] = '1'
         if experimental:
             env['XR1_EXPERIMENTAL_UNQUALIFIED'] = '1'
             env['XR1_LOADER_DIAGNOSTICS_JSON'] = str(experimental_diagnostics(log_prefix, run_root))

@@ -1,0 +1,54 @@
+TEST_MOCK=Lightning Callback/CheckpointIO bases; Trainer is not executed
+CPU_ENV torch=2.7.1+cu128; CUDA hidden; synthetic inputs only
+test_changed_science_rejected_even_on_fresh_start (test_claix_last2_serious.SeriousConfigTest.test_changed_science_rejected_even_on_fresh_start) ... ok
+test_clean_source_gate_and_dirty_rejection (test_claix_last2_serious.SeriousConfigTest.test_clean_source_gate_and_dirty_rejection) ... ok
+test_exact_science_and_original_initialization (test_claix_last2_serious.SeriousConfigTest.test_exact_science_and_original_initialization) ... ok
+test_fresh_manifest_binds_source_uuid_science_cache (test_claix_last2_serious.SeriousConfigTest.test_fresh_manifest_binds_source_uuid_science_cache) ... ok
+test_selector_separates_all_legacy_modes (test_claix_last2_serious.SeriousConfigTest.test_selector_separates_all_legacy_modes) ... ok
+test_actual_entrypoint_fresh_and_same_run_resume_retains_recipe_and_runtime (test_claix_last2_serious.SeriousEntrypointTest.test_actual_entrypoint_fresh_and_same_run_resume_retains_recipe_and_runtime) ... ok
+test_milestone_and_final_runtime_publication (test_claix_last2_serious.SeriousRuntimeTest.test_milestone_and_final_runtime_publication) ... ok
+test_missing_pin_and_space_fail_before_publication (test_claix_last2_serious.SeriousRuntimeTest.test_missing_pin_and_space_fail_before_publication) ... ok
+test_sync500_only_and_immediate_safe_stop (test_claix_last2_serious.SeriousRuntimeTest.test_sync500_only_and_immediate_safe_stop) ... ok
+test_actual_optimizer_rng_resume_and_sampler_cursor_equal_continuous (test_claix_last2_serious.SeriousTransactionTest.test_actual_optimizer_rng_resume_and_sampler_cursor_equal_continuous) ... ok
+test_actual_torch_publication_readback_receipt_and_size (test_claix_last2_serious.SeriousTransactionTest.test_actual_torch_publication_readback_receipt_and_size) ... ok
+test_all_milestones_final_safe_stop_and_two_recovery_bounded_real_reads (test_claix_last2_serious.SeriousTransactionTest.test_all_milestones_final_safe_stop_and_two_recovery_bounded_real_reads) ... ok
+test_checkpoint_rejects_arbitrary_last_two_and_changed_metadata_state (test_claix_last2_serious.SeriousTransactionTest.test_checkpoint_rejects_arbitrary_last_two_and_changed_metadata_state) ... ok
+test_e1_and_sync500_last_one_cannot_resume_serious (test_claix_last2_serious.SeriousTransactionTest.test_e1_and_sync500_last_one_cannot_resume_serious) ... ok
+test_failed_serialization_keeps_previous_and_no_clobber (test_claix_last2_serious.SeriousTransactionTest.test_failed_serialization_keeps_previous_and_no_clobber) ... ok
+test_foreign_uuid_source_fingerprint_and_corrupted_payload_rejected (test_claix_last2_serious.SeriousTransactionTest.test_foreign_uuid_source_fingerprint_and_corrupted_payload_rejected) ... ok
+test_launcher_same_run_manifest_source_and_recomputed_fingerprint (test_claix_last2_serious.SeriousTransactionTest.test_launcher_same_run_manifest_source_and_recomputed_fingerprint) ... ok
+test_missing_milestone_payload_receipt_and_foreign_receipt_fail_before_deletion (test_claix_last2_serious.SeriousTransactionTest.test_missing_milestone_payload_receipt_and_foreign_receipt_fail_before_deletion) ... ok
+test_no_silent_rollback_or_wrong_selected_checkpoint (test_claix_last2_serious.SeriousTransactionTest.test_no_silent_rollback_or_wrong_selected_checkpoint) ... ok
+test_audit_binds_verified_inputs_and_rejects_changed_base_cache_plan (test_claix_last2_serious.SeriousWrapperAuditTest.test_audit_binds_verified_inputs_and_rejects_changed_base_cache_plan) ... ok
+test_continuation_budget_uses_real_receipts_and_existing_pinned_bytes (test_claix_last2_serious.SeriousWrapperAuditTest.test_continuation_budget_uses_real_receipts_and_existing_pinned_bytes) ... ok
+test_cpu_acceptance_never_accepts_stubbed_or_foreign_evidence (test_claix_last2_serious.SeriousWrapperAuditTest.test_cpu_acceptance_never_accepts_stubbed_or_foreign_evidence) ... ok
+test_dedicated_wrapper_resources_and_byte_attestation (test_claix_last2_serious.SeriousWrapperAuditTest.test_dedicated_wrapper_resources_and_byte_attestation) ... ok
+test_duplicate_active_run_and_unknown_queue_fail_closed (test_claix_last2_serious.SeriousWrapperAuditTest.test_duplicate_active_run_and_unknown_queue_fail_closed) ... ok
+test_historical_recipes_and_completed_wrapper_unchanged (test_claix_last2_serious.SeriousWrapperAuditTest.test_historical_recipes_and_completed_wrapper_unchanged) ... ok
+test_storage_budget_accounts_for_nine_pins_final_recovery_temporary_and_backlog (test_claix_last2_serious.SeriousWrapperAuditTest.test_storage_budget_accounts_for_nine_pins_final_recovery_temporary_and_backlog) ... ok
+test_storage_requires_full_budget_from_user_project_and_filesystem (test_claix_last2_serious.SeriousWrapperAuditTest.test_storage_requires_full_budget_from_user_project_and_filesystem) ... ok
+test_all_nine_milestones_survive (test_claix_serious_retention.SeriousRetentionTest.test_all_nine_milestones_survive) ... ok
+test_historical_policy_unchanged (test_claix_serious_retention.SeriousRetentionTest.test_historical_policy_unchanged) ... ok
+test_missing_milestone_blocks_rotation (test_claix_serious_retention.SeriousRetentionTest.test_missing_milestone_blocks_rotation) ... ok
+test_unapproved_milestones_rejected (test_claix_serious_retention.SeriousRetentionTest.test_unapproved_milestones_rejected) ... ok
+test_last_two_checkpoint_roundtrip (test_claix_last2_compact.LastTwoCompactTest.test_last_two_checkpoint_roundtrip) ... ok
+test_last_two_requires_explicit_marker (test_claix_last2_compact.LastTwoCompactTest.test_last_two_requires_explicit_marker) ... ok
+test_only_selected_trainable_parameters_are_serialized (test_claix_last2_compact.LastTwoCompactTest.test_only_selected_trainable_parameters_are_serialized) ... ok
+test_original_last_one_still_valid (test_claix_last2_compact.LastTwoCompactTest.test_original_last_one_still_valid) ... ok
+test_batch_wrapper_resources (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_batch_wrapper_resources) ... ok
+test_insufficient_cpu_allocation_rejected (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_insufficient_cpu_allocation_rejected) ... ok
+test_last2_combined_allocation_accepted (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_last2_combined_allocation_accepted) ... ALLOCATION={"mode": "h100-qualification", "time_limit": "03:00:00", "end_time": "2026-11-08T03:00:00", "safe_stop_epoch": 1794070084.0, "alloc_tres": {"cpu": "12", "mem": "96G", "gres/gpu": "1"}}
+ok
+test_non_h100_rejected (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_non_h100_rejected) ... ok
+test_original_experiment_rejects_three_hours (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_original_experiment_rejects_three_hours) ... ok
+test_original_qualification_rejects_three_hours (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_original_qualification_rejects_three_hours) ... ok
+test_sync500_combined_allocation_accepted (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_sync500_combined_allocation_accepted) ... ALLOCATION={"mode": "experimental", "time_limit": "03:00:00", "end_time": "2026-11-08T03:00:00", "safe_stop_epoch": 1794070084.0, "alloc_tres": {"cpu": "12", "mem": "96G", "gres/gpu": "1"}}
+ok
+test_wrong_batch_script_rejected (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_wrong_batch_script_rejected) ... ok
+test_wrong_combined_leg_rejected (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_wrong_combined_leg_rejected) ... ok
+test_wrong_walltime_rejected (test_claix_sync500_last2_contract.CombinedAllocationContractTest.test_wrong_walltime_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 45 tests in 9.354s
+
+OK

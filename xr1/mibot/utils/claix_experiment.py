@@ -40,9 +40,13 @@ def bind_experiment(conf, production, inventory):
         if loader.get(key) != expected:
             raise RuntimeError('Experimental frozen loader setting changed: ' + key)
     variant = production.get('checkpoint_variant', 'checkpoint250_v1')
-    if variant not in ('checkpoint250_v1', 'checkpoint500_v1'):
+    from mibot.utils.claix_last2_serious import VARIANT, NAME, bind_serious
+    serious = variant == VARIANT
+    if variant not in ('checkpoint250_v1', 'checkpoint500_v1', VARIANT):
         raise RuntimeError('Unreviewed experimental checkpoint variant')
     interval, name = (500, CHECKPOINT500_NAME) if variant == 'checkpoint500_v1' else (250, EXPERIMENT_NAME)
+    if serious:
+        interval, name = 500, NAME
     if conf['trainer']['save_interval'] != interval or conf['trainer']['exp_name'] != name:
         raise RuntimeError('Experimental checkpoint/output configuration changed')
     if interval == 500 and (manifest.get('plan', {}).get('checkpoint_interval') != interval
@@ -57,6 +61,8 @@ def bind_experiment(conf, production, inventory):
                 zip_cache_root=str(cache), zip_manifest_sha256=file_sha256(cache/'media_manifest.jsonl'))
     if interval == 500:
         identity.update(checkpoint_interval=interval, experiment_name=name)
+    if serious:
+        identity = bind_serious(conf, production, inventory, manifest, identity)
     return identity
 
 
@@ -66,9 +72,27 @@ def load_experimental_resume(path, contract, fingerprint, experiment):
     if type(interval) is not int or interval not in (250, 500):
         raise RuntimeError('Unreviewed experimental recovery interval')
     name = CHECKPOINT500_NAME if interval == 500 else EXPERIMENT_NAME
+    from mibot.utils.claix_last2_serious import NAME, validate_identity, source_identity, check_milestones
+    serious = experiment.get('experiment_name') == NAME or 'serious_variant' in experiment
+    if serious:
+        validate_identity(experiment)
+        if any(experiment.get(k) != v for k, v in source_identity().items()):
+            raise RuntimeError('Serious resume source identity mismatch')
+        name = NAME
     if interval == 500 and experiment.get('experiment_name') != name:
         raise RuntimeError('Experimental recovery variant mismatch')
     target = Path(experiment['run_root'])/'project_xr1_doosan'/name
     if path.is_symlink() or path.resolve(strict=True).parent != target.resolve(strict=True):
         raise RuntimeError('Experimental recovery accepts this run directory only')
+    if serious:
+        # Repeat the launcher's no-rollback guard for direct entrypoint callers.
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))
+        from claix_b24_launch import check_resume_directory
+        check_resume_directory(target, path)
+        receipt = json.loads(path.with_suffix('.verified.json').read_text())
+        from mibot.utils.claix_last2_serious import check_resume_evidence
+        check_resume_evidence(target, receipt)
+        check_milestones(target, receipt['global_step'], expected_config=fingerprint,
+                         expected_experiment=experiment)
     return load_verified(path, contract, expected_config=fingerprint, expected_experiment=experiment)

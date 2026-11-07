@@ -1,0 +1,18 @@
+# @package _global_
+# Explicit isolated serious selector. Fresh original weights or SAME-run recovery only.
+defaults:
+  - claix_b24_checkpoint500
+  - _self_
+
+production:
+  checkpoint_variant: last2_sync500_serious_v1
+  serious_last2: true
+
+model:
+  params:
+    last_n: 2
+
+trainer:
+  exp_name: xr1_doosan_b24_last2_sync500_serious_v1
+  default_root_dir: null
+  ckpt_path: null

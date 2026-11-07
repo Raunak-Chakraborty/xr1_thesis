@@ -81,11 +81,13 @@ class VerifiedCheckpointIO(CheckpointIO):
 
 
 class ProductionRuntime(Callback):
-    def __init__(self, directory, *, deadline, interval=250, stop_after_step=None):
+    def __init__(self, directory, *, deadline, interval=250, stop_after_step=None,
+                 retention_milestones=None):
         self.directory = Path(directory)
         self.stop = StopRequest(deadline)
         self.interval = int(interval)
         self.stop_after_step = stop_after_step
+        self.retention_milestones = retention_milestones
         if self.interval < 1:
             raise ValueError('Checkpoint interval must be positive')
         self.last_saved = -1
@@ -154,6 +156,10 @@ class ProductionRuntime(Callback):
         step = int(trainer.global_step)
         if self.last_saved == step:
             return
+        if self.retention_milestones is not None and trainer.is_global_zero:
+            from mibot.utils.claix_last2_serious import before_publication
+            before_publication(self.directory, step, pl_module._compact_cfg['config_sha256'],
+                               pl_module._compact_cfg.get('experiment'))
         checkpoint_io = getattr(trainer.strategy, 'checkpoint_io', None)
         measured = getattr(checkpoint_io, 'instrument', False)
         callback_started = time.perf_counter() if measured else None
@@ -179,7 +185,10 @@ class ProductionRuntime(Callback):
                 atomic_json(self.directory / 'safe-stop.json',
                             json.loads(path.with_suffix('.verified.json').read_text()))
             rotation_started = time.perf_counter() if measured else None
-            rotation = rotate_checkpoints(self.directory, expected_config=pl_module._compact_cfg['config_sha256'])
+            rotation_options = {'expected_config': pl_module._compact_cfg['config_sha256']}
+            if self.retention_milestones is not None:
+                rotation_options['retention_milestones'] = self.retention_milestones
+            rotation = rotate_checkpoints(self.directory, **rotation_options)
             timing_fields = {}
             if measured:
                 timing_fields['timings'] = dict(checkpoint_io.last_save_timings,

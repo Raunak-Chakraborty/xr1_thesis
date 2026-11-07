@@ -84,6 +84,12 @@ def validate_production_checkpoint(ck, contract, *, expected_config=None, resuma
     # short E1 VRAM qualification. No general last-N relaxation.
     runtime_probe = ck.get('xr1_production', {})
     marker = runtime_probe.get('qualification_last2_vram_probe')
+    experiment_probe = runtime_probe.get('experiment')
+    from mibot.utils.claix_last2_serious import NAME, validate_checkpoint
+    serious = isinstance(experiment_probe, dict) and (
+        experiment_probe.get('experiment_name') == NAME or 'serious_variant' in experiment_probe)
+    if serious:
+        validate_checkpoint(ck, experiment_probe)
     approved_last_n = (
         (meta.get('last_n') == 1 and marker is None)
         or (
@@ -91,6 +97,7 @@ def validate_production_checkpoint(ck, contract, *, expected_config=None, resuma
             and marker is True
             and runtime_probe.get('experiment') is None
         )
+        or (serious and meta.get('last_n') == 2 and marker is None)
     )
     if not approved_last_n:
         raise RuntimeError('Unapproved compact last-N qualification identity')
@@ -249,22 +256,30 @@ def load_verified(path, contract=None, *, expected_config=None, resumable=True, 
 
 
 HISTORICAL_STEPS = frozenset((2000, 5000, 10000, 20000, 30000, 40000))
+SERIOUS_LAST2_MILESTONES = tuple(range(5000, 50000, 5000))
 
 
 ROTATION_VERIFY_BUDGET = 8
 
 
-def rotate_checkpoints(directory, keep=2, *, expected_config=None):
+def rotate_checkpoints(directory, keep=2, *, expected_config=None, retention_milestones=None):
     """Receipt-selected retention under the launcher's exclusive run-root lock.
 
-    Scan small receipts only, keeping at most eight ordinary rows and seven
-    pins. Verify at most eight distinct payloads, one at a time, including newest, recovery, safe-stop and deletion candidates. Old
-    milestones require no payload I/O unless needed for recovery. Backlogs are
+    Scan small receipts only, keeping at most eight ordinary rows plus
+    separately protected milestone receipts. Fully verify at most eight
+    payloads at each rotation. Protected milestones do not require a full
+    reread at every ordinary checkpoint. Backlogs are
     reclaimed incrementally; corrupt/unverified files are never deleted. Stat
     size is only a filter, never integrity evidence. No persistent trust cache.
     """
     if keep < 2 or keep >= ROTATION_VERIFY_BUDGET:
         raise ValueError('Keep between two and seven recovery checkpoints')
+    if retention_milestones is None:
+        protected_milestones = HISTORICAL_STEPS
+    elif type(retention_milestones) in (tuple, list) and tuple(retention_milestones) == SERIOUS_LAST2_MILESTONES:
+        protected_milestones = frozenset((*SERIOUS_LAST2_MILESTONES, 48284))
+    else:
+        raise ValueError('Unreviewed checkpoint milestone retention policy')
     directory = Path(directory)
     def pointer(name):
         path = directory / name
@@ -275,6 +290,11 @@ def rotate_checkpoints(directory, keep=2, *, expected_config=None):
     if not isinstance(latest, dict) or (expected_config is not None
             and latest.get('config_sha256') != expected_config):
         raise RuntimeError('Incompatible latest checkpoint pointer')
+    if retention_milestones is not None:
+        from mibot.utils.claix_last2_serious import check_milestones
+        check_milestones(directory, latest.get('global_step', 0),
+                         expected_config=latest.get('config_sha256'),
+                         expected_experiment=latest.get('experiment'))
     has_stop = os.path.lexists(directory / 'safe-stop.json')
     stop = pointer('safe-stop.json') if has_stop else None
     if has_stop and not isinstance(stop, dict):
@@ -308,7 +328,7 @@ def rotate_checkpoints(directory, keep=2, *, expected_config=None):
                     or row['bytes'] != payload.stat().st_size):
                 continue
             item = (step, payload, row)
-            if step in HISTORICAL_STEPS or row == stop:
+            if step in protected_milestones or row == stop:
                 pinned[step] = item
             else:
                 heapq.heappush(recent, item)
@@ -316,6 +336,14 @@ def rotate_checkpoints(directory, keep=2, *, expected_config=None):
                     heapq.heappop(recent)
         except (OSError, ValueError, KeyError, TypeError):
             continue
+    # Serious-run milestones must not silently disappear.
+    if retention_milestones is not None:
+        newest_step = latest.get('global_step')
+        if type(newest_step) is not int or newest_step < 1:
+            raise RuntimeError('Invalid newest checkpoint step')
+        for milestone in SERIOUS_LAST2_MILESTONES:
+            if milestone <= newest_step and milestone not in pinned:
+                raise RuntimeError(f'Missing serious-run milestone checkpoint: {milestone}')
     rows = sorted([*recent, *pinned.values()], key=lambda item: item[0], reverse=True)
     if not rows or latest != rows[0][2] or latest != newest_receipt:
         raise RuntimeError('latest.json does not identify the newest verified checkpoint')
@@ -335,7 +363,7 @@ def rotate_checkpoints(directory, keep=2, *, expected_config=None):
         return checked[step]
     if not verify(rows[0]):
         raise RuntimeError('Newest checkpoint failed verification; no rotation allowed')
-    protected = set(HISTORICAL_STEPS)
+    protected = set(protected_milestones)
     if stop is not None:
         match = next((item for item in rows if item[2] == stop), None)
         if match is None or not verify(match):

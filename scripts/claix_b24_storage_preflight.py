@@ -138,6 +138,44 @@ def experimental_evaluate(run_root, filesystem_source, project_id, *, stage='all
     return result
 
 
+def serious_evaluate(run_root, filesystem_source, project_id, *, stage='allocation'):
+    """Serious-only capacity; retain the historical 30 GiB policy unchanged."""
+    from pathlib import Path
+    from mibot.utils.claix_last2_serious import NAME, storage_budget, check_milestones
+    from mibot.utils.claix_checkpoint import _read_receipt, SERIOUS_LAST2_MILESTONES
+    target = Path(run_root) / 'project_xr1_doosan' / NAME
+    maximum = 0
+    pinned_bytes = 0
+    if target.exists():
+        latest = _read_receipt(target / 'latest.json')
+        check_milestones(target, latest['global_step'], expected_config=latest['config_sha256'],
+                         expected_experiment=latest['experiment'])
+        for path in target.glob('step-*.verified.json'):
+            row = _read_receipt(path)
+            if (row.get('experiment') != latest['experiment'] or type(row.get('bytes')) is not int
+                    or row['bytes'] <= 0):
+                raise RuntimeError('Unrecognized serious receipt in storage budget')
+            maximum = max(maximum, row['bytes'])
+            if row['global_step'] in (*SERIOUS_LAST2_MILESTONES, 48284):
+                pinned_bytes += row['bytes']
+    budget = storage_budget(maximum)
+    budget['measured_receipt_max_bytes'] = maximum
+    budget['existing_pinned_bytes'] = pinned_bytes
+    budget['required_free_bytes'] -= pinned_bytes
+    result = experimental_evaluate(run_root, filesystem_source, project_id, stage=stage)
+    result['budget'] = budget
+    checks = result['checks']
+    checks['filesystem_headroom'] = result['available_bytes'] >= budget['required_free_bytes']
+    checks['inodes'] = result['available_inodes'] >= budget['required_free_inodes']
+    for row in result['quota_measurements']:
+        row['sufficient'] = ((row['remaining_bytes'] is None or row['remaining_bytes'] >= budget['required_free_bytes'])
+                            and (row['remaining_inodes'] is None or row['remaining_inodes'] >= budget['required_free_inodes']))
+        checks[row['identity'] + '_quota'] = row['sufficient']
+    result['abort_reasons'] = [key + ' failed' for key, passed in checks.items() if not passed]
+    result['status'] = 'PASS' if all(checks.values()) else 'FAIL'
+    return result
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--run-root', required=True)

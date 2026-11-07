@@ -41,6 +41,11 @@ class DoosanCompactRunner(BaseRunner):
         super().configure_model()
         selected_report = apply_last_n_policy(self.model, self._last_n)
         selected = {'model.' + name for name in selected_report['trainable_names']}
+        from mibot.utils.claix_last2_serious import NAME, PARAMETERS, validate_selected_keys
+        if self._compact_cfg.get('experiment', {}).get('experiment_name') == NAME:
+            validate_selected_keys(selected)
+            if selected_report['trainable_parameters'] != PARAMETERS:
+                raise RuntimeError('Serious last-two trainable parameter count drift')
         self._compact_meta = install_compact_fp32(
             self, selected_keys=selected,
             pretrained_sha256=self._compact_cfg['pretrained_sha256'],
@@ -104,6 +109,12 @@ class DoosanCompactRunner(BaseRunner):
             }
             if 'experiment' in self._compact_cfg:
                 checkpoint['xr1_production']['experiment'] = dict(self._compact_cfg['experiment'])
+                from mibot.utils.claix_last2_serious import NAME
+                if self._compact_cfg['experiment'].get('experiment_name') == NAME:
+                    names = {id(p): name for name, p in self.named_parameters() if p.requires_grad}
+                    checkpoint['xr1_production']['optimizer_parameter_keys'] = [
+                        [names[id(p)] for p in group['params']]
+                        for group in self.trainer.optimizers[0].param_groups]
             if self._compact_cfg.get('qualification_last2_vram_probe') is True:
                 checkpoint['xr1_production']['qualification_last2_vram_probe'] = True
         if int(checkpoint.get('global_step', step)) != step:

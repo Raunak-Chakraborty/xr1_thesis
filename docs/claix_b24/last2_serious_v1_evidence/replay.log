@@ -1,0 +1,15 @@
+TEST_MOCK=mmengine.Config/Registry (dependency unavailable)
+TEST_MOCK=XR1 backbone import; existing flow-loss methods extracted verbatim via AST
+test_augmentation_restores_parent_rng (test_claix_replay.ReplayTest.test_augmentation_restores_parent_rng) ... ok
+test_compact_table_preserves_original_cycles (test_claix_replay.ReplayTest.test_compact_table_preserves_original_cycles) ... TEST_MOCK=LightningDataModule base; real sampler, augmentation and worker processes
+XR1_DOOSAN_SAMPLER=PASS seed=42 raw_frames=7 samples=21 unique_episodes=2
+ok
+test_partial_batch_and_sampler_failures (test_claix_replay.ReplayTest.test_partial_batch_and_sampler_failures) ... ok
+test_rank_streams_and_contract_changes (test_claix_replay.ReplayTest.test_rank_streams_and_contract_changes) ... ok
+test_worker_error_surfaces (test_claix_replay.ReplayTest.test_worker_error_surfaces) ... ok
+test_workers_and_prefetch_resume (test_claix_replay.ReplayTest.test_workers_and_prefetch_resume) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.360s
+
+OK

@@ -48,7 +48,14 @@ def main(cfg: DictConfig):
             raise RuntimeError('Production MAX_LENGTH must be 12288 before collator creation')
         os.environ['MAX_LENGTH'] = str(max_length)
         last2_probe = production.get('last2_vram_probe') is True
-        required_last_n = 2 if last2_probe else 1
+        serious_last2 = production.get('serious_last2') is True
+        if serious_last2:
+            from mibot.utils.claix_last2_serious import validate_science, MIN_GPU_BYTES
+            validate_science(conf.to_dict(), production)
+            if (os.environ.get('XR1_SERIOUS_LAST2') != '1' or last2_probe
+                    or torch.cuda.get_device_properties(0).total_memory < MIN_GPU_BYTES):
+                raise RuntimeError('Serious last-two requires isolated authorization and >=90 GiB physical VRAM')
+        required_last_n = 2 if last2_probe or serious_last2 else 1
         if (int(conf.model.params.last_n) != required_last_n
                 or int(conf.data.params.train_datasets.batch_size) != 24):
             raise RuntimeError('Unapproved last-N policy or batch size')
@@ -177,8 +184,17 @@ def main(cfg: DictConfig):
         from mibot.utils.claix_checkpoint import atomic_json
         import time
         atomic_json(target / f'resolved-{time.time_ns()}.json', source_config)
-        atomic_json(target / 'training_inventory.json', inventory)
-        atomic_json(target / 'resume_contract.json', {'config_sha256': fingerprint, 'replay': contract})
+        for filename, record in [('training_inventory.json', inventory),
+                                 ('resume_contract.json', {'config_sha256': fingerprint, 'replay': contract})]:
+            path = target / filename
+            if production.get('serious_last2') is True:
+                if path.exists():
+                    if path.is_symlink() or json.loads(path.read_text()) != record:
+                        raise RuntimeError('Serious immutable run evidence changed: ' + filename)
+                else:
+                    atomic_json(path, record, exclusive=True)
+            else:
+                atomic_json(path, record)
         if experiment is not None:
             atomic_json(target / f'experimental-start-{time.time_ns()}.json', dict(
                 experimental_unqualified=True, experiment=experiment,
@@ -196,7 +212,9 @@ def main(cfg: DictConfig):
                 {'from_step': step, 'original_config_sha256': bridge_record['original_config_sha256'],
                  'new_config_sha256': fingerprint, 'candidate_commit': bridge_record['candidate_commit']},
                 sort_keys=True), flush=True)
-    with (target / 'resolved_compact_config.json').open('w') as f:
+    resolved_name = (f'resolved-compact-{time.time_ns()}.json'
+                     if production and production.get('serious_last2') is True else 'resolved_compact_config.json')
+    with (target / resolved_name).open('x' if production and production.get('serious_last2') is True else 'w') as f:
         json.dump(conf.to_dict(), f, indent=2, default=str)
     interval = int(conf.trainer.pop('save_interval', 1000))
     checkpoint = ModelCheckpoint(save_top_k=1, save_last=True,
@@ -205,8 +223,11 @@ def main(cfg: DictConfig):
                                  dirpath=str(target), enable_version_counter=False)
     conf.trainer.default_root_dir = str(target)
     if production:
+        from mibot.utils.claix_checkpoint import SERIOUS_LAST2_MILESTONES
         checkpoint = ProductionRuntime(target, deadline=deadline, interval=interval,
-                                       stop_after_step=production.get('stop_after_step'))
+                                       stop_after_step=production.get('stop_after_step'),
+                                       **({'retention_milestones': SERIOUS_LAST2_MILESTONES}
+                                          if production.get('serious_last2') is True else {}))
         conf.trainer.plugins = [VerifiedCheckpointIO(expected_config=fingerprint if experiment else None,
                                                      expected_experiment=experiment,
                                                      instrument=bool(experiment and experiment.get('checkpoint_interval') == 500))]

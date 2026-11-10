@@ -1,0 +1,3107 @@
+{
+  "schema": "xr1_motion_focus_v1_preflight",
+  "status": "DESIGN_ONLY_NOT_CONNECTED_TO_DATALOADER",
+  "train_episode_records": [
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000000/episode_000000.json",
+      "num_frames": 456,
+      "global_offset": 0,
+      "release_frame": 430,
+      "invalid_action_indices": [
+        455
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000003/episode_000003.json",
+      "num_frames": 730,
+      "global_offset": 456,
+      "release_frame": 698,
+      "invalid_action_indices": [
+        729
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000004/episode_000004.json",
+      "num_frames": 824,
+      "global_offset": 1186,
+      "release_frame": 800,
+      "invalid_action_indices": [
+        823
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000006/episode_000006.json",
+      "num_frames": 1107,
+      "global_offset": 2010,
+      "release_frame": 1084,
+      "invalid_action_indices": [
+        1106
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000007/episode_000007.json",
+      "num_frames": 929,
+      "global_offset": 3117,
+      "release_frame": 896,
+      "invalid_action_indices": [
+        928
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000008/episode_000008.json",
+      "num_frames": 623,
+      "global_offset": 4046,
+      "release_frame": 599,
+      "invalid_action_indices": [
+        622
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/big_plate/episode_000009/episode_000009.json",
+      "num_frames": 898,
+      "global_offset": 4669,
+      "release_frame": 868,
+      "invalid_action_indices": [
+        897
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000000/episode_000000.json",
+      "num_frames": 518,
+      "global_offset": 5567,
+      "release_frame": 491,
+      "invalid_action_indices": [
+        517
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000003/episode_000003.json",
+      "num_frames": 354,
+      "global_offset": 6085,
+      "release_frame": 330,
+      "invalid_action_indices": [
+        353
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000004/episode_000004.json",
+      "num_frames": 409,
+      "global_offset": 6439,
+      "release_frame": 380,
+      "invalid_action_indices": [
+        408
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000005/episode_000005.json",
+      "num_frames": 327,
+      "global_offset": 6848,
+      "release_frame": 304,
+      "invalid_action_indices": [
+        326
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000007/episode_000007.json",
+      "num_frames": 423,
+      "global_offset": 7175,
+      "release_frame": 394,
+      "invalid_action_indices": [
+        422
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000008/episode_000008.json",
+      "num_frames": 661,
+      "global_offset": 7598,
+      "release_frame": 637,
+      "invalid_action_indices": [
+        660
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand/episode_000009/episode_000009.json",
+      "num_frames": 448,
+      "global_offset": 8259,
+      "release_frame": 423,
+      "invalid_action_indices": [
+        447
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000000/episode_000000.json",
+      "num_frames": 1114,
+      "global_offset": 8707,
+      "release_frame": 1095,
+      "invalid_action_indices": [
+        1113
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000001/episode_000001.json",
+      "num_frames": 1112,
+      "global_offset": 9821,
+      "release_frame": 1078,
+      "invalid_action_indices": [
+        1111
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000002/episode_000002.json",
+      "num_frames": 878,
+      "global_offset": 10933,
+      "release_frame": 858,
+      "invalid_action_indices": [
+        877
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000004/episode_000004.json",
+      "num_frames": 1219,
+      "global_offset": 11811,
+      "release_frame": 1204,
+      "invalid_action_indices": [
+        1218
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000005/episode_000005.json",
+      "num_frames": 889,
+      "global_offset": 13030,
+      "release_frame": 872,
+      "invalid_action_indices": [
+        888
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000006/episode_000006.json",
+      "num_frames": 805,
+      "global_offset": 13919,
+      "release_frame": 775,
+      "invalid_action_indices": [
+        804
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000007/episode_000007.json",
+      "num_frames": 1432,
+      "global_offset": 14724,
+      "release_frame": 1399,
+      "invalid_action_indices": [
+        1431
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000008/episode_000008.json",
+      "num_frames": 1676,
+      "global_offset": 16156,
+      "release_frame": 1654,
+      "invalid_action_indices": [
+        1675
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/clock_hand_quest/episode_000010/episode_000010.json",
+      "num_frames": 767,
+      "global_offset": 17832,
+      "release_frame": 741,
+      "invalid_action_indices": [
+        766
+      ],
+      "pause_downweight_intervals": [
+        [
+          500,
+          538
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000000/episode_000000.json",
+      "num_frames": 530,
+      "global_offset": 18599,
+      "release_frame": 503,
+      "invalid_action_indices": [
+        529
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000001/episode_000001.json",
+      "num_frames": 661,
+      "global_offset": 19129,
+      "release_frame": 622,
+      "invalid_action_indices": [
+        660
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000002/episode_000002.json",
+      "num_frames": 1265,
+      "global_offset": 19790,
+      "release_frame": 1235,
+      "invalid_action_indices": [
+        1264
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000003/episode_000003.json",
+      "num_frames": 450,
+      "global_offset": 21055,
+      "release_frame": 431,
+      "invalid_action_indices": [
+        101,
+        449
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.40713134088013675
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000005/episode_000005.json",
+      "num_frames": 482,
+      "global_offset": 21505,
+      "release_frame": 467,
+      "invalid_action_indices": [
+        481
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000006/episode_000006.json",
+      "num_frames": 389,
+      "global_offset": 21987,
+      "release_frame": 371,
+      "invalid_action_indices": [
+        388
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000007/episode_000007.json",
+      "num_frames": 357,
+      "global_offset": 22376,
+      "release_frame": 332,
+      "invalid_action_indices": [
+        356
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000009/episode_000009.json",
+      "num_frames": 515,
+      "global_offset": 22733,
+      "release_frame": 502,
+      "invalid_action_indices": [
+        514
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000010/episode_000010.json",
+      "num_frames": 538,
+      "global_offset": 23248,
+      "release_frame": 527,
+      "invalid_action_indices": [
+        537
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000012/episode_000012.json",
+      "num_frames": 419,
+      "global_offset": 23786,
+      "release_frame": 398,
+      "invalid_action_indices": [
+        418
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_peg/episode_000013/episode_000013.json",
+      "num_frames": 410,
+      "global_offset": 24205,
+      "release_frame": 386,
+      "invalid_action_indices": [
+        409
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000000/episode_000000.json",
+      "num_frames": 563,
+      "global_offset": 24615,
+      "release_frame": 526,
+      "invalid_action_indices": [
+        562
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000002/episode_000002.json",
+      "num_frames": 802,
+      "global_offset": 25178,
+      "release_frame": 777,
+      "invalid_action_indices": [
+        284,
+        320,
+        801
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.319248235540897
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000004/episode_000004.json",
+      "num_frames": 488,
+      "global_offset": 25980,
+      "release_frame": 464,
+      "invalid_action_indices": [
+        415,
+        487
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.29556206509614147
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000005/episode_000005.json",
+      "num_frames": 1028,
+      "global_offset": 26468,
+      "release_frame": 1004,
+      "invalid_action_indices": [
+        1027
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000006/episode_000006.json",
+      "num_frames": 533,
+      "global_offset": 27496,
+      "release_frame": 508,
+      "invalid_action_indices": [
+        532
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000007/episode_000007.json",
+      "num_frames": 737,
+      "global_offset": 28029,
+      "release_frame": 710,
+      "invalid_action_indices": [
+        736
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000008/episode_000008.json",
+      "num_frames": 938,
+      "global_offset": 28766,
+      "release_frame": 911,
+      "invalid_action_indices": [
+        937
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000009/episode_000009.json",
+      "num_frames": 491,
+      "global_offset": 29704,
+      "release_frame": 466,
+      "invalid_action_indices": [
+        419,
+        490
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.4507278067330174
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000010/episode_000010.json",
+      "num_frames": 601,
+      "global_offset": 30195,
+      "release_frame": 573,
+      "invalid_action_indices": [
+        174,
+        451,
+        456,
+        495,
+        513,
+        600
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.5452339928198953
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000011/episode_000011.json",
+      "num_frames": 844,
+      "global_offset": 30796,
+      "release_frame": 820,
+      "invalid_action_indices": [
+        843
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000012/episode_000012.json",
+      "num_frames": 735,
+      "global_offset": 31640,
+      "release_frame": 703,
+      "invalid_action_indices": [
+        734
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/round_square_peg/episode_000014/episode_000014.json",
+      "num_frames": 820,
+      "global_offset": 32375,
+      "release_frame": 795,
+      "invalid_action_indices": [
+        819
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000000/episode_000000.json",
+      "num_frames": 972,
+      "global_offset": 33195,
+      "release_frame": 948,
+      "invalid_action_indices": [
+        971
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000001/episode_000001.json",
+      "num_frames": 1678,
+      "global_offset": 34167,
+      "release_frame": 1653,
+      "invalid_action_indices": [
+        1517,
+        1677
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.4752406651072514
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000002/episode_000002.json",
+      "num_frames": 884,
+      "global_offset": 35845,
+      "release_frame": 859,
+      "invalid_action_indices": [
+        883
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000005/episode_000005.json",
+      "num_frames": 548,
+      "global_offset": 36729,
+      "release_frame": 523,
+      "invalid_action_indices": [
+        547
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000006/episode_000006.json",
+      "num_frames": 912,
+      "global_offset": 37277,
+      "release_frame": 883,
+      "invalid_action_indices": [
+        911
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000007/episode_000007.json",
+      "num_frames": 328,
+      "global_offset": 38189,
+      "release_frame": 305,
+      "invalid_action_indices": [
+        300,
+        327
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.20178768775967754
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate/episode_000010/episode_000010.json",
+      "num_frames": 359,
+      "global_offset": 38517,
+      "release_frame": 341,
+      "invalid_action_indices": [
+        358
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000000/episode_000000.json",
+      "num_frames": 690,
+      "global_offset": 38876,
+      "release_frame": 669,
+      "invalid_action_indices": [
+        689
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000001/episode_000001.json",
+      "num_frames": 1418,
+      "global_offset": 39566,
+      "release_frame": 1402,
+      "invalid_action_indices": [
+        1417
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000002/episode_000002.json",
+      "num_frames": 876,
+      "global_offset": 40984,
+      "release_frame": 856,
+      "invalid_action_indices": [
+        875
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000003/episode_000003.json",
+      "num_frames": 664,
+      "global_offset": 41860,
+      "release_frame": 634,
+      "invalid_action_indices": [
+        663
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000005/episode_000005.json",
+      "num_frames": 1088,
+      "global_offset": 42524,
+      "release_frame": 1071,
+      "invalid_action_indices": [
+        1087
+      ],
+      "pause_downweight_intervals": [
+        [
+          751,
+          790
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000006/episode_000006.json",
+      "num_frames": 828,
+      "global_offset": 43612,
+      "release_frame": 814,
+      "invalid_action_indices": [
+        827
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000007/episode_000007.json",
+      "num_frames": 918,
+      "global_offset": 44440,
+      "release_frame": 883,
+      "invalid_action_indices": [
+        917
+      ],
+      "pause_downweight_intervals": [
+        [
+          361,
+          397
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000008/episode_000008.json",
+      "num_frames": 989,
+      "global_offset": 45358,
+      "release_frame": 967,
+      "invalid_action_indices": [
+        988
+      ],
+      "pause_downweight_intervals": [
+        [
+          190,
+          238
+        ],
+        [
+          417,
+          470
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/small_plate_quest/episode_000010/episode_000010.json",
+      "num_frames": 565,
+      "global_offset": 46347,
+      "release_frame": 542,
+      "invalid_action_indices": [
+        564
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000000/episode_000000.json",
+      "num_frames": 566,
+      "global_offset": 46912,
+      "release_frame": 551,
+      "invalid_action_indices": [
+        565
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000001/episode_000001.json",
+      "num_frames": 590,
+      "global_offset": 47478,
+      "release_frame": 574,
+      "invalid_action_indices": [
+        589
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000002/episode_000002.json",
+      "num_frames": 1300,
+      "global_offset": 48068,
+      "release_frame": 1274,
+      "invalid_action_indices": [
+        1299
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000003/episode_000003.json",
+      "num_frames": 544,
+      "global_offset": 49368,
+      "release_frame": 528,
+      "invalid_action_indices": [
+        543
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000004/episode_000004.json",
+      "num_frames": 682,
+      "global_offset": 49912,
+      "release_frame": 666,
+      "invalid_action_indices": [
+        681
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000005/episode_000005.json",
+      "num_frames": 439,
+      "global_offset": 50594,
+      "release_frame": 421,
+      "invalid_action_indices": [
+        438
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000007/episode_000007.json",
+      "num_frames": 629,
+      "global_offset": 51033,
+      "release_frame": 600,
+      "invalid_action_indices": [
+        628
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000008/episode_000008.json",
+      "num_frames": 906,
+      "global_offset": 51662,
+      "release_frame": 883,
+      "invalid_action_indices": [
+        905
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000009/episode_000009.json",
+      "num_frames": 747,
+      "global_offset": 52568,
+      "release_frame": 722,
+      "invalid_action_indices": [
+        746
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000010/episode_000010.json",
+      "num_frames": 741,
+      "global_offset": 53315,
+      "release_frame": 717,
+      "invalid_action_indices": [
+        740
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000011/episode_000011.json",
+      "num_frames": 638,
+      "global_offset": 54056,
+      "release_frame": 621,
+      "invalid_action_indices": [
+        637
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000012/episode_000012.json",
+      "num_frames": 683,
+      "global_offset": 54694,
+      "release_frame": 655,
+      "invalid_action_indices": [
+        682
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000014/episode_000014.json",
+      "num_frames": 913,
+      "global_offset": 55377,
+      "release_frame": 880,
+      "invalid_action_indices": [
+        912
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000016/episode_000016.json",
+      "num_frames": 392,
+      "global_offset": 56290,
+      "release_frame": 372,
+      "invalid_action_indices": [
+        391
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000017/episode_000017.json",
+      "num_frames": 439,
+      "global_offset": 56682,
+      "release_frame": 415,
+      "invalid_action_indices": [
+        438
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000018/episode_000018.json",
+      "num_frames": 555,
+      "global_offset": 57121,
+      "release_frame": 531,
+      "invalid_action_indices": [
+        554
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/angled_insertion/square_peg/episode_000020/episode_000020.json",
+      "num_frames": 971,
+      "global_offset": 57676,
+      "release_frame": 944,
+      "invalid_action_indices": [
+        970
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000001/episode_000001.json",
+      "num_frames": 582,
+      "global_offset": 58647,
+      "release_frame": 552,
+      "invalid_action_indices": [
+        581
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000002/episode_000002.json",
+      "num_frames": 595,
+      "global_offset": 59229,
+      "release_frame": 567,
+      "invalid_action_indices": [
+        594
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000004/episode_000004.json",
+      "num_frames": 647,
+      "global_offset": 59824,
+      "release_frame": 615,
+      "invalid_action_indices": [
+        646
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000005/episode_000005.json",
+      "num_frames": 530,
+      "global_offset": 60471,
+      "release_frame": 503,
+      "invalid_action_indices": [
+        529
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000006/episode_000006.json",
+      "num_frames": 586,
+      "global_offset": 61001,
+      "release_frame": 561,
+      "invalid_action_indices": [
+        585
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000007/episode_000007.json",
+      "num_frames": 584,
+      "global_offset": 61587,
+      "release_frame": 558,
+      "invalid_action_indices": [
+        583
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000008/episode_000008.json",
+      "num_frames": 598,
+      "global_offset": 62171,
+      "release_frame": 570,
+      "invalid_action_indices": [
+        597
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000009/episode_000009.json",
+      "num_frames": 701,
+      "global_offset": 62769,
+      "release_frame": 667,
+      "invalid_action_indices": [
+        700
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000010/episode_000010.json",
+      "num_frames": 763,
+      "global_offset": 63470,
+      "release_frame": 744,
+      "invalid_action_indices": [
+        762
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000011/episode_000011.json",
+      "num_frames": 794,
+      "global_offset": 64233,
+      "release_frame": 768,
+      "invalid_action_indices": [
+        793
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000012/episode_000012.json",
+      "num_frames": 589,
+      "global_offset": 65027,
+      "release_frame": 565,
+      "invalid_action_indices": [
+        588
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/big_plate/episode_000013/episode_000013.json",
+      "num_frames": 540,
+      "global_offset": 65616,
+      "release_frame": 518,
+      "invalid_action_indices": [
+        539
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000001/episode_000001.json",
+      "num_frames": 696,
+      "global_offset": 66156,
+      "release_frame": 671,
+      "invalid_action_indices": [
+        695
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000002/episode_000002.json",
+      "num_frames": 555,
+      "global_offset": 66852,
+      "release_frame": 520,
+      "invalid_action_indices": [
+        554
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000003/episode_000003.json",
+      "num_frames": 792,
+      "global_offset": 67407,
+      "release_frame": 767,
+      "invalid_action_indices": [
+        791
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000004/episode_000004.json",
+      "num_frames": 533,
+      "global_offset": 68199,
+      "release_frame": 511,
+      "invalid_action_indices": [
+        453,
+        532
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.2445856378983553
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000005/episode_000005.json",
+      "num_frames": 618,
+      "global_offset": 68732,
+      "release_frame": 596,
+      "invalid_action_indices": [
+        617
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000006/episode_000006.json",
+      "num_frames": 1038,
+      "global_offset": 69350,
+      "release_frame": 1017,
+      "invalid_action_indices": [
+        1037
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000007/episode_000007.json",
+      "num_frames": 681,
+      "global_offset": 70388,
+      "release_frame": 656,
+      "invalid_action_indices": [
+        440,
+        680
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.24021240486817547
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000009/episode_000009.json",
+      "num_frames": 759,
+      "global_offset": 71069,
+      "release_frame": 733,
+      "invalid_action_indices": [
+        758
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000010/episode_000010.json",
+      "num_frames": 730,
+      "global_offset": 71828,
+      "release_frame": 706,
+      "invalid_action_indices": [
+        729
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000012/episode_000012.json",
+      "num_frames": 734,
+      "global_offset": 72558,
+      "release_frame": 708,
+      "invalid_action_indices": [
+        733
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000013/episode_000013.json",
+      "num_frames": 666,
+      "global_offset": 73292,
+      "release_frame": 645,
+      "invalid_action_indices": [
+        665
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand/episode_000014/episode_000014.json",
+      "num_frames": 617,
+      "global_offset": 73958,
+      "release_frame": 593,
+      "invalid_action_indices": [
+        616
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000000/episode_000000.json",
+      "num_frames": 1669,
+      "global_offset": 74575,
+      "release_frame": 1645,
+      "invalid_action_indices": [
+        1668
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000001/episode_000001.json",
+      "num_frames": 1340,
+      "global_offset": 76244,
+      "release_frame": 1309,
+      "invalid_action_indices": [
+        1339
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000002/episode_000002.json",
+      "num_frames": 1727,
+      "global_offset": 77584,
+      "release_frame": 1702,
+      "invalid_action_indices": [
+        1726
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000003/episode_000003.json",
+      "num_frames": 1325,
+      "global_offset": 79311,
+      "release_frame": 1300,
+      "invalid_action_indices": [
+        1324
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000004/episode_000004.json",
+      "num_frames": 1507,
+      "global_offset": 80636,
+      "release_frame": 1485,
+      "invalid_action_indices": [
+        1506
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000006/episode_000006.json",
+      "num_frames": 1174,
+      "global_offset": 82143,
+      "release_frame": 1132,
+      "invalid_action_indices": [
+        1173
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000007/episode_000007.json",
+      "num_frames": 1248,
+      "global_offset": 83317,
+      "release_frame": 1223,
+      "invalid_action_indices": [
+        1247
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000008/episode_000008.json",
+      "num_frames": 1199,
+      "global_offset": 84565,
+      "release_frame": 1159,
+      "invalid_action_indices": [
+        1198
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000009/episode_000009.json",
+      "num_frames": 1569,
+      "global_offset": 85764,
+      "release_frame": 1545,
+      "invalid_action_indices": [
+        1568
+      ],
+      "pause_downweight_intervals": [
+        [
+          984,
+          1020
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000010/episode_000010.json",
+      "num_frames": 1344,
+      "global_offset": 87333,
+      "release_frame": 1323,
+      "invalid_action_indices": [
+        1343
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000011/episode_000011.json",
+      "num_frames": 2033,
+      "global_offset": 88677,
+      "release_frame": 2012,
+      "invalid_action_indices": [
+        2032
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000014/episode_000014.json",
+      "num_frames": 1971,
+      "global_offset": 90710,
+      "release_frame": 1943,
+      "invalid_action_indices": [
+        1970
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000015/episode_000015.json",
+      "num_frames": 1637,
+      "global_offset": 92681,
+      "release_frame": 1598,
+      "invalid_action_indices": [
+        1636
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/clock_hand_quest/episode_000018/episode_000018.json",
+      "num_frames": 576,
+      "global_offset": 94318,
+      "release_frame": 558,
+      "invalid_action_indices": [
+        575
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000000/episode_000000.json",
+      "num_frames": 943,
+      "global_offset": 94894,
+      "release_frame": 909,
+      "invalid_action_indices": [
+        942
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000001/episode_000001.json",
+      "num_frames": 703,
+      "global_offset": 95837,
+      "release_frame": 672,
+      "invalid_action_indices": [
+        702
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000002/episode_000002.json",
+      "num_frames": 826,
+      "global_offset": 96540,
+      "release_frame": 793,
+      "invalid_action_indices": [
+        825
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000003/episode_000003.json",
+      "num_frames": 1482,
+      "global_offset": 97366,
+      "release_frame": 1436,
+      "invalid_action_indices": [
+        1481
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000004/episode_000004.json",
+      "num_frames": 904,
+      "global_offset": 98848,
+      "release_frame": 869,
+      "invalid_action_indices": [
+        903
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000007/episode_000007.json",
+      "num_frames": 821,
+      "global_offset": 99752,
+      "release_frame": 794,
+      "invalid_action_indices": [
+        820
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000008/episode_000008.json",
+      "num_frames": 1124,
+      "global_offset": 100573,
+      "release_frame": 1100,
+      "invalid_action_indices": [
+        1123
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000009/episode_000009.json",
+      "num_frames": 711,
+      "global_offset": 101697,
+      "release_frame": 683,
+      "invalid_action_indices": [
+        710
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000010/episode_000010.json",
+      "num_frames": 853,
+      "global_offset": 102408,
+      "release_frame": 817,
+      "invalid_action_indices": [
+        852
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000011/episode_000011.json",
+      "num_frames": 617,
+      "global_offset": 103261,
+      "release_frame": 599,
+      "invalid_action_indices": [
+        616
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000012/episode_000012.json",
+      "num_frames": 877,
+      "global_offset": 103878,
+      "release_frame": 861,
+      "invalid_action_indices": [
+        876
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000013/episode_000013.json",
+      "num_frames": 936,
+      "global_offset": 104755,
+      "release_frame": 918,
+      "invalid_action_indices": [
+        287,
+        935
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.19888879645675767
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000014/episode_000014.json",
+      "num_frames": 1569,
+      "global_offset": 105691,
+      "release_frame": 1554,
+      "invalid_action_indices": [
+        1568
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000015/episode_000015.json",
+      "num_frames": 611,
+      "global_offset": 107260,
+      "release_frame": 588,
+      "invalid_action_indices": [
+        610
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000016/episode_000016.json",
+      "num_frames": 676,
+      "global_offset": 107871,
+      "release_frame": 657,
+      "invalid_action_indices": [
+        675
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000019/episode_000019.json",
+      "num_frames": 523,
+      "global_offset": 108547,
+      "release_frame": 506,
+      "invalid_action_indices": [
+        522
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000020/episode_000020.json",
+      "num_frames": 950,
+      "global_offset": 109070,
+      "release_frame": 930,
+      "invalid_action_indices": [
+        949
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_peg/episode_000021/episode_000021.json",
+      "num_frames": 622,
+      "global_offset": 110020,
+      "release_frame": 598,
+      "invalid_action_indices": [
+        621
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000002/episode_000002.json",
+      "num_frames": 428,
+      "global_offset": 110642,
+      "release_frame": 408,
+      "invalid_action_indices": [
+        427
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000005/episode_000005.json",
+      "num_frames": 592,
+      "global_offset": 111070,
+      "release_frame": 565,
+      "invalid_action_indices": [
+        591
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000006/episode_000006.json",
+      "num_frames": 583,
+      "global_offset": 111662,
+      "release_frame": 561,
+      "invalid_action_indices": [
+        397,
+        582
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.15852777885060632
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000007/episode_000007.json",
+      "num_frames": 586,
+      "global_offset": 112245,
+      "release_frame": 567,
+      "invalid_action_indices": [
+        585
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000009/episode_000009.json",
+      "num_frames": 571,
+      "global_offset": 112831,
+      "release_frame": 554,
+      "invalid_action_indices": [
+        570
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000010/episode_000010.json",
+      "num_frames": 658,
+      "global_offset": 113402,
+      "release_frame": 642,
+      "invalid_action_indices": [
+        657
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000012/episode_000012.json",
+      "num_frames": 509,
+      "global_offset": 114060,
+      "release_frame": 489,
+      "invalid_action_indices": [
+        508
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000013/episode_000013.json",
+      "num_frames": 683,
+      "global_offset": 114569,
+      "release_frame": 654,
+      "invalid_action_indices": [
+        682
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000014/episode_000014.json",
+      "num_frames": 516,
+      "global_offset": 115252,
+      "release_frame": 492,
+      "invalid_action_indices": [
+        515
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000015/episode_000015.json",
+      "num_frames": 652,
+      "global_offset": 115768,
+      "release_frame": 615,
+      "invalid_action_indices": [
+        651
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000016/episode_000016.json",
+      "num_frames": 439,
+      "global_offset": 116420,
+      "release_frame": 417,
+      "invalid_action_indices": [
+        438
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/round_square_peg/episode_000019/episode_000019.json",
+      "num_frames": 527,
+      "global_offset": 116859,
+      "release_frame": 512,
+      "invalid_action_indices": [
+        526
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000000/episode_000000.json",
+      "num_frames": 616,
+      "global_offset": 117386,
+      "release_frame": 598,
+      "invalid_action_indices": [
+        615
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000001/episode_000001.json",
+      "num_frames": 780,
+      "global_offset": 118002,
+      "release_frame": 756,
+      "invalid_action_indices": [
+        449,
+        779
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.16166150604899063
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000002/episode_000002.json",
+      "num_frames": 998,
+      "global_offset": 118782,
+      "release_frame": 974,
+      "invalid_action_indices": [
+        997
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000003/episode_000003.json",
+      "num_frames": 588,
+      "global_offset": 119780,
+      "release_frame": 564,
+      "invalid_action_indices": [
+        587
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000005/episode_000005.json",
+      "num_frames": 1071,
+      "global_offset": 120368,
+      "release_frame": 1045,
+      "invalid_action_indices": [
+        1070
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000008/episode_000008.json",
+      "num_frames": 1204,
+      "global_offset": 121439,
+      "release_frame": 1176,
+      "invalid_action_indices": [
+        1203
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000009/episode_000009.json",
+      "num_frames": 1118,
+      "global_offset": 122643,
+      "release_frame": 1098,
+      "invalid_action_indices": [
+        1117
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000011/episode_000011.json",
+      "num_frames": 692,
+      "global_offset": 123761,
+      "release_frame": 669,
+      "invalid_action_indices": [
+        691
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000012/episode_000012.json",
+      "num_frames": 1006,
+      "global_offset": 124453,
+      "release_frame": 987,
+      "invalid_action_indices": [
+        1005
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000013/episode_000013.json",
+      "num_frames": 576,
+      "global_offset": 125459,
+      "release_frame": 548,
+      "invalid_action_indices": [
+        575
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate/episode_000014/episode_000014.json",
+      "num_frames": 539,
+      "global_offset": 126035,
+      "release_frame": 523,
+      "invalid_action_indices": [
+        538
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000000/episode_000000.json",
+      "num_frames": 1206,
+      "global_offset": 126574,
+      "release_frame": 1170,
+      "invalid_action_indices": [
+        1205
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000002/episode_000002.json",
+      "num_frames": 946,
+      "global_offset": 127780,
+      "release_frame": 906,
+      "invalid_action_indices": [
+        945
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000003/episode_000003.json",
+      "num_frames": 828,
+      "global_offset": 128726,
+      "release_frame": 813,
+      "invalid_action_indices": [
+        268,
+        827
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.16015754167104662
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000004/episode_000004.json",
+      "num_frames": 1105,
+      "global_offset": 129554,
+      "release_frame": 1088,
+      "invalid_action_indices": [
+        1104
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000005/episode_000005.json",
+      "num_frames": 967,
+      "global_offset": 130659,
+      "release_frame": 951,
+      "invalid_action_indices": [
+        966
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000006/episode_000006.json",
+      "num_frames": 2073,
+      "global_offset": 131626,
+      "release_frame": 2049,
+      "invalid_action_indices": [
+        2072
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000007/episode_000007.json",
+      "num_frames": 1708,
+      "global_offset": 133699,
+      "release_frame": 1680,
+      "invalid_action_indices": [
+        1707
+      ],
+      "pause_downweight_intervals": [
+        [
+          546,
+          584
+        ],
+        [
+          937,
+          990
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000009/episode_000009.json",
+      "num_frames": 915,
+      "global_offset": 135407,
+      "release_frame": 894,
+      "invalid_action_indices": [
+        914
+      ],
+      "pause_downweight_intervals": [
+        [
+          715,
+          751
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/small_plate_quest/episode_000010/episode_000010.json",
+      "num_frames": 1701,
+      "global_offset": 136322,
+      "release_frame": 1675,
+      "invalid_action_indices": [
+        1700
+      ],
+      "pause_downweight_intervals": [
+        [
+          376,
+          412
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000000/episode_000000.json",
+      "num_frames": 998,
+      "global_offset": 138023,
+      "release_frame": 973,
+      "invalid_action_indices": [
+        997
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000001/episode_000001.json",
+      "num_frames": 902,
+      "global_offset": 139021,
+      "release_frame": 858,
+      "invalid_action_indices": [
+        901
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000002/episode_000002.json",
+      "num_frames": 769,
+      "global_offset": 139923,
+      "release_frame": 748,
+      "invalid_action_indices": [
+        768
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.09286235670202775
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000003/episode_000003.json",
+      "num_frames": 471,
+      "global_offset": 140692,
+      "release_frame": 448,
+      "invalid_action_indices": [
+        378,
+        470
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.3069332910889098
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000004/episode_000004.json",
+      "num_frames": 671,
+      "global_offset": 141163,
+      "release_frame": 648,
+      "invalid_action_indices": [
+        670
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000005/episode_000005.json",
+      "num_frames": 889,
+      "global_offset": 141834,
+      "release_frame": 871,
+      "invalid_action_indices": [
+        888
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000006/episode_000006.json",
+      "num_frames": 499,
+      "global_offset": 142723,
+      "release_frame": 476,
+      "invalid_action_indices": [
+        498
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000007/episode_000007.json",
+      "num_frames": 685,
+      "global_offset": 143222,
+      "release_frame": 663,
+      "invalid_action_indices": [
+        684
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000010/episode_000010.json",
+      "num_frames": 587,
+      "global_offset": 143907,
+      "release_frame": 563,
+      "invalid_action_indices": [
+        586
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000012/episode_000012.json",
+      "num_frames": 623,
+      "global_offset": 144494,
+      "release_frame": 604,
+      "invalid_action_indices": [
+        622
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000014/episode_000014.json",
+      "num_frames": 657,
+      "global_offset": 145117,
+      "release_frame": 635,
+      "invalid_action_indices": [
+        656
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000015/episode_000015.json",
+      "num_frames": 624,
+      "global_offset": 145774,
+      "release_frame": 597,
+      "invalid_action_indices": [
+        623
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000016/episode_000016.json",
+      "num_frames": 585,
+      "global_offset": 146398,
+      "release_frame": 560,
+      "invalid_action_indices": [
+        584
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000017/episode_000017.json",
+      "num_frames": 601,
+      "global_offset": 146983,
+      "release_frame": 575,
+      "invalid_action_indices": [
+        600
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000018/episode_000018.json",
+      "num_frames": 777,
+      "global_offset": 147584,
+      "release_frame": 754,
+      "invalid_action_indices": [
+        776
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000020/episode_000020.json",
+      "num_frames": 728,
+      "global_offset": 148361,
+      "release_frame": 708,
+      "invalid_action_indices": [
+        727
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000021/episode_000021.json",
+      "num_frames": 463,
+      "global_offset": 149089,
+      "release_frame": 444,
+      "invalid_action_indices": [
+        462
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000022/episode_000022.json",
+      "num_frames": 616,
+      "global_offset": 149552,
+      "release_frame": 593,
+      "invalid_action_indices": [
+        615
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000023/episode_000023.json",
+      "num_frames": 690,
+      "global_offset": 150168,
+      "release_frame": 666,
+      "invalid_action_indices": [
+        689
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "cranfield_converted/vertical_insertion/square_peg/episode_000025/episode_000025.json",
+      "num_frames": 654,
+      "global_offset": 150858,
+      "release_frame": 627,
+      "invalid_action_indices": [
+        653
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000000/episode_000000.json",
+      "num_frames": 2025,
+      "global_offset": 151512,
+      "release_frame": 1994,
+      "invalid_action_indices": [
+        2024
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000002/episode_000002.json",
+      "num_frames": 2144,
+      "global_offset": 153537,
+      "release_frame": 2119,
+      "invalid_action_indices": [
+        2143
+      ],
+      "pause_downweight_intervals": [
+        [
+          1071,
+          1144
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000003/episode_000003.json",
+      "num_frames": 1282,
+      "global_offset": 155681,
+      "release_frame": 1260,
+      "invalid_action_indices": [
+        1281
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000005/episode_000005.json",
+      "num_frames": 1419,
+      "global_offset": 156963,
+      "release_frame": 1393,
+      "invalid_action_indices": [
+        1418
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000006/episode_000006.json",
+      "num_frames": 2047,
+      "global_offset": 158382,
+      "release_frame": 2023,
+      "invalid_action_indices": [
+        2046
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000008/episode_000008.json",
+      "num_frames": 1617,
+      "global_offset": 160429,
+      "release_frame": 1591,
+      "invalid_action_indices": [
+        1616
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000009/episode_000009.json",
+      "num_frames": 2244,
+      "global_offset": 162046,
+      "release_frame": 2223,
+      "invalid_action_indices": [
+        2243
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000010/episode_000010.json",
+      "num_frames": 2403,
+      "global_offset": 164290,
+      "release_frame": 2384,
+      "invalid_action_indices": [
+        2402
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000013/episode_000013.json",
+      "num_frames": 2754,
+      "global_offset": 166693,
+      "release_frame": 2733,
+      "invalid_action_indices": [
+        171,
+        280,
+        334,
+        2753
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.29382907194436436
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000014/episode_000014.json",
+      "num_frames": 1989,
+      "global_offset": 169447,
+      "release_frame": 1967,
+      "invalid_action_indices": [
+        1988
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/circular_gear_quest/episode_000015/episode_000015.json",
+      "num_frames": 2162,
+      "global_offset": 171436,
+      "release_frame": 2144,
+      "invalid_action_indices": [
+        2161
+      ],
+      "pause_downweight_intervals": [
+        [
+          908,
+          948
+        ],
+        [
+          1736,
+          1772
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000000/episode_000000.json",
+      "num_frames": 1312,
+      "global_offset": 173598,
+      "release_frame": 1291,
+      "invalid_action_indices": [
+        49,
+        1311
+      ],
+      "pause_downweight_intervals": [
+        [
+          1089,
+          1129
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.2757788286730928
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000001/episode_000001.json",
+      "num_frames": 1721,
+      "global_offset": 174910,
+      "release_frame": 1702,
+      "invalid_action_indices": [
+        710,
+        1720
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.16227561185870693
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000002/episode_000002.json",
+      "num_frames": 1870,
+      "global_offset": 176631,
+      "release_frame": 1851,
+      "invalid_action_indices": [
+        1869
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000003/episode_000003.json",
+      "num_frames": 2283,
+      "global_offset": 178501,
+      "release_frame": 2265,
+      "invalid_action_indices": [
+        2282
+      ],
+      "pause_downweight_intervals": [
+        [
+          859,
+          901
+        ],
+        [
+          1196,
+          1245
+        ],
+        [
+          1668,
+          1710
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000005/episode_000005.json",
+      "num_frames": 1560,
+      "global_offset": 180784,
+      "release_frame": 1539,
+      "invalid_action_indices": [
+        1559
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000007/episode_000007.json",
+      "num_frames": 2442,
+      "global_offset": 182344,
+      "release_frame": 2394,
+      "invalid_action_indices": [
+        2441
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000008/episode_000008.json",
+      "num_frames": 1731,
+      "global_offset": 184786,
+      "release_frame": 1705,
+      "invalid_action_indices": [
+        1730
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000009/episode_000009.json",
+      "num_frames": 1837,
+      "global_offset": 186517,
+      "release_frame": 1815,
+      "invalid_action_indices": [
+        1836
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000010/episode_000010.json",
+      "num_frames": 2385,
+      "global_offset": 188354,
+      "release_frame": 2364,
+      "invalid_action_indices": [
+        2384
+      ],
+      "pause_downweight_intervals": [
+        [
+          918,
+          963
+        ],
+        [
+          1623,
+          1674
+        ],
+        [
+          1739,
+          1781
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000011/episode_000011.json",
+      "num_frames": 2369,
+      "global_offset": 190739,
+      "release_frame": 2350,
+      "invalid_action_indices": [
+        2368
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000012/episode_000012.json",
+      "num_frames": 1512,
+      "global_offset": 193108,
+      "release_frame": 1493,
+      "invalid_action_indices": [
+        1511
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_large_quest/episode_000014/episode_000014.json",
+      "num_frames": 1519,
+      "global_offset": 194620,
+      "release_frame": 1502,
+      "invalid_action_indices": [
+        1518
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000000/episode_000000.json",
+      "num_frames": 1942,
+      "global_offset": 196139,
+      "release_frame": 1920,
+      "invalid_action_indices": [
+        1941
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000001/episode_000001.json",
+      "num_frames": 3067,
+      "global_offset": 198081,
+      "release_frame": 3047,
+      "invalid_action_indices": [
+        1918,
+        3066
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.26123665742136126
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000002/episode_000002.json",
+      "num_frames": 2027,
+      "global_offset": 201148,
+      "release_frame": 2008,
+      "invalid_action_indices": [
+        2026
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000003/episode_000003.json",
+      "num_frames": 1485,
+      "global_offset": 203175,
+      "release_frame": 1463,
+      "invalid_action_indices": [
+        1484
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000004/episode_000004.json",
+      "num_frames": 1688,
+      "global_offset": 204660,
+      "release_frame": 1670,
+      "invalid_action_indices": [
+        1687
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000005/episode_000005.json",
+      "num_frames": 2045,
+      "global_offset": 206348,
+      "release_frame": 2025,
+      "invalid_action_indices": [
+        2044
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000006/episode_000006.json",
+      "num_frames": 2404,
+      "global_offset": 208393,
+      "release_frame": 2378,
+      "invalid_action_indices": [
+        2403
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000007/episode_000007.json",
+      "num_frames": 1805,
+      "global_offset": 210797,
+      "release_frame": 1784,
+      "invalid_action_indices": [
+        1804
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000010/episode_000010.json",
+      "num_frames": 2002,
+      "global_offset": 212602,
+      "release_frame": 1978,
+      "invalid_action_indices": [
+        2001
+      ],
+      "pause_downweight_intervals": [
+        [
+          786,
+          828
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000012/episode_000012.json",
+      "num_frames": 1801,
+      "global_offset": 214604,
+      "release_frame": 1779,
+      "invalid_action_indices": [
+        1800
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000014/episode_000014.json",
+      "num_frames": 1550,
+      "global_offset": 216405,
+      "release_frame": 1519,
+      "invalid_action_indices": [
+        1549
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000015/episode_000015.json",
+      "num_frames": 2190,
+      "global_offset": 217955,
+      "release_frame": 2171,
+      "invalid_action_indices": [
+        2189
+      ],
+      "pause_downweight_intervals": [
+        [
+          1277,
+          1371
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/angled_insertion/square_gear_small_quest/episode_000016/episode_000016.json",
+      "num_frames": 2017,
+      "global_offset": 220145,
+      "release_frame": 1999,
+      "invalid_action_indices": [
+        2016
+      ],
+      "pause_downweight_intervals": [
+        [
+          1246,
+          1282
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000000/episode_000000.json",
+      "num_frames": 1303,
+      "global_offset": 222162,
+      "release_frame": 1270,
+      "invalid_action_indices": [
+        1302
+      ],
+      "pause_downweight_intervals": [
+        [
+          827,
+          865
+        ],
+        [
+          1068,
+          1104
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000001/episode_000001.json",
+      "num_frames": 1664,
+      "global_offset": 223465,
+      "release_frame": 1632,
+      "invalid_action_indices": [
+        1663
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000003/episode_000003.json",
+      "num_frames": 1430,
+      "global_offset": 225129,
+      "release_frame": 1408,
+      "invalid_action_indices": [
+        1429
+      ],
+      "pause_downweight_intervals": [
+        [
+          532,
+          604
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000004/episode_000004.json",
+      "num_frames": 1336,
+      "global_offset": 226559,
+      "release_frame": 1311,
+      "invalid_action_indices": [
+        1335
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000006/episode_000006.json",
+      "num_frames": 958,
+      "global_offset": 227895,
+      "release_frame": 940,
+      "invalid_action_indices": [
+        957
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000008/episode_000008.json",
+      "num_frames": 1325,
+      "global_offset": 228853,
+      "release_frame": 1302,
+      "invalid_action_indices": [
+        1324
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000011/episode_000011.json",
+      "num_frames": 1604,
+      "global_offset": 230178,
+      "release_frame": 1581,
+      "invalid_action_indices": [
+        1603
+      ],
+      "pause_downweight_intervals": [
+        [
+          543,
+          584
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000012/episode_000012.json",
+      "num_frames": 2028,
+      "global_offset": 231782,
+      "release_frame": 2009,
+      "invalid_action_indices": [
+        2027
+      ],
+      "pause_downweight_intervals": [
+        [
+          1725,
+          1766
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000013/episode_000013.json",
+      "num_frames": 1838,
+      "global_offset": 233810,
+      "release_frame": 1823,
+      "invalid_action_indices": [
+        1837
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000014/episode_000014.json",
+      "num_frames": 2300,
+      "global_offset": 235648,
+      "release_frame": 2285,
+      "invalid_action_indices": [
+        2299
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/circular_gear_quest/episode_000015/episode_000015.json",
+      "num_frames": 1348,
+      "global_offset": 237948,
+      "release_frame": 1332,
+      "invalid_action_indices": [
+        1347
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000001/episode_000001.json",
+      "num_frames": 2018,
+      "global_offset": 239296,
+      "release_frame": 1994,
+      "invalid_action_indices": [
+        2017
+      ],
+      "pause_downweight_intervals": [
+        [
+          1254,
+          1292
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000002/episode_000002.json",
+      "num_frames": 2628,
+      "global_offset": 241314,
+      "release_frame": 2601,
+      "invalid_action_indices": [
+        1456,
+        2627
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.16186524390455187
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000003/episode_000003.json",
+      "num_frames": 2057,
+      "global_offset": 243942,
+      "release_frame": 2030,
+      "invalid_action_indices": [
+        2056
+      ],
+      "pause_downweight_intervals": [
+        [
+          1003,
+          1045
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000004/episode_000004.json",
+      "num_frames": 3556,
+      "global_offset": 245999,
+      "release_frame": 3518,
+      "invalid_action_indices": [
+        3555
+      ],
+      "pause_downweight_intervals": [
+        [
+          2735,
+          2786
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000007/episode_000007.json",
+      "num_frames": 2555,
+      "global_offset": 249555,
+      "release_frame": 2530,
+      "invalid_action_indices": [
+        2554
+      ],
+      "pause_downweight_intervals": [
+        [
+          389,
+          479
+        ],
+        [
+          1935,
+          1971
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000008/episode_000008.json",
+      "num_frames": 1846,
+      "global_offset": 252110,
+      "release_frame": 1822,
+      "invalid_action_indices": [
+        1845
+      ],
+      "pause_downweight_intervals": [
+        [
+          1350,
+          1398
+        ],
+        [
+          1439,
+          1478
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000010/episode_000010.json",
+      "num_frames": 2355,
+      "global_offset": 253956,
+      "release_frame": 2328,
+      "invalid_action_indices": [
+        2354
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000012/episode_000012.json",
+      "num_frames": 2965,
+      "global_offset": 256311,
+      "release_frame": 2942,
+      "invalid_action_indices": [
+        2964
+      ],
+      "pause_downweight_intervals": [
+        [
+          2180,
+          2242
+        ],
+        [
+          2323,
+          2363
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000013/episode_000013.json",
+      "num_frames": 3096,
+      "global_offset": 259276,
+      "release_frame": 3024,
+      "invalid_action_indices": [
+        3095
+      ],
+      "pause_downweight_intervals": [
+        [
+          2428,
+          2465
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_large_quest/episode_000014/episode_000014.json",
+      "num_frames": 1902,
+      "global_offset": 262372,
+      "release_frame": 1880,
+      "invalid_action_indices": [
+        1901
+      ],
+      "pause_downweight_intervals": [
+        [
+          947,
+          985
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000001/episode_000001.json",
+      "num_frames": 1943,
+      "global_offset": 264274,
+      "release_frame": 1916,
+      "invalid_action_indices": [
+        1942
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000002/episode_000002.json",
+      "num_frames": 1423,
+      "global_offset": 266217,
+      "release_frame": 1364,
+      "invalid_action_indices": [
+        1422
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000003/episode_000003.json",
+      "num_frames": 2043,
+      "global_offset": 267640,
+      "release_frame": 2028,
+      "invalid_action_indices": [
+        2042
+      ],
+      "pause_downweight_intervals": [
+        [
+          1416,
+          1458
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000004/episode_000004.json",
+      "num_frames": 1320,
+      "global_offset": 269683,
+      "release_frame": 1286,
+      "invalid_action_indices": [
+        1319
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000007/episode_000007.json",
+      "num_frames": 2601,
+      "global_offset": 271003,
+      "release_frame": 2574,
+      "invalid_action_indices": [
+        2600
+      ],
+      "pause_downweight_intervals": [],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000008/episode_000008.json",
+      "num_frames": 3043,
+      "global_offset": 273604,
+      "release_frame": 3021,
+      "invalid_action_indices": [
+        3042
+      ],
+      "pause_downweight_intervals": [
+        [
+          2474,
+          2514
+        ],
+        [
+          2548,
+          2591
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000009/episode_000009.json",
+      "num_frames": 2742,
+      "global_offset": 276647,
+      "release_frame": 2713,
+      "invalid_action_indices": [
+        2152,
+        2741
+      ],
+      "pause_downweight_intervals": [
+        [
+          1208,
+          1244
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.1422180880487626
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000011/episode_000011.json",
+      "num_frames": 2856,
+      "global_offset": 279389,
+      "release_frame": 2830,
+      "invalid_action_indices": [
+        2855
+      ],
+      "pause_downweight_intervals": [
+        [
+          2205,
+          2241
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000013/episode_000013.json",
+      "num_frames": 3210,
+      "global_offset": 282245,
+      "release_frame": 3194,
+      "invalid_action_indices": [
+        3209
+      ],
+      "pause_downweight_intervals": [
+        [
+          2365,
+          2408
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000014/episode_000014.json",
+      "num_frames": 1838,
+      "global_offset": 285455,
+      "release_frame": 1820,
+      "invalid_action_indices": [
+        1837
+      ],
+      "pause_downweight_intervals": [
+        [
+          524,
+          592
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    },
+    {
+      "relative_episode": "siemens_converted/vertical_insertion/square_gear_small_quest/episode_000015/episode_000015.json",
+      "num_frames": 2410,
+      "global_offset": 287293,
+      "release_frame": 2382,
+      "invalid_action_indices": [
+        2409
+      ],
+      "pause_downweight_intervals": [
+        [
+          252,
+          288
+        ]
+      ],
+      "max_pose_label_mismatch_mm": 0.0
+    }
+  ],
+  "counts": {
+    "episodes": 255,
+    "frames": 289703,
+    "bad_action_labels": 27,
+    "pause_runs_selected": 47,
+    "terminal_nonzero": 220,
+    "downweighted_pause_frames": 2138
+  },
+  "sampling": {
+    "seed": 20261110,
+    "steps": 5000,
+    "batch_size": 24,
+    "world_size": 1,
+    "action_horizon": 30,
+    "samples": 120000,
+    "translation_window_weight": 1.25,
+    "rotation_window_weight": 1.15,
+    "bracketed_pause_weight": 0.3,
+    "sample_schedule_sha256": "249bb1367d5dc3438809b0438ba99b251630f5f73086ec0ceda15241968fc2b1"
+  },
+  "action_mask_rule": "For source frame s and horizon offset j, valid iff s+j < N-1 and s+j is not an invalid_action_indices entry",
+  "model": {
+    "starting_checkpoint": "last_one_step_48129",
+    "last_n": 1,
+    "optimizer": "NEW",
+    "new_run_global_step": 0
+  },
+  "proposed_loss": {
+    "motion_channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "gripper_channel": 6,
+    "first_5_motion_weight": 2.0,
+    "next_5_motion_weight": 1.25,
+    "remaining_20_motion_weight": 0.75,
+    "preserve_original_gripper_objective": true,
+    "requires_implementation_and_tests": true
+  },
+  "test_split_accessed": false,
+  "training_started": false,
+  "dataset_modified": false
+}

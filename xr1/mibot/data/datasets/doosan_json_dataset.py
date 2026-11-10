@@ -39,6 +39,7 @@ from bisect import bisect_right
 import numpy as np
 import torch
 from mibot.utils.doosan_replay import stable_sample_seed
+from mibot.utils.doosan_motion_focus import MotionFocusPlan
 from mibot.utils.loader_trace import stage, traced
 from mibot.utils.doosan_io_cache import JsonEpisodeCache
 
@@ -108,6 +109,8 @@ class DoosanJsonDataset(JsonDataset):
         self.sampler_seed = int(params["train_datasets"].get("sampler_seed", 42))
         self.deterministic_replay = bool(params["train_datasets"].get("deterministic_replay", False))
         self._replay_root = str(params["train_datasets"]["paths"][0])
+        plan_dir = params["train_datasets"].get("motion_focus_plan_dir")
+        self._motion_focus_plan = MotionFocusPlan(plan_dir) if plan_dir else None
         super().__init__(params)
         # The parent's enumeration cache is not useful to workers and would
         # otherwise retain decoded trajectories across fork/serialization.
@@ -199,6 +202,10 @@ class DoosanJsonDataset(JsonDataset):
             self.action_length,
             temporal_mask,
         )
+        if self._motion_focus_plan is not None:
+            action_mask = self._motion_focus_plan.apply_action_mask(
+                sample["file"], frame, steps, action_mask
+            )
 
         prompt["conversations"] += [
             {
@@ -253,6 +260,13 @@ class DoosanJsonDataset(JsonDataset):
         reshuffle for further cycles when max_samples exceeds its length.
         This prevents the sorted-prefix selection in Xiaomi JsonDataset.
         """
+        if self._motion_focus_plan is not None:
+            counts = [int(self._read_json(path)["num_frames"]) for path in self.files]
+            indices = self._motion_focus_plan.sampling_indices(
+                self.files, counts, self._replay_root, self.max_samples
+            )
+            print(f"XR1_MOTION_FOCUS_SAMPLER=PASS samples={len(indices)}", flush=True)
+            return FrameSampleTable(self.files, counts, indices)
         import random
 
         counts = []

@@ -21,6 +21,9 @@ from mibot.models.VLM.qwen3vl import (
     Qwen3VLForConditionalGeneration,
 )
 from mibot.utils.model_utils import auto_cast
+from mibot.utils.doosan_motion_loss import (
+    validate_motion_profile, motion_multipliers, masked_weighted_mean,
+)
 
 
 def modulate(x, shift, scale):
@@ -203,6 +206,7 @@ class xr1(nn.Module):
         vision_gradient_checkpointing=True,
         attn_implementation="flash_attention_2",
         async_train=True,
+        motion_focus_loss=None,
     ):
         super().__init__()
         self.state_shape = (1, 60)
@@ -215,6 +219,7 @@ class xr1(nn.Module):
             raise ValueError("Unsupported XR1 attention backend")
         self.attn_implementation = attn_implementation
         self.async_train = bool(async_train)
+        self.motion_focus_loss = validate_motion_profile(motion_focus_loss)
         self.training_repeat = 4
         self.num_steps = 5
         self.prefix_mask_prob = 0.5
@@ -436,7 +441,11 @@ class xr1(nn.Module):
         if not return_loss:
             return pred
 
-        loss_mse, loss_freq = self.compute_flow_loss(pred, target, action_mask, weight)
+        focus = (
+            motion_multipliers(action_mask, prefix_length=prefix_length, profile=self.motion_focus_loss)
+            if self.motion_focus_loss is not None else None
+        )
+        loss_mse, loss_freq = self.compute_flow_loss(pred, target, action_mask, weight, focus)
         loss_choice, loss_score = self.compute_choice_loss(
             action_choice, score_choice, choice_target, choice_mask, actual_lengths
         )
@@ -449,7 +458,7 @@ class xr1(nn.Module):
             "loss_score": loss_score,
         }
 
-    def compute_flow_loss(self, pred, target, action_mask, weight):
+    def compute_flow_loss(self, pred, target, action_mask, weight, motion_focus=None):
         pred, target, weight = pred.float(), target.float(), weight.float()
         if not torch.any(action_mask):
             zero = (pred.sum() + target.sum()) * 0.0
@@ -459,7 +468,9 @@ class xr1(nn.Module):
             weight = weight.clone()
             weight[action_mask] /= weight[action_mask].mean()
             weight.clamp_(0.5, 5.0)
-        loss_mse = (F.mse_loss(pred, target, reduction="none") * weight)[action_mask].mean()
+        loss_mse = masked_weighted_mean(
+            F.mse_loss(pred, target, reduction="none") * weight, action_mask, motion_focus
+        )
         freq = (torch.fft.rfft(pred, dim=1) - torch.fft.rfft(target, dim=1)).abs()
         valid_batch = action_mask[:, -1].any(dim=1)
         if not torch.any(valid_batch):

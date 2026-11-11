@@ -1,0 +1,82 @@
+XR-1 FIVE-MODEL HELD-OUT VALIDATION
+34 episodes; 5 models; 476 predictions per model (2,380 total)
+
+CLAIX 136 windows + motion/quiet 272 repeated predictions + release 68 repeated predictions.
+All five models use instruction-only VLM prompts with no teacher-forced <a_...> tokens.
+Errors use held-out ground truth; full-horizon translation mm, rotation degrees, gripper units.
+
+LAST_ONE
+  claix_fixed: first5 normalized motion MAE=0.461220, translation mm=0.090126, rotation deg=0.025531, gripper MAE=0.004582
+  active_v2: first5 normalized motion MAE=0.378035, translation mm=0.078078, rotation deg=0.027705, gripper MAE=0.005659
+  release: first5 normalized motion MAE=0.196904, translation mm=0.035458, rotation deg=0.006238, gripper MAE=0.462029
+    release recall @ gripper>=0.5: 0.304
+
+LAST_TWO
+  claix_fixed: first5 normalized motion MAE=0.470079, translation mm=0.090388, rotation deg=0.024958, gripper MAE=0.000940
+  active_v2: first5 normalized motion MAE=0.387922, translation mm=0.077666, rotation deg=0.027372, gripper MAE=0.000330
+  release: first5 normalized motion MAE=0.199461, translation mm=0.039889, rotation deg=0.006251, gripper MAE=0.589797
+    release recall @ gripper>=0.5: 0.084
+
+ADAMW_CONTROL
+  claix_fixed: first5 normalized motion MAE=0.456382, translation mm=0.087562, rotation deg=0.024945, gripper MAE=0.006094
+  active_v2: first5 normalized motion MAE=0.376371, translation mm=0.075896, rotation deg=0.026738, gripper MAE=0.007518
+  release: first5 normalized motion MAE=0.193731, translation mm=0.033213, rotation deg=0.007543, gripper MAE=0.460594
+    release recall @ gripper>=0.5: 0.315
+
+MUON_CONSERVATIVE
+  claix_fixed: first5 normalized motion MAE=0.455712, translation mm=0.089090, rotation deg=0.024955, gripper MAE=0.003057
+  active_v2: first5 normalized motion MAE=0.373668, translation mm=0.076869, rotation deg=0.026803, gripper MAE=0.002832
+  release: first5 normalized motion MAE=0.196743, translation mm=0.033966, rotation deg=0.007981, gripper MAE=0.472365
+    release recall @ gripper>=0.5: 0.294
+
+MUON_FASTER
+  claix_fixed: first5 normalized motion MAE=0.458088, translation mm=0.088759, rotation deg=0.025007, gripper MAE=0.000268
+  active_v2: first5 normalized motion MAE=0.374622, translation mm=0.076531, rotation deg=0.026546, gripper MAE=0.001188
+  release: first5 normalized motion MAE=0.194475, translation mm=0.034895, rotation deg=0.008035, gripper MAE=0.491444
+    release recall @ gripper>=0.5: 0.260
+
+PAIRED 95% EPISODE-LEVEL BOOTSTRAP (negative delta favors candidate)
+claix_fixed: adamw_control_minus_last_one__first5_normalized_motion_mae: delta=-0.00483844, CI95=[-0.009316038518719484, -0.00013429237296805525], candidate_better
+claix_fixed: adamw_control_minus_last_one__translation_error_mm: delta=-0.00256422, CI95=[-0.004027390243848709, -0.0011788518666573807], candidate_better
+claix_fixed: adamw_control_minus_last_one__rotation_error_deg: delta=-0.00058543, CI95=[-0.0013016981553295934, 0.0002302826030176078], inconclusive
+claix_fixed: adamw_control_minus_last_one__gripper_error: delta=0.00151212, CI95=[5.143417054604667e-05, 0.004019474478532084], baseline_better
+claix_fixed: muon_conservative_minus_adamw_control__first5_normalized_motion_mae: delta=-0.000669968, CI95=[-0.0029132661300108713, 0.0017165073470952047], inconclusive
+claix_fixed: muon_conservative_minus_adamw_control__translation_error_mm: delta=0.00152736, CI95=[0.0007295171301509902, 0.0023543586564351887], baseline_better
+claix_fixed: muon_conservative_minus_adamw_control__rotation_error_deg: delta=9.38882e-06, CI95=[-0.00026509905499355927, 0.00027897070845909143], inconclusive
+claix_fixed: muon_conservative_minus_adamw_control__gripper_error: delta=-0.00303663, CI95=[-0.008385855343561462, -1.591839762541524e-05], candidate_better
+claix_fixed: muon_faster_minus_adamw_control__first5_normalized_motion_mae: delta=0.00170599, CI95=[-0.0004804540963103885, 0.0039510595944353966], inconclusive
+claix_fixed: muon_faster_minus_adamw_control__translation_error_mm: delta=0.0011967, CI95=[0.00030468857742456076, 0.002128475187140443], baseline_better
+claix_fixed: muon_faster_minus_adamw_control__rotation_error_deg: delta=6.19889e-05, CI95=[-0.0002483113477294883, 0.0004094838380504703], inconclusive
+claix_fixed: muon_faster_minus_adamw_control__gripper_error: delta=-0.00582614, CI95=[-0.015927549700809673, -7.248452725345457e-05], candidate_better
+active_v2: adamw_control_minus_last_one__first5_normalized_motion_mae: delta=-0.00166398, CI95=[-0.006532405227249804, 0.0025228955766685977], inconclusive
+active_v2: adamw_control_minus_last_one__translation_error_mm: delta=-0.00218191, CI95=[-0.0034219833693551497, -0.0009658423671544704], candidate_better
+active_v2: adamw_control_minus_last_one__rotation_error_deg: delta=-0.000967178, CI95=[-0.0016941497925689831, -0.00024076788942500068], candidate_better
+active_v2: adamw_control_minus_last_one__gripper_error: delta=0.00185926, CI95=[3.618754070439357e-05, 0.004267533702733606], baseline_better
+active_v2: muon_conservative_minus_adamw_control__first5_normalized_motion_mae: delta=-0.00270295, CI95=[-0.005619404968798763, 0.00011694027686162797], inconclusive
+active_v2: muon_conservative_minus_adamw_control__translation_error_mm: delta=0.000972388, CI95=[0.00036039901529068546, 0.0016289348246039503], baseline_better
+active_v2: muon_conservative_minus_adamw_control__rotation_error_deg: delta=6.5165e-05, CI95=[-0.00022680514973297876, 0.00035676685986999303], inconclusive
+active_v2: muon_conservative_minus_adamw_control__gripper_error: delta=-0.00468626, CI95=[-0.012680148663879233, -9.668791151888591e-06], candidate_better
+active_v2: muon_faster_minus_adamw_control__first5_normalized_motion_mae: delta=-0.00174857, CI95=[-0.005535696142075775, 0.0019630533864769535], inconclusive
+active_v2: muon_faster_minus_adamw_control__translation_error_mm: delta=0.000634881, CI95=[-0.0002469793721344791, 0.0015376867950512468], inconclusive
+active_v2: muon_faster_minus_adamw_control__rotation_error_deg: delta=-0.000191096, CI95=[-0.0004925437776248226, 0.00011286020340427683], inconclusive
+active_v2: muon_faster_minus_adamw_control__gripper_error: delta=-0.00633076, CI95=[-0.016581203029125784, -6.576005140588817e-05], candidate_better
+release: adamw_control_minus_last_one__first5_normalized_motion_mae: delta=-0.00317322, CI95=[-0.012021916571607375, 0.006554142939036382], inconclusive
+release: adamw_control_minus_last_one__translation_error_mm: delta=-0.00224483, CI95=[-0.004709386206865613, -2.3938017411325223e-05], candidate_better
+release: adamw_control_minus_last_one__rotation_error_deg: delta=0.00130496, CI95=[-0.0009010934385326275, 0.0044698843223030605], inconclusive
+release: adamw_control_minus_last_one__gripper_error: delta=-0.00143491, CI95=[-0.01973241780087916, 0.01228555119765339], inconclusive
+release: muon_conservative_minus_adamw_control__first5_normalized_motion_mae: delta=0.00301215, CI95=[0.00010919069686411499, 0.006246112891719402], baseline_better
+release: muon_conservative_minus_adamw_control__translation_error_mm: delta=0.000752944, CI95=[-4.6036541424937427e-05, 0.00152292517501058], inconclusive
+release: muon_conservative_minus_adamw_control__rotation_error_deg: delta=0.000437728, CI95=[-3.156468404402163e-05, 0.0010163176295379048], inconclusive
+release: muon_conservative_minus_adamw_control__gripper_error: delta=0.011771, CI95=[-0.007485629789161462, 0.0444228026809344], inconclusive
+release: muon_faster_minus_adamw_control__first5_normalized_motion_mae: delta=0.000744355, CI95=[-0.003785383592441897, 0.004546833470093962], inconclusive
+release: muon_faster_minus_adamw_control__translation_error_mm: delta=0.00168128, CI95=[0.00010628272290244295, 0.0032985126780635927], baseline_better
+release: muon_faster_minus_adamw_control__rotation_error_deg: delta=0.000491534, CI95=[5.742722185126635e-05, 0.0009171312264149249], baseline_better
+release: muon_faster_minus_adamw_control__gripper_error: delta=0.0308499, CI95=[0.004560551923475963, 0.06701490575212564], baseline_better
+
+CLAIX aggregate reproduction:
+  adamw_control: CLAIX=0.4563308, workstation=0.4563817, delta=+0.0000509
+  muon_conservative: CLAIX=0.4556674, workstation=0.4557117, delta=+0.0000443
+  muon_faster: CLAIX=0.4581654, workstation=0.4580877, delta=-0.0000777
+
+No automatic winner approved. Review effect sizes, bootstrap intervals, gripper recall, and held-out task groups before deciding continuation.
+No robot commands, no test split, no model updates.

@@ -18,7 +18,7 @@ PARENT = Path('/hpcwork/zk443626/robotics_thesis/runs/xr1-fresh-9b04eb66889347cd
 SOURCE_CONFIG = PARENT.parent / 'resolved_compact_config.json'
 BASE_SHA = '94d55a79122050a654b379664b644e874ff90d64ccd30a6a633f816555bcecf7'
 BATCH = 24
-STEPS = 2000
+STEPS = 5000
 PROFILES = (
  dict(name='natural_adamw_l1',kind='adamw_control',adamw_lr=1e-5,muon_lr=None,last_n=1,sampler='natural'),
  dict(name='balanced_adamw_l1',kind='adamw_control',adamw_lr=1e-5,muon_lr=None,last_n=1,sampler='balanced'),
@@ -90,7 +90,7 @@ def motion_settings(profile):
         language_sha256=str(json.loads(SOURCE_CONFIG.read_text())['model']['params']['compact_fp32']['language_sha256']),
         schedule_sha256=sha256(schedule),trial_id=profile['name'],
         optimizer_kind=profile['kind'],adamw_lr=profile['adamw_lr'],muon_lr=profile['muon_lr'],
-        warmup_steps=200,schedule_total_steps=STEPS,trainable_last_n=profile['last_n'])
+        warmup_steps=500,schedule_total_steps=STEPS,trainable_last_n=profile['last_n'])
 
 
 def build_model_and_data(conf, profile, resume_step):
@@ -135,7 +135,7 @@ def run_train(conf, profile, steps, resume=None):
     if resume is not None:
         raise RuntimeError('Fresh-pretrained trial may not resume prior model states')
     target.mkdir(parents=True, exist_ok=False)
-    if steps != 2000:
+    if steps != STEPS:
         raise ValueError('Unexpected optimizer-step target')
     model_cfg, data_cfg = build_model_and_data(conf, profile, resume_step=0)
     seed_everything(42, workers=True)
@@ -203,7 +203,7 @@ def evaluate(conf, profile, ckpt_receipt):
     model_cfg, data_cfg = build_model_and_data(conf, profile, resume_step=0)
     ck = torch.load(path, map_location='cpu', mmap=True, weights_only=False)
     step = int(ck['global_step'])
-    if step not in (1000,2000):
+    if step not in (1000,3000,5000):
         raise RuntimeError('Unexpected evaluation model step')
     runner = DoosanFreshMotionRunner(model_cfg['params'])
     runner.configure_model()
@@ -220,7 +220,7 @@ def evaluate(conf, profile, ckpt_receipt):
     data_cfg['params']['train_datasets']['paths'] = [str(val)]
     data_cfg['params']['train_datasets'].pop('motion_focus_plan_dir', None)
     data_cfg['params']['train_datasets']['deterministic_replay'] = False
-    data_cfg['params']['max_steps'] = 2000
+    data_cfg['params']['max_steps'] = STEPS
     dataset = DoosanValidationDataset(data_cfg['params'])
     if len(dataset.files) != 34:
         raise RuntimeError('Expected 34 validation episodes')
@@ -243,6 +243,8 @@ def evaluate(conf, profile, ckpt_receipt):
         raise RuntimeError('Frozen validation schedule mismatch')
     total, count = 0.0,0
     physical = {key: [0.0,0] for key in ('translation_m','rotation_rad','gripper')}
+    fixed_details = []
+    release_details = []
     with torch.inference_mode(),torch.autocast('cuda',dtype=torch.bfloat16):
         for i,(ep,idx) in enumerate(frozen_windows):
             import random
@@ -264,6 +266,13 @@ def evaluate(conf, profile, ckpt_receipt):
             for key,row in phys.items():
                 physical[key][0]+=row['absolute_error_sum']
                 physical[key][1]+=row['count']
+            fixed_details.append(dict(
+                episode=ep, frame_index=int(frame_id),
+                first5_motion_mae=float(diff[valid].mean().item()),
+                translation_mm=float(1000.0*phys['translation_m']['absolute_error_sum']/phys['translation_m']['count']),
+                rotation_deg=float(180.0/np.pi*phys['rotation_rad']['absolute_error_sum']/phys['rotation_rad']['count']),
+                gripper_mae=float(phys['gripper']['absolute_error_sum']/phys['gripper']['count']),
+            ))
             if (i+1)%34==0:
                 print(f'MOTION_VALIDATION_PROGRESS profile={profile["name"]} windows={i+1}/136',flush=True)
     if count != 136*30:
@@ -276,7 +285,7 @@ def evaluate(conf, profile, ckpt_receipt):
                  validation_provenance='real_fixed_validation')
     # Event recall: one pre-release 30-action window per held-out episode.
     # Compute no teacher-forced tokens, use the same inference seed for all arms.
-    if step == 2000:
+    if step in (1000,3000,5000):
         tp=0;pos=0;fp=0;neg=0
         start_offset=0
         for ep_path, num_frames in zip(dataset.files,counts):
@@ -300,8 +309,17 @@ def evaluate(conf, profile, ckpt_receipt):
             target=item['action'].float();mask=item['action_mask'].bool()
             valid=mask[:,6].bool();label=(target[:,6]>=.5)&valid;not_open=(target[:,6]<.5)&valid
             predicted=(pred[:,6]>=.5)
-            tp+=int((predicted&label).sum());pos+=int(label.sum())
-            fp+=int((predicted&not_open).sum());neg+=int(not_open.sum())
+            local_tp=int((predicted&label).sum())
+            local_pos=int(label.sum())
+            local_fp=int((predicted&not_open).sum())
+            local_neg=int(not_open.sum())
+            tp+=local_tp;pos+=local_pos
+            fp+=local_fp;neg+=local_neg
+            release_details.append(dict(
+                episode=ep, frame_index=int(frame),
+                true_positive=local_tp, positive_frames=local_pos,
+                false_positive=local_fp, negative_frames=local_neg,
+            ))
             start_offset+=num_frames
         metrics['release_windows']=34
         metrics['release_recall']=tp/pos if pos else None
@@ -309,6 +327,11 @@ def evaluate(conf, profile, ckpt_receipt):
         metrics['release_positive_frames']=pos
         metrics['release_negative_frames']=neg
         print(f'RELEASE_VALIDATION_COMPLETED profile={profile["name"]} recall={metrics["release_recall"]:.6f}',flush=True)
+    if len(fixed_details) != 136 or len(release_details) != 34:
+        raise RuntimeError('Missing fixed/release per-window evaluation evidence')
+    atomic_json(ROOT/'trials'/profile['name']/f'validation-detail-step{step}.json',
+                dict(profile=profile['name'],step=step,
+                     fixed=fixed_details,release=release_details))
     atomic_json(ROOT/'trials'/profile['name']/f'validation-step{step}.json',metrics)
     print('MOTION_VALIDATION_COMPLETED='+json.dumps(metrics,sort_keys=True),flush=True)
     return metrics
@@ -321,8 +344,8 @@ def main():
     ap.add_argument('--profile',required=True,choices=tuple(PROFILE_NAMES))
     ap.add_argument('--steps',required=True,type=int)
     a=ap.parse_args()
-    if a.mode=='train' and a.steps!=STEPS:raise RuntimeError('Train exactly 2000 fresh steps per arm')
-    if a.mode=='evaluate' and a.steps not in (1000,2000):raise RuntimeError('Only two approved validation points')
+    if a.mode=='train' and a.steps!=STEPS:raise RuntimeError('Train exactly 5000 fresh steps per arm')
+    if a.mode=='evaluate' and a.steps not in (1000,3000,5000):raise RuntimeError('Only three approved validation points')
     conf=validate_environment()
     p=PROFILE_NAMES[a.profile]
     if a.mode=='train':run_train(conf,p,a.steps)

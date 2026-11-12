@@ -42,7 +42,7 @@ import ast,hashlib,json,sys
 from pathlib import Path
 w=Path(sys.argv[1]);prefix=w/'xr1/experiments/fresh_balanced_v1'
 contract=json.loads((prefix/'experiment_contract.json').read_text())
-assert contract['steps_per_arm']==2000 and len(contract['profiles'])==4
+assert contract['steps_per_arm']==5000 and len(contract['profiles'])==4
 assert contract['starting_weights']=='released_XR1_5B_pretrained_only'
 for p in w.glob('xr1/**/*.py'):
     if p.name in ('doosan_fresh_runner.py','doosan_fresh_optimizer.py','run_fresh_balanced_campaign.py','build_schedules.py','finalize_campaign.py'):
@@ -53,7 +53,7 @@ for name in ('natural','balanced'):
     b=(parent/'sample_global_indices.npy').read_bytes()
     if hashlib.sha256(b).hexdigest()!=manifest['sampling']['sample_schedule_sha256']:
         raise RuntimeError('Sample schedule checksum drift: '+name)
-    assert (manifest['sampling']['steps'],manifest['sampling']['samples'])==(2000,48000)
+    assert (manifest['sampling']['steps'],manifest['sampling']['samples'])==(5000,120000)
     assert len(manifest['train_episode_records'])==255
 print('FRESH_CAMPAIGN_STATIC_PREFLIGHT=PASS')
 PYTHON
@@ -83,15 +83,41 @@ PYTHON
   )
   echo 'IMMUTABLE_INPUTS=PASS'
 
+  # Essential once-only CPU check before reserving an H100. Prior AdamW arms
+  # must not finish hours of training before discovering a missing Muon backend.
+  PYTHONPATH="$BASE/envs/xr1_motion_addons_v1:$WT/xr1" "$PY" -B - <<'MUON_PREFLIGHT'
+import importlib.metadata
+import torch
+from pytorch_optimizer import Muon
+from mibot.utils.doosan_fresh_optimizer import create_motion_optimizer
+if importlib.metadata.version('pytorch-optimizer') != '4.1.0':
+    raise RuntimeError('Expected pinned Muon backend pytorch-optimizer==4.1.0')
+for depth in (1, 2):
+    named=[]
+    for idx in range(36-depth, 36):
+        named.append((f'model.dit.layers.{idx}.mlp.weight', torch.nn.Parameter(torch.zeros(8, 8, dtype=torch.float32))))
+    named.append(('model.action_projector.weight', torch.nn.Parameter(torch.zeros(8, 8, dtype=torch.float32))))
+    optimizer, route = create_motion_optimizer(
+        named, last_n=depth, kind='hybrid_muon',
+        adamw_lr=1e-5, muon_lr=7.5e-5,
+    )
+    if not isinstance(optimizer, Muon) or route['last_n'] != depth:
+        raise RuntimeError('Wrong Muon optimizer or depth routing')
+    groups={g['group_name']:g for g in optimizer.param_groups}
+    if not groups['muon_hidden_matrix']['use_muon'] or groups['adamw_decay']['use_muon']:
+        raise RuntimeError('Muon/AdamW groups not routed correctly')
+print('MUON_BACKEND_LAST1_LAST2_CPU_PREFLIGHT=PASS')
+MUON_PREFLIGHT
+
   echo '===== 3. SUBMIT ONE SEQUENTIAL GPU ALLOCATION ====='
   JOB="$(sbatch --parsable --output="$ROOT/slurm/job-%j.out" --error="$ROOT/slurm/job-%j.err" "$SCRIPT" "$ROOT")"
   JOB="${JOB%%;*}"
   [[ "$JOB" =~ ^[0-9]+$ ]]
   printf '%s\n' "$JOB" > "$ROOT/job_id.txt"
   echo "SUBMITTED_JOB_ID=$JOB"
-  echo "H100_WALLTIME=07:00:00"
+  echo "H100_WALLTIME=13:00:00"
   echo "TRAINING_PROFILES=4"
-  echo "ADDITIONAL_GPU_TRAINING_STEPS=8000"
+  echo "ADDITIONAL_GPU_TRAINING_STEPS=20000"
   echo "RESULT_EVIDENCE=$ROOT/fresh_four_arm_evidence.zip"
   echo 'CLAIX_FRESH_CAMPAIGN_SUBMISSION=PASS'
 } 2>&1 | tee "$LOG"

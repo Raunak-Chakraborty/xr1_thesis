@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=96G
-#SBATCH --time=07:00:00
+#SBATCH --time=13:00:00
 set -Eeuo pipefail
 umask 077
 
@@ -59,14 +59,14 @@ for profile in natural_adamw_l1 balanced_adamw_l1 balanced_muon_l1 balanced_muon
   echo "TRAIN_START=$profile"
   TRAIN_LOG="$ROOT/logs/${profile}_train.log"
   if ! "$PY" -m torch.distributed.run --standalone --nproc_per_node=1 "$CAMPAIGN" \
-      --mode train --profile "$profile" --steps 2000 > "$TRAIN_LOG" 2>&1; then
+      --mode train --profile "$profile" --steps 5000 > "$TRAIN_LOG" 2>&1; then
     tail -n 50 "$TRAIN_LOG"
     echo "TRAIN_FAILED=$profile"
     exit 1
   fi
   grep 'MOTION_TRAIN_COMPLETED=' "$TRAIN_LOG" | tail -n 1
   echo "TRAIN_END=$profile"
-  for step in 1000 2000; do
+  for step in 1000 3000 5000; do
     echo "VALIDATE_START=$profile step=$step"
     VAL_LOG="$ROOT/logs/${profile}_validation_${step}.log"
     if ! "$PY" -B "$CAMPAIGN" --mode evaluate --profile "$profile" \

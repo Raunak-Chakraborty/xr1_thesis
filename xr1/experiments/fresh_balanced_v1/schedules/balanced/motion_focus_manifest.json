@@ -36,10 +36,10 @@
     "batch_size": 24,
     "bracketed_pause_weight": 0.3,
     "rotation_window_weight": 1.15,
-    "sample_schedule_sha256": "393e5c1b578b06e119e3b5a5c1869278e1f69180f830d9d543dec36fbbac732d",
-    "samples": 48000,
+    "sample_schedule_sha256": "e8df95078d60f68a50eaa928ec1c1418f09933ece7f000ff3032fa7b7b1581bd",
+    "samples": 120000,
     "seed": 20261110,
-    "steps": 2000,
+    "steps": 5000,
     "translation_window_weight": 1.25,
     "world_size": 1
   },

@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 ORIGINAL_INDEX_SHA = '249bb1367d5dc3438809b0438ba99b251630f5f73086ec0ceda15241968fc2b1'
-STEPS = 2000
+STEPS = 5000
 BATCH = 24
 N = STEPS * BATCH
 SEED = 20261112
@@ -142,7 +142,7 @@ def create(original_plan, train, out):
     after=Counter(names[np.searchsorted(ends,balanced,side='right')].tolist())
     if before!=after:raise RuntimeError('Task group sample counts changed')
     out.mkdir(parents=True, exist_ok=False)
-    report={'schema':'xr1-fresh-balanced-2000-v1','steps':STEPS,'batch_size':BATCH,'samples':N,
+    report={'schema':'xr1-fresh-balanced-5000-v2','steps':STEPS,'batch_size':BATCH,'samples':N,
       'seed':SEED,'source_original_sha256':ORIGINAL_INDEX_SHA,'mixture':MIX,
       'route_counts':dict(role_count),'task_group_counts':dict(after),'training_episodes':255,
       'train_frames':289703,'validation_used_for_sampling':False,'test_accessed':False,

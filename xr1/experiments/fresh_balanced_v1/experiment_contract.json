@@ -1,0 +1,25 @@
+{
+  "schema": "xr1-doosan-fresh-balanced-screen-v1",
+  "starting_weights": "released_XR1_5B_pretrained_only",
+  "pretrained_sha256": "94d55a79122050a654b379664b644e874ff90d64ccd30a6a633f816555bcecf7",
+  "training_episodes": 255,
+  "validation_episodes": 34,
+  "test_split_used": false,
+  "steps_per_arm": 2000,
+  "number_of_arms": 4,
+  "total_optimizer_steps": 8000,
+  "batch_size": 24,
+  "action_horizon": 30,
+  "warmup_steps": 200,
+  "cosine_final_multiplier": 0.25,
+  "precision": "BF16 compute FP32 trainable",
+  "seed": 42,
+  "motion_loss": {"first_5": 2.0, "next_5": 1.25, "remaining_20": 0.75},
+  "profiles": [
+    {"name": "natural_adamw_l1", "kind": "adamw_control", "adamw_lr": 0.00001, "muon_lr": null, "last_n": 1, "sampler": "natural"},
+    {"name": "balanced_adamw_l1", "kind": "adamw_control", "adamw_lr": 0.00001, "muon_lr": null, "last_n": 1, "sampler": "balanced"},
+    {"name": "balanced_muon_l1", "kind": "hybrid_muon", "adamw_lr": 0.00001, "muon_lr": 0.000075, "last_n": 1, "sampler": "balanced"},
+    {"name": "balanced_muon_l2", "kind": "hybrid_muon", "adamw_lr": 0.00001, "muon_lr": 0.000075, "last_n": 2, "sampler": "balanced"}
+  ],
+  "hpc": {"account":"thes2452","partition":"c23g","gpus":1,"cpus":12,"memory_gb":96,"walltime":"07:00:00"}
+}

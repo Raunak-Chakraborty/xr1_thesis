@@ -168,7 +168,7 @@ class DoosanFreshMotionRunner(DoosanCompactRunner):
             raise RuntimeError('Invalid optimizer kind')
 
         if (
-            self._replay_contract['data_horizon'] != 5000
+            self._replay_contract['data_horizon'] != int(self._motion['schedule_total_steps'])
             or self._replay_contract['batch_size'] != 24
         ):
             raise RuntimeError(
